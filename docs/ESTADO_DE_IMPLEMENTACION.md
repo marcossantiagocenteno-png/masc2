@@ -16,6 +16,7 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Marcador con latido** (fase 1d): el backend renueva el marcador cada 30 s. Un marcador caducado solo se considera abandonado si el sistema confirma que el proceso terminó; si no puede confirmarlo, la restauración se niega. Nunca se borra automáticamente. Pruebas: 11 de marcador (incluida una con un proceso real terminado).
 - **Simulacro de restauración** (fase 1d): `python -m app.backups simulacro`, reproducible en cualquier sistema. Ejecutado en Linux; pendiente en Windows.
 - **Advertencias de crecimiento** (fase 1d): `retencion` avisa al superar 200 MB o 100 MB al año estimados.
+- **Auditoría de integridad de la planificación** (fase 2a.1): vínculos validados también en la base (triggers, migración 0007); decisiones de canon con actor y estado resultante; cambios atómicos (un fallo al confirmar ya no deja cambios pendientes en la sesión); la carrera de duplicados responde 409 y no 500. Pruebas: 18 de integridad y 2 de migración 0007. Cuatro mutaciones de estas garantías se detectan.
 - **Núcleo de planificación narrativa** (fase 2a): personajes, lugares, elementos de trama, acontecimientos, estructura (actos, capítulos y escenas) y vínculos tipados, con estado de canon (provisional, propuesta de IA, canónico) y decisiones de canon registradas. Pruebas: 30 de planificación, 3 de migración y 2 de verificación de copias con tablas nuevas. Siete mutaciones de reglas de canon, aislamiento y atomicidad se detectan. Aislado por proyecto (probado). Sin interfaz de planificación.
 - **Copias de seguridad automáticas** (fase 1c): API de backup de SQLite en una lectura consistente; verificación de integridad y esquema antes de nombrar la copia; rotación por cantidad y antigüedad que nunca borra antes de crear y verificar la nueva; nombres que nunca se sobrescriben; registro operativo sin texto. Pruebas: 17 de copias, 9 de restauración, 9 de retención y 4 de línea de comandos (39 en la fase; 335 en total). Siete mutaciones deliberadas de las reglas de seguridad (verificación previa, rotación, bloqueos, instantánea, copia preventiva, retención de conflictos) hacen fallar al menos una prueba.
 - **Restauración administrativa** (fase 1c): rechaza sin tocar la base si la copia es inválida, si el hash no coincide, si la base está en uso o si el backend parece en marcha; copia preventiva antes de reemplazar; reversión automática si la verificación posterior falla. Probado en Linux. **No probado en Windows.**
@@ -52,6 +53,18 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 
 - Llamada real a Anthropic: requiere clave de API y un identificador de modelo que tu cuenta admita. No se inventa ninguno.
 - Exportación a EPUB: no se ha evaluado todavía si puede integrarse con garantías; se documentará si queda fuera.
+
+## Riesgos abiertos de la planificación (verificados al cierre de la fase 2a.1)
+
+- **Datos generales de la novela sin canon.** Premisa, sinopsis, género, tema y tono cambian sin confirmación y sin historial (D-059). La interfaz debe indicarlo. **Abierto.**
+- **Historial solo de canon.** Editar un elemento provisional o una propuesta no deja registro. **Deliberado; abierto como limitación.**
+- **Actor «ia» sin ruta.** El servicio rechaza al actor IA en las operaciones de canon, probado en servicio. No hay ningún endpoint de IA, así que esta regla no se ejerce todavía desde la API. **Abierto.**
+- **Archivar un elemento no archiva sus vínculos.** Un vínculo sigue visible con su extremo archivado; ningún vínculo nuevo puede apuntar a él (decisión documentada). **Deliberado.**
+- **Posiciones de estructura no únicas en la base.** Dos creaciones concurrentes de hermanos pueden darse la misma posición. El orden sigue siendo determinista (posición, luego id), y un reordenado lo corrige. **Abierto, de baja gravedad.**
+- **Vocabulario de relaciones solo en código.** La base valida tipos y extremos; el par relación-tipos lo valida el servicio. **Deliberado (D-057).**
+- **Decisiones anteriores a 0007 sin resultado.** Se atribuyen al autor y no tienen estado resultante. **Limitación de la migración.**
+- **Fallo de disparador en carrera.** Un disparador que rechaza un vínculo durante una carrera responde 422, no 500. **Probado en servicio.**
+- **Archivo `/m.sqlite` en la raíz del sistema.** Lo creó un comando defectuoso de la fase 2a (una variable de shell vacía dejó la ruta en la raíz). Su contenido es solo la tabla `alembic_version` vacía; no es la base del repositorio. **Pendiente de retirada por una persona.**
 
 ## Pendiente de la planificación (fase 2a no lo incluye)
 

@@ -154,6 +154,10 @@ Módulo `backend/app/planning/`. Decisiones en D-053 a D-056. Migración `0006`.
 
 Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`, `canonico`), `origen` (`autor`, `ia`), `approved_decision_id` y `archived_at`.
 
+- **Vínculos (migración 0007):** triggers en `narrative_links` rechazan extremos inexistentes, archivados, de otro proyecto o de tipo no válido (D-057).
+- **Historial de canon:** cada decisión guarda `actor`, `snapshot` (antes) y `resultado` (después). Cada operación de escritura es atómica: un fallo deshace la sesión (D-058).
+- **Datos generales de la novela:** premisa, sinopsis, género, tema y tono no tienen estado de canon (D-059).
+
 - **Aislamiento:** cada acceso filtra por proyecto. Un id ajeno es 404.
 - **Canon:** solo cambia con aprobar, aceptar propuesta, modificar un canónico (con confirmación) o archivar un canónico (con confirmación). Todas dejan una decisión con instantánea.
 - **Atomicidad:** cada operación valida antes de escribir y confirma una vez.

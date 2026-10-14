@@ -303,10 +303,14 @@ class NarrativeDecision(Base):
     element_kind: Mapped[str] = mapped_column(String(30), nullable=False)
     element_id: Mapped[int] = mapped_column(Integer, nullable=False)
     accion: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Quién originó la decisión (migración 0007). En esta fase solo existe el autor.
+    actor: Mapped[str] = mapped_column(String(20), nullable=False, default="autor", server_default="autor")
     estado_previo: Mapped[str | None] = mapped_column(String(20), nullable=True)
     estado_nuevo: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    # Estado del elemento antes del cambio, en JSON. Permite historial y análisis de impacto futuros.
+    # Estado del elemento antes del cambio, en JSON.
     snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Estado del elemento después del cambio, en JSON (migración 0007; nulo en decisiones anteriores).
+    resultado: Mapped[str | None] = mapped_column(Text, nullable=True)
     nota: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 

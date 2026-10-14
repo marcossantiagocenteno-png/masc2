@@ -351,6 +351,38 @@ Limitación conocida: sin clave foránea real, la integridad de los extremos dep
 
 Actos, capítulos y escenas viven en `structure_nodes`, con `parent_id` y `position` entre hermanos. Reordenar cambia `position`, no `id`: una escena conserva su identidad y sus vínculos al moverse. Las reglas de jerarquía (un acto solo en raíz; un capítulo en raíz o en acto; una escena en raíz, acto o capítulo) están en el servicio. Una escena no tiene texto: vincular una escena a un fragmento del manuscrito se hará más adelante con una tabla propia que apunte al nodo, para no duplicar ni mezclar contenidos. Mover un nodo a otro padre no está soportado todavía: solo se reordena entre hermanos.
 
+## D-057 · Integridad de los vínculos: el servicio valida y la base lo confirma
+**Estado:** aceptada (fase 2a.1)
+
+La auditoría encontró que la base aceptaba cualquier par de ids: un `INSERT` directo podía crear un vínculo entre dos novelas, hacia un elemento archivado o con un tipo inventado. Se añaden triggers en `narrative_links` (migración 0007) que rechazan la inserción, y el cambio de extremos, cuando un extremo no existe, está archivado, es de otro proyecto o no tiene un tipo válido. Motivo: el servicio sigue siendo la vía normal, pero la base debe rechazar también una escritura que la evite.
+
+No se usan claves foráneas para los extremos, porque son polimórficos (un id puede apuntar a tablas distintas). Los triggers cubren lo que una clave foránea no puede expresar. La relación concreta (el par de tipos) sigue validándose solo en el servicio, desde el registro de `kinds.py`, para no duplicar el vocabulario en SQL.
+
+La migración comprueba antes que los vínculos existentes cumplen la regla. Si no, falla sin aplicar nada. Un extremo archivado después de crear el vínculo sigue siendo legítimo: el vínculo no se borra ni se archiva por ello.
+
+Carrera: dos peticiones pueden pasar la comprobación de duplicados. La segunda falla en el `INSERT` por la restricción única; el servicio lo convierte en 409 solo si el duplicado existe, y en 422 si el rechazo es de otra causa (p. ej. el disparador).
+
+## D-058 · Historial de canon: actor, estado resultante y atomicidad
+**Estado:** aceptada (fase 2a.1)
+
+Cada decisión de canon registra:
+
+- `actor`: quién la origina. Hoy solo `autor`. El servicio ya rechaza cualquier otro actor para aprobar, aceptar propuestas y modificar o archivar canon. Así la IA no puede convertir una propuesta en canon aunque se conecte algún día.
+- `snapshot`: el elemento antes del cambio.
+- `resultado`: el elemento después del cambio (migración 0007; las decisiones anteriores lo tienen vacío).
+- `estado_previo` y `estado_nuevo`, y la `nota` del autor.
+
+Las decisiones son de solo inserción, así que `resultado` se calcula antes de insertar. En `aprobar_canon` no incluye `approved_decision_id`, porque su valor es el id de la propia decisión, que todavía no existe. El vínculo queda en el elemento y en la decisión.
+
+Atomicidad: cada operación que escribe está envuelta en un decorador que deshace la sesión ante cualquier excepción. Antes, una confirmación fallida dejaba el cambio en la sesión y la siguiente operación lo persistía. Probado con un fallo simulado al confirmar.
+
+Limitación deliberada: solo se registran decisiones de canon. Editar un elemento provisional o una propuesta no deja historial. Un historial completo de cambios no se ha construido todavía.
+
+## D-059 · Datos generales de la novela sin protección de canon
+**Estado:** aceptada (fase 2a.1)
+
+Premisa, sinopsis, género, tema y tono (y el estado de desarrollo) son columnas de `projects`. Hoy se pueden cambiar en cualquier momento sin confirmación, no tienen estado de canon, no registran decisiones y no dejan historial. Es una decisión consciente: son la definición de la novela que escribe el autor, y ninguna IA las propone todavía. Antes de integrarlas en el sistema de canon hace falta: estado y origen por campo (o un registro de versiones de la premisa), decisiones de canon con su instantánea, y una confirmación en la interfaz. La interfaz debe mostrar esta diferencia, para que el autor no crea que estos campos están protegidos.
+
 ---
 
 ## Pendientes
@@ -368,6 +400,7 @@ Actos, capítulos y escenas viven en `structure_nodes`, con `parent_id` y `posit
 | **Cifrado de las copias** | Las copias contienen el texto legible; no hay cifrado propio (D-050). | Cuando exista procedimiento de recuperación de claves probado. |
 | **Copias fuera del equipo** | Solo hay copias locales; copiar a otro disco es manual. | Decisión del autor sobre dónde guardarlas. |
 | **Prueba de restauración en Windows** | No se ha podido ejecutar: no hay Windows en el entorno de desarrollo (D-051). | Ejecutar `python -m app.backups simulacro` en Windows. |
+| **Campos generales de la novela sin canon** | Premisa, sinopsis, género, tema y tono cambian sin protección (D-059). | Antes de que la IA pueda proponerlos. |
 | **Planificación: interfaz** | La fase 2a es solo API y datos. | Fase 2b. |
 | **Planificación: contradicciones y análisis de impacto** | La estructura lo permite (D-054, D-055); no se ha implementado. | Fase posterior. |
 | **Planificación: escena vinculada a fragmento del manuscrito** | Pendiente de diseño (D-056). | Fase posterior. |

@@ -14,12 +14,14 @@ Reglas que este módulo impone (y que prueban ``tests/test_planificacion.py``):
 
 from __future__ import annotations
 
+import functools
 import json
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
@@ -37,6 +39,28 @@ PARENT_KINDS: dict[str, tuple[str | None, ...]] = {
 }
 
 
+AUTOR = K.ORIGEN_AUTOR
+IA = K.ORIGEN_IA
+
+
+def _atomic(method: Callable[..., Any]) -> Callable[..., Any]:
+    """Deshace la sesión si la operación falla, en cualquier punto.
+
+    Sin esto, un cambio ya aplicado en memoria (o un registro ya añadido) podía quedar pendiente
+    en la sesión y persistirse con la siguiente confirmación, aunque la operación hubiera fallado.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self: "PlanningService", *args: Any, **kwargs: Any) -> Any:
+        try:
+            return method(self, *args, **kwargs)
+        except BaseException:
+            self._session.rollback()
+            raise
+
+    return wrapper
+
+
 class PlanningService:
     """Operaciones de planificación de un proyecto. Confirma cada operación."""
 
@@ -51,6 +75,7 @@ class PlanningService:
     def get_narrative(self, project_id: int) -> Project:
         return self._project(project_id)
 
+    @_atomic
     def update_narrative(self, project_id: int, changes: dict[str, Any]) -> Project:
         project = self._active_project(project_id)
         unknown = set(changes) - set(K.NARRATIVE_FIELDS)
@@ -71,6 +96,7 @@ class PlanningService:
     # Elementos: personajes, lugares, trama, cronología
     # ------------------------------------------------------------------
 
+    @_atomic
     def create(self, kind: str, project_id: int, data: dict[str, Any], propuesta: bool = False) -> Any:
         """Crea un elemento. Con ``propuesta=True`` queda como propuesta de IA, nunca como canon."""
         self._require_creatable(kind)
@@ -114,6 +140,7 @@ class PlanningService:
             query = query.where(model.estado == estado)
         return list(self._session.scalars(query).all())
 
+    @_atomic
     def update(
         self,
         kind: str,
@@ -121,12 +148,19 @@ class PlanningService:
         element_id: int,
         changes: dict[str, Any],
         confirmar_cambio_canon: bool = False,
+        actor: str = AUTOR,
     ) -> Any:
-        """Edita un elemento. Si era canónico, exige confirmación y lo devuelve a provisional con una decisión."""
+        """Edita un elemento. Si era canónico, exige confirmación y lo devuelve a provisional con una decisión.
+
+        Un actor distinto del autor (la IA, en el futuro) solo puede tocar propuestas que él mismo creó.
+        """
+        self._check_actor(actor)
         self._active_project(project_id)
         row = self._element(kind, project_id, element_id)
         if row.archived_at is not None:
             raise ValidationFailed("el elemento está archivado; no se puede editar")
+        if actor != AUTOR and row.estado != K.PROPUESTA:
+            raise ValidationFailed("solo el autor puede modificar material que no sea una propuesta")
         allowed = K.EDITABLE.get(kind, ())
         unknown = set(changes) - set(allowed)
         if unknown:
@@ -137,11 +171,13 @@ class PlanningService:
             return row
 
         was_canon = row.estado == K.CANONICO
-        if was_canon and not confirmar_cambio_canon:
-            raise ConflictError(
-                "el elemento es canónico: cambiarlo exige confirmar_cambio_canon=true. "
-                "No se ha modificado nada."
-            )
+        if was_canon:
+            self._require_author(actor, "modificar un canónico")
+            if not confirmar_cambio_canon:
+                raise ConflictError(
+                    "el elemento es canónico: cambiarlo exige confirmar_cambio_canon=true. "
+                    "No se ha modificado nada."
+                )
         snapshot = self._snapshot(row)
         for field, value in changes.items():
             setattr(row, field, value)
@@ -150,28 +186,60 @@ class PlanningService:
         if was_canon:
             row.estado = K.PROVISIONAL
             row.approved_decision_id = None
-            self._record(kind, row, "modificar_canon", K.CANONICO, K.PROVISIONAL, snapshot, None, now)
+            self._record(
+                kind, row, "modificar_canon", K.CANONICO, K.PROVISIONAL, snapshot, None, now, actor,
+                resultado=self._snapshot(row),
+            )
         self._session.commit()
         return row
 
-    def archive(self, kind: str, project_id: int, element_id: int, confirmar_canon: bool = False) -> Any:
+    @_atomic
+    def archive(
+        self,
+        kind: str,
+        project_id: int,
+        element_id: int,
+        confirmar_canon: bool = False,
+        actor: str = AUTOR,
+    ) -> Any:
         """Archiva un elemento sin borrarlo. Archivar un canónico exige confirmación."""
+        self._check_actor(actor)
         self._active_project(project_id)
         row = self._element(kind, project_id, element_id)
         if row.archived_at is not None:
             raise ValidationFailed("el elemento ya está archivado")
-        if row.estado == K.CANONICO and not confirmar_canon:
-            raise ConflictError("el elemento es canónico: archivarlo exige confirmar_canon=true. No se ha modificado nada.")
+        if actor != AUTOR and row.estado != K.PROPUESTA:
+            raise ValidationFailed("solo el autor puede archivar material que no sea una propuesta")
+        if row.estado == K.CANONICO:
+            self._require_author(actor, "archivar un canónico")
+            if not confirmar_canon:
+                raise ConflictError(
+                    "el elemento es canónico: archivarlo exige confirmar_canon=true. No se ha modificado nada."
+                )
         now = self._clock()
         snapshot = self._snapshot(row)
         row.archived_at = now
         row.updated_at = now
-        self._record(kind, row, "archivar", row.estado, row.estado, snapshot, None, now)
+        self._record(
+            kind, row, "archivar", row.estado, row.estado, snapshot, None, now, actor,
+            resultado=self._snapshot(row),
+        )
         self._session.commit()
         return row
 
-    def approve(self, kind: str, project_id: int, element_id: int, confirmar: bool, nota: str | None = None) -> Any:
+    @_atomic
+    def approve(
+        self,
+        kind: str,
+        project_id: int,
+        element_id: int,
+        confirmar: bool,
+        nota: str | None = None,
+        actor: str = AUTOR,
+    ) -> Any:
         """Aprueba un elemento como canónico. Requiere confirmación explícita del autor."""
+        self._check_actor(actor)
+        self._require_author(actor, "aprobar como canon")
         if not confirmar:
             raise ValidationFailed("aprobar como canon exige confirmar=true")
         self._active_project(project_id)
@@ -183,25 +251,38 @@ class PlanningService:
         previous = row.estado
         now = self._clock()
         snapshot = self._snapshot(row)
-        decision = self._record(kind, row, "aprobar_canon", previous, K.CANONICO, snapshot, nota, now)
-        self._session.flush()
         row.estado = K.CANONICO
-        row.approved_decision_id = decision.id
         row.updated_at = now
+        # El resultado se registra sin approved_decision_id: ese valor es el id de esta misma decisión,
+        # que aún no existe. El vínculo queda en el elemento y en la propia decisión.
+        decision = self._record(
+            kind, row, "aprobar_canon", previous, K.CANONICO, snapshot, nota, now, actor,
+            resultado=self._snapshot(row),
+        )
+        self._session.flush()
+        row.approved_decision_id = decision.id
         self._session.commit()
         return row
 
-    def accept_proposal(self, kind: str, project_id: int, element_id: int) -> Any:
+    @_atomic
+    def accept_proposal(self, kind: str, project_id: int, element_id: int, actor: str = AUTOR) -> Any:
         """Acepta una propuesta de IA como material provisional. No la convierte en canon."""
+        self._check_actor(actor)
+        self._require_author(actor, "aceptar una propuesta")
         self._active_project(project_id)
         row = self._element(kind, project_id, element_id)
+        if row.archived_at is not None:
+            raise ValidationFailed("el elemento está archivado; no se puede aceptar")
         if row.estado != K.PROPUESTA:
             raise ValidationFailed("solo se puede aceptar una propuesta de IA")
         now = self._clock()
         snapshot = self._snapshot(row)
         row.estado = K.PROVISIONAL
         row.updated_at = now
-        self._record(kind, row, "aceptar_propuesta", K.PROPUESTA, K.PROVISIONAL, snapshot, None, now)
+        self._record(
+            kind, row, "aceptar_propuesta", K.PROPUESTA, K.PROVISIONAL, snapshot, None, now, actor,
+            resultado=self._snapshot(row),
+        )
         self._session.commit()
         return row
 
@@ -224,6 +305,7 @@ class PlanningService:
     # Estructura: actos, capítulos y escenas
     # ------------------------------------------------------------------
 
+    @_atomic
     def create_node(
         self,
         project_id: int,
@@ -261,6 +343,7 @@ class PlanningService:
         self._session.commit()
         return row
 
+    @_atomic
     def reorder(self, project_id: int, parent_id: int | None, order: list[int]) -> list[StructureNode]:
         """Reordena los hermanos de ``parent_id``. Cambia ``position``, nunca ``id``.
 
@@ -287,6 +370,7 @@ class PlanningService:
     # Vínculos
     # ------------------------------------------------------------------
 
+    @_atomic
     def link(
         self,
         project_id: int,
@@ -308,17 +392,7 @@ class PlanningService:
         self._active_project(project_id)
         self._endpoint(project_id, source_kind, source_id)
         self._endpoint(project_id, target_kind, target_id)
-        duplicate = self._session.scalar(
-            select(NarrativeLink.id).where(
-                NarrativeLink.project_id == project_id,
-                NarrativeLink.source_kind == source_kind,
-                NarrativeLink.source_id == source_id,
-                NarrativeLink.target_kind == target_kind,
-                NarrativeLink.target_id == target_id,
-                NarrativeLink.relation == relation,
-            )
-        )
-        if duplicate is not None:
+        if self._has_duplicate(project_id, source_kind, source_id, target_kind, target_id, relation):
             raise ConflictError("ese vínculo ya existe")
         now = self._clock()
         row = NarrativeLink(
@@ -334,7 +408,15 @@ class PlanningService:
             updated_at=now,
         )
         self._session.add(row)
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError as error:
+            # Carrera: otra petición insertó el mismo vínculo entre la comprobación y este INSERT.
+            # Cualquier otro rechazo de la base (p. ej. el disparador de extremos) no es un duplicado.
+            self._session.rollback()
+            if self._has_duplicate(project_id, source_kind, source_id, target_kind, target_id, relation):
+                raise ConflictError("ese vínculo ya existe") from error
+            raise ValidationFailed("el vínculo no es válido: un extremo ha cambiado o no cumple la regla") from error
         return row
 
     def links_of(self, project_id: int, kind: str, element_id: int, include_archived: bool = False) -> Sequence[NarrativeLink]:
@@ -435,6 +517,28 @@ class PlanningService:
             data[column.name] = value.isoformat() if isinstance(value, datetime) else value
         return json.dumps(data, ensure_ascii=False, sort_keys=True)
 
+    def _check_actor(self, actor: str) -> None:
+        if actor not in K.ORIGENES:
+            raise ValidationFailed(f"actor no válido: '{actor}'")
+
+    def _require_author(self, actor: str, action: str) -> None:
+        if actor != AUTOR:
+            raise ValidationFailed(f"solo el autor puede {action}; el actor «{actor}» no está autorizado")
+
+    def _has_duplicate(
+        self, project_id: int, source_kind: str, source_id: int, target_kind: str, target_id: int, relation: str
+    ) -> bool:
+        return self._session.scalar(
+            select(NarrativeLink.id).where(
+                NarrativeLink.project_id == project_id,
+                NarrativeLink.source_kind == source_kind,
+                NarrativeLink.source_id == source_id,
+                NarrativeLink.target_kind == target_kind,
+                NarrativeLink.target_id == target_id,
+                NarrativeLink.relation == relation,
+            )
+        ) is not None
+
     def _record(
         self,
         kind: str,
@@ -445,15 +549,20 @@ class PlanningService:
         snapshot: str,
         note: str | None,
         now: datetime,
+        actor: str = AUTOR,
+        resultado: str | None = None,
     ) -> NarrativeDecision:
+        """Añade la decisión a la sesión. Debe llamarse después de aplicar el cambio, con el estado resultante."""
         decision = NarrativeDecision(
             project_id=row.project_id,
             element_kind=kind,
             element_id=row.id,
             accion=action,
+            actor=actor,
             estado_previo=previous,
             estado_nuevo=new,
             snapshot=snapshot,
+            resultado=resultado,
             nota=note,
             created_at=now,
         )

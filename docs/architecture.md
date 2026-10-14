@@ -47,6 +47,7 @@ masc2/
 | `backend/app/texts/routes.py` | Endpoints REST. | Reglas de negocio. |
 | `backend/migrations` | Esquema y triggers de inmutabilidad, versionados con Alembic. | Datos de ejemplo. |
 | `backend/app/analysis` | Análisis editorial de fragmentos: proveedores, verificaciones, validación y persistencia. | Generación de texto y reescritura. |
+| `backend/app/backups` | Copias verificadas con la API de backup de SQLite, rotación, restauración administrativa, vista previa de retención, planificador y línea de comandos. | Versiones y edición: no las toca. |
 | `backend/app/drafts` | Borrador por manuscrito con escritura condicional, puntos de recuperación, política de puntos y restauración transaccional. | Versiones formales: no las crea ni las modifica. |
 | `apps/web/lib/draft-saver.ts` | Guardado del borrador sin React: una escritura en vuelo, anti-rebote, estados y conflictos. | Renderizado. |
 | `backend/app/benchmark` | Validación de casos y rúbricas (tarea 001). | No se usa en la aplicación de textos. |
@@ -137,6 +138,16 @@ El texto del editor es un **borrador**, separado de las versiones. Migración `0
 | Cierre o recarga con cambios pendientes | Aviso del navegador. Además, un envío `keepalive` de hasta 64 KB. Es de mejor esfuerzo: no hay respuesta que leer. |
 
 Límite del borrador: el mismo que las versiones (500.000 caracteres).
+
+## Copias de seguridad y restauración
+
+Módulo `backend/app/backups/`. Detalle operativo en `RESPALDO_Y_RESTAURACION.md`; decisiones en D-045 a D-048.
+
+- **Copia:** API de backup de SQLite dentro de una lectura abierta (instantánea consistente). Verificación del temporal antes de nombrarlo. Rotación solo después de crear y verificar la copia nueva. Nombres que nunca se sobrescriben.
+- **Planificación:** hilo del backend, cada `NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES`. Un bloqueo de carpeta impide dos operaciones a la vez.
+- **Marcador:** `.app-running` mientras corre el backend. La restauración se niega mientras exista.
+- **Restauración:** comando administrativo. Rechaza sin tocar la base si la copia no es válida, si el hash no coincide, si la base está en uso o si el backend está en marcha. Copia preventiva antes de reemplazar. Reversión si la verificación posterior falla. No ejecuta migraciones.
+- **Retención:** solo métricas y vista previa. No borra: los triggers de `draft_recovery_points` lo impiden.
 
 ## Análisis editorial de fragmentos
 

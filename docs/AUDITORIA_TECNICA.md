@@ -24,7 +24,7 @@ Antes de implementar nada nuevo, la auditoría encontró dos riesgos reales de p
 | Proyectos aislados (crear, renombrar, archivar, restaurar) | **Implementado en esta entrega** | Pruebas de backend y E2E |
 | Migración de manuscritos existentes a «Proyecto inicial» | **Implementado en esta entrega** | Prueba de migración con datos reales |
 | Edición segura al cambiar la versión de partida | **Corregido en esta entrega** | Pruebas E2E (tres casos, incluida la de carrera) |
-| Copia de seguridad automática | **No existe** | Solo es posible copiar el archivo SQLite a mano (ver RESPALDO_Y_RESTAURACION.md) |
+| Copia de seguridad automática | **Implementado en fase 1c** | Pruebas de copias, restauración y retención. Restauración probada en Linux, no en Windows |
 | Autoguardado de borrador con estados visibles, conflictos y reintento | **Implementado en fase 1b** | Pruebas de backend (`test_drafts.py`), unitarias del guardado (`tests/unit`) y E2E (`borrador.spec.ts`) |
 | Puntos de recuperación y restauración desde la interfaz | **Implementado en fase 1b** | Pruebas de backend y E2E. Sin retención todavía (D-043) |
 | Historial de versiones con restauración desde la interfaz | **No existe** | Las versiones son inmutables; se restaura por puntos de recuperación del borrador, no por versiones |
@@ -67,7 +67,7 @@ Relaciones: el proyecto contiene manuscritos; el manuscrito contiene versiones; 
 | Texto escrito sin guardar se pierde al recargar o cerrar | Alta | **Mitigado** (fase 1b): autoguardado, indicador y recuperación. No protege si el servidor cae antes de guardar, y el indicador lo muestra. |
 | Sustitución silenciosa del texto al cambiar de versión | Alta | **Corregido** (confirmación + prueba) |
 | Sustitución del texto durante la carga asíncrona | Alta | **Corregido** (prueba determinista) |
-| Único archivo SQLite sin copias automáticas | Alta | Abierto. Respaldo manual documentado y probado; automático es la siguiente tarea (D-044). |
+| Único archivo SQLite sin copias automáticas | Alta | **Mitigado** (fase 1c): copias cada hora verificadas, rotación y restauración con copia preventiva. Pendiente: cifrado y copias fuera del equipo (D-045). |
 | Migración que deja la base en un estado inconsistente | Media | Mitigado: migraciones probadas sobre datos; 0004 no reversible automáticamente, con procedimiento de copia |
 | Eliminación accidental de manuscritos | Baja | Mitigado: no hay endpoint de borrado; las versiones son inmutables |
 | Envío de texto a un proveedor externo sin consentimiento | Alta si ocurriera | Mitigado: autorización por petición, probada con dobles; verificación real pendiente |
@@ -97,18 +97,21 @@ Relaciones: el proyecto contiene manuscritos; el manuscrito contiene versiones; 
 
 Estado tras esta entrega:
 
-- Backend: **296 pruebas** en total, incluidas las 65 de la tarea 001. Cubren modelos, validación, API, inmutabilidad, análisis, proveedor real con dobles, autorización, migraciones (incluida la 0005 con datos), proyectos, recuperación por copia y borradores. Todas pasan.
+- Backend: **335 pruebas** en total, incluidas las 65 de la tarea 001. Cubren modelos, validación, API, inmutabilidad, análisis, proveedor real con dobles, autorización, migraciones (incluida la 0005 con datos), proyectos, recuperación por copia y borradores. Todas pasan.
 - Unitarias del guardado (`tests/unit`): **12**, sin navegador y con temporizadores controlados.
 - Playwright E2E: **17 pruebas** (10 previas y 7 del borrador).
 
 Lo que las pruebas **no** cubren:
 
 - La llamada real a Anthropic (solo dobles del SDK).
-- Restauración desde la interfaz (no existe).
+- Restauración desde la interfaz (deliberadamente no existe, D-047).
+- Restauración en Windows (no probada).
+- Copias bajo corte de energía o fallo de disco reales (solo simuladas en pruebas).
 - El envío de último recurso al cerrar la página (`pagehide`, keepalive) no tiene prueba automática: el navegador no ofrece una forma fiable de comprobarlo en Playwright.
 - Caída real del servidor en mitad de un guardado: se prueba con respuestas simuladas, no con un proceso que se detenga.
 - Comportamiento en Windows (las pruebas se han ejecutado en Linux).
 - Carga, concurrencia y tamaños grandes más allá de 500 000 caracteres.
+- Copias de bases de decenas de MB con escrituras constantes (solo se han probado bases pequeñas).
 
 ## 9. Conclusión
 

@@ -58,6 +58,8 @@ export default defineConfig({
       env: {
         DATABASE_URL: `sqlite:///${e2eDatabase}`,
         NOVEL_ENGINE_CORS_ORIGINS: webUrl,
+        // Las copias automáticas se prueban en el backend (pytest). Aquí no añaden nada.
+        NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES: "0",
       },
     },
     {

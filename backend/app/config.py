@@ -18,6 +18,13 @@ Variables:
   defecto: debe ser uno que tu cuenta admita (ver README).
 - ``NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS``: tiempo máximo por llamada. Por defecto, 60.
 - ``NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS``: límite de tokens de salida. Por defecto, 2000.
+- ``NOVEL_ENGINE_BACKUP_DIR``: carpeta de las copias de seguridad, separada de la base. Por defecto, ``data/backups``.
+- ``NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES``: frecuencia de copias automáticas mientras corre el backend. Por defecto, 60. ``0`` las desactiva.
+- ``NOVEL_ENGINE_BACKUP_KEEP``: número máximo de copias conservadas. Por defecto, 14.
+- ``NOVEL_ENGINE_BACKUP_MIN_KEEP``: copias que nunca se borran por antigüedad. Por defecto, 3.
+- ``NOVEL_ENGINE_BACKUP_MAX_AGE_DAYS``: antigüedad a partir de la cual se borra una copia (si quedan más de ``MIN_KEEP``). Por defecto, 30.
+- ``NOVEL_ENGINE_RETENTION_KEEP_PER_MANUSCRIPT``: puntos de recuperación recientes que siempre se conservan por manuscrito. Por defecto, 20.
+- ``NOVEL_ENGINE_RETENTION_MIN_AGE_DAYS``: antigüedad mínima de un punto para que sea candidato a limpieza. Por defecto, 90.
 """
 
 from __future__ import annotations
@@ -36,6 +43,13 @@ DEFAULT_ANALYSIS_PROVIDER = "simulado"
 DEFAULT_MAX_ANALYSIS_CHARS = 8_000
 DEFAULT_ANTHROPIC_TIMEOUT_SECONDS = 60.0
 DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 2_000
+DEFAULT_BACKUP_DIR = REPO_ROOT / "data" / "backups"
+DEFAULT_BACKUP_INTERVAL_MINUTES = 60
+DEFAULT_BACKUP_KEEP = 14
+DEFAULT_BACKUP_MIN_KEEP = 3
+DEFAULT_BACKUP_MAX_AGE_DAYS = 30
+DEFAULT_RETENTION_KEEP_PER_MANUSCRIPT = 20
+DEFAULT_RETENTION_MIN_AGE_DAYS = 90
 
 
 @dataclass(frozen=True)
@@ -52,8 +66,24 @@ class Settings:
     anthropic_model: str | None = None
     anthropic_timeout_seconds: float = DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
     anthropic_max_output_tokens: int = DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS
+    # ``None`` desactiva las copias: las pruebas no escriben en disco salvo que lo pidan.
+    backup_dir: str | None = None
+    backup_interval_minutes: int = 0
+    backup_keep: int = DEFAULT_BACKUP_KEEP
+    backup_min_keep: int = DEFAULT_BACKUP_MIN_KEEP
+    backup_max_age_days: int = DEFAULT_BACKUP_MAX_AGE_DAYS
+    retention_keep_per_manuscript: int = DEFAULT_RETENTION_KEEP_PER_MANUSCRIPT
+    retention_min_age_days: int = DEFAULT_RETENTION_MIN_AGE_DAYS
 
     def __post_init__(self) -> None:
+        if self.backup_interval_minutes < 0:
+            raise ValueError("backup_interval_minutes no puede ser negativo")
+        if not 1 <= self.backup_min_keep <= self.backup_keep:
+            raise ValueError("se exige 1 <= backup_min_keep <= backup_keep")
+        if self.backup_max_age_days < 1:
+            raise ValueError("backup_max_age_days debe ser al menos 1")
+        if self.retention_keep_per_manuscript < 1 or self.retention_min_age_days < 0:
+            raise ValueError("los parámetros de retención deben ser positivos")
         if self.max_version_chars < 1:
             raise ValueError("max_version_chars debe ser un entero positivo")
         if self.max_analysis_chars < 1:
@@ -106,7 +136,24 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         source, "NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS", DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS
     )
 
+    backup_dir = source.get("NOVEL_ENGINE_BACKUP_DIR", "").strip() or str(DEFAULT_BACKUP_DIR)
+
     return Settings(
+        backup_dir=backup_dir,
+        backup_interval_minutes=_int_or_default(
+            source, "NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES", DEFAULT_BACKUP_INTERVAL_MINUTES
+        ),
+        backup_keep=_int_or_default(source, "NOVEL_ENGINE_BACKUP_KEEP", DEFAULT_BACKUP_KEEP),
+        backup_min_keep=_int_or_default(source, "NOVEL_ENGINE_BACKUP_MIN_KEEP", DEFAULT_BACKUP_MIN_KEEP),
+        backup_max_age_days=_int_or_default(
+            source, "NOVEL_ENGINE_BACKUP_MAX_AGE_DAYS", DEFAULT_BACKUP_MAX_AGE_DAYS
+        ),
+        retention_keep_per_manuscript=_int_or_default(
+            source, "NOVEL_ENGINE_RETENTION_KEEP_PER_MANUSCRIPT", DEFAULT_RETENTION_KEEP_PER_MANUSCRIPT
+        ),
+        retention_min_age_days=_int_or_default(
+            source, "NOVEL_ENGINE_RETENTION_MIN_AGE_DAYS", DEFAULT_RETENTION_MIN_AGE_DAYS
+        ),
         database_url=database_url,
         max_version_chars=max_chars,
         cors_origins=origins,

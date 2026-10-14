@@ -13,6 +13,9 @@ La base de datos debe estar migrada antes de arrancar: ``python -m alembic upgra
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,6 +23,7 @@ from pydantic import BaseModel
 
 from app import __version__
 from app.config import Settings, load_settings
+from app.backups.runtime import start_background, stop_background
 from app.db.base import utc_now
 from app.db.session import create_engine_for, create_session_factory
 from app.drafts.errors import DraftConflict
@@ -43,7 +47,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     engine = create_engine_for(settings.database_url)
 
-    application = FastAPI(title="Novel Engine", version=__version__)
+    @asynccontextmanager
+    async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
+        # Marcador de ejecución y copias automáticas. Ver app/backups/runtime.py.
+        scheduler = start_background(settings, application.state.clock)
+        try:
+            yield
+        finally:
+            stop_background(settings, scheduler)
+
+    application = FastAPI(title="Novel Engine", version=__version__, lifespan=lifespan)
     application.state.settings = settings
     application.state.engine = engine
     application.state.session_factory = create_session_factory(engine)

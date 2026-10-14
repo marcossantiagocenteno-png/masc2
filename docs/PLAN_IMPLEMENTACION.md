@@ -12,13 +12,18 @@ La especificación pone la planificación en la fase 2 y la persistencia fiable 
 |---|---|---|
 | 0. Auditoría y especificación | Revisión del repositorio, auditoría, plan, pruebas de referencia | **Completada** |
 | 1. Fundamentos | Proyectos aislados, navegación, panel, migraciones seguras, manejo de errores | **Parcial**: proyectos y migraciones hechos. Faltan preferencias por proyecto, duplicar, hitos y actividad reciente completos. |
-| 1b. Persistencia fiable (nueva, adelantada) | Autoguardado, puntos de recuperación, estados de guardado, copias automáticas locales | **Parcial**: autoguardado, estados, conflictos, puntos y restauración hechos y probados. **Copias automáticas pendientes, siguiente tarea inmediata.** |
+| 1b. Persistencia fiable (nueva, adelantada) | Autoguardado, puntos de recuperación, estados de guardado | **Completada** (commit a854f5a) |
+| 1c. Copias y recuperación ante desastres | Copias automáticas verificadas, rotación, restauración segura, política de retención | **Completada en Linux** (ver `decisions.md`, D-045 a D-048). Restauración no probada en Windows. Eliminación de puntos: fuera de esta fase. |
 | 2. Planificación y estructura | Premisa, personajes, relaciones, cronología, capítulos y escenas, esquema jerárquico, tablero, estados de información, decisiones | Pendiente |
 | 3. Manuscrito | Editor con capítulos y escenas flexibles, historial comparable, restauración sin pérdida de versiones posteriores, vínculos con la planificación | Pendiente |
 | 4. Memoria y tareas básicas | Hechos con fuentes, relaciones, tareas con estados, detección básica de inconsistencias | Pendiente |
 | 5. Importación, exportación y protección | DOCX/TXT/Markdown, exportación del manuscrito, paquete completo restaurable | Pendiente |
 | 6. Proveedor real y propuestas de IA | Anthropic sobre la arquitectura común, propuestas separadas del manuscrito, reintentos limitados | Parcial: proveedor y autorización hechos; **sin verificación real**; sin propuestas integradas en el editor |
 | 7. Inteligencia editorial avanzada | Supervisión continua, análisis de impacto, correcciones coordinadas, métodos narrativos, evaluación por capas | Pendiente |
+
+## Fase 1c: copias y recuperación ante desastres
+
+Hecho: copias con la API de backup de SQLite, verificación, rotación que nunca borra antes de validar la nueva, restauración administrativa con copia preventiva y reversión, y métricas con vista previa de retención. No hecho: eliminación de puntos (requiere quitar la protección de los triggers, decisión aparte), cifrado de copias, copias fuera del equipo y restauración probada en Windows.
 
 ## Fase 1b: persistencia fiable
 

@@ -246,7 +246,7 @@ Ambas están probadas con pruebas E2E. La segunda se reprodujo de forma determin
 La auditoría muestra que el editor puede perder texto. La fase de persistencia fiable (autoguardado, puntos de recuperación, copias) pasa antes de la planificación narrativa. Ver `docs/PLAN_IMPLEMENTACION.md`.
 
 ## D-040 · Recuperación por copia como única vía de respaldo hoy
-**Estado:** aceptada, provisional
+**Estado:** superada por D-045 a D-047 (fase 1c)
 
 No hay copias automáticas. La copia manual del archivo SQLite, con la aplicación detenida, está documentada en `docs/RESPALDO_Y_RESTAURACION.md` y probada (`test_recovery.py`). Se sustituirá por copias automáticas en la fase 1b.
 
@@ -267,9 +267,29 @@ Cada escritura indica la revisión que conoce el cliente. La condición y la esc
 Un punto al primer guardado; después, uno cada 5 minutos con cambios, o uno por cambio importante (500 caracteres de diferencia de longitud, con 60 s desde el último). La longitud es una aproximación barata: un cambio que sustituya 500 caracteres por otros 500 no cuenta como importante. No se guarda un punto por pulsación. Los puntos no se borran todavía: el crecimiento está acotado por los intervalos, pero no hay retención (ver pendientes).
 
 ## D-044 · Copias automáticas aplazadas
-**Estado:** aceptada
+**Estado:** superada por D-045 a D-047 (fase 1c)
 
 No se han implementado copias automáticas en esta fase. Copiar un archivo SQLite mientras se escribe exige la API de copia en caliente de SQLite, una rotación con límite de retención y una restauración probada. Mezclarlo con el borrador añadía riesgo a la parte que ya funciona. Es la primera tarea de la siguiente fase de persistencia.
+
+## D-045 · Copias con la API de backup de SQLite, verificadas antes de nombrarse
+**Estado:** aceptada
+
+La copia usa la API de backup de SQLite, dentro de una lectura abierta: todo el contenido corresponde a una única instantánea, y las escrituras concurrentes esperan lo que dura la copia. No se copia por pasos ni con una copia de archivo, porque el módulo `sqlite3` reintenta indefinidamente los errores `BUSY` de la API: un escritor que retuviera el bloqueo dejaría la copia colgada. Se observó colgarse en una ejecución real de la línea de comandos. Una copia se verifica en un temporal (se abre en solo lectura, `PRAGMA integrity_check` = `ok`, tablas requeridas, versión de esquema conocida) y solo después se renombra. Nunca se sobrescribe una copia: dos copias en el mismo instante reciben nombres distintos. La rotación se hace después de crear y verificar la copia nueva. Una copia fallida no borra nada.
+
+## D-046 · Programación dentro del backend, bloqueo de carpeta y marcador de ejecución
+**Estado:** aceptada
+
+Las copias automáticas corren en un hilo del backend, cada 60 minutos por defecto (`NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES`). La lógica está en `tick`, sin hilos, para que las pruebas la controlen con un reloj. Un bloqueo por creación exclusiva de archivo (`.backup.lock`) impide dos copias a la vez, y también una copia y una restauración; funciona igual en Linux y Windows. Un bloqueo de más de dos horas se considera abandonado y se retira. Mientras el backend corre, existe el marcador `.app-running`: la restauración se niega mientras exista. Un cierre brusco deja el marcador; entonces hay que usar `--ignorar-marcador` tras comprobar que no hay ningún proceso.
+
+## D-047 · Restauración administrativa, con copia preventiva y reversión
+**Estado:** aceptada
+
+La restauración es un comando (`python -m app.backups restaurar --confirmar`), no una función de la interfaz, porque reemplaza la base con la aplicación detenida. Orden: rechazar si el marcador existe; verificar la copia (integridad, esquema conocido, hash del manifiesto); bloquear la base activa en exclusiva (si otro proceso la usa, rechazar); guardar la copia preventiva y verificarla; crear el temporal desde la copia y verificarlo; reemplazar; verificar de nuevo. Si la verificación posterior falla, se devuelve la preventiva. Ninguna copia de esquema anterior se restaura sin `--permitir-esquema-anterior`, y nunca se ejecutan migraciones durante la restauración. La copia preventiva se hace como copia de archivo porque, con el bloqueo exclusivo, el archivo es consistente; la API de backup desde esa conexión se colgaba (ver D-045).
+
+## D-048 · Retención sin borrado automático en esta fase
+**Estado:** aceptada
+
+Los triggers de `draft_recovery_points` impiden `DELETE`, y la inmutabilidad debe mantenerse. Por tanto, esta fase no borra puntos. Se implementan métricas (`retencion`) y una vista previa de candidatos. Un punto solo sería candidato si: es `periodico` o `significativo`; tiene más de 90 días; no está entre los 20 más recientes de su manuscrito; y existe una copia verificada que contiene ese mismo punto (mismo id y hash). Los motivos `conflicto`, `antes_de_sobrescribir` y `antes_de_restaurar` nunca son candidatos. Una prueba comprueba que el módulo no expone ninguna operación de borrado. La eliminación real queda para una fase con migración y pruebas propias.
 
 ---
 
@@ -285,8 +305,10 @@ No se han implementado copias automáticas en esta fase. Copiar un archivo SQLit
 | **Primera llamada real** | Requiere clave y modelo del usuario, y su aprobación de envío (D-028, D-029). No se ha ejecutado. | Cuando el usuario lo decida. |
 | **Registro de uso y coste** | La respuesta trae `usage`, pero no se guarda (evita registrar datos de más). | Si se necesita control de costes. |
 | **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
-| **Copias automáticas de la base de datos** | Solo hay copia manual (D-040, D-044). | Siguiente tarea inmediata. |
-| **Retención de puntos de recuperación** | Los puntos no se borran nunca (D-043). | Antes de que el tamaño sea un problema real. |
+| **Cifrado de las copias** | Las copias contienen todo el texto sin cifrar (D-045). | Antes de guardarlas fuera del equipo. |
+| **Copias fuera del equipo** | Solo hay copias locales; copiar a otro disco es manual. | Decisión del autor sobre dónde guardarlas. |
+| **Prueba de restauración en Windows** | El procedimiento está escrito, pero no se ha ejecutado en Windows (fase 1c). | Antes de confiar en él en ese sistema. |
+| **Eliminación de puntos de recuperación** | Los triggers la impiden; la vista previa no borra nada (D-048). | Fase con migración propia. |
 | **Paquete de proyecto restaurable** | Sin exportación ni importación completa. | Fase 5. |
 | **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |
 | **Pesos de las dimensiones** | La fase 0 no combina puntuaciones. | Cuando exista una evaluación completa. |

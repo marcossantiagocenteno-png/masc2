@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api";
 import { CollectionConfig, labelOf } from "@/lib/planning";
 import { CanonBadge } from "./CanonBadge";
 import { ElementEditor, type Item } from "./ElementEditor";
+import { RelatedScenes } from "./RelatedScenes";
 import { useUnsavedChanges } from "./UnsavedChanges";
 
 type Props = { projectId: number; config: CollectionConfig };
@@ -20,11 +21,28 @@ export function ElementCollection({ projectId, config }: Props) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Elemento que llega desde otra sección con ?seleccionado=id. Puede estar archivado: entonces se muestra la lista con archivados.
+  const requestedId = useRef<number | null>(null);
+
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("seleccionado");
+    const id = raw === null ? NaN : Number(raw);
+    if (Number.isInteger(id) && id > 0) {
+      requestedId.current = id;
+      setShowArchived(true);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setListError(null);
     try {
-      setItems(await api.listElements<Item>(projectId, config.route, showArchived));
+      const list = await api.listElements<Item>(projectId, config.route, showArchived);
+      setItems(list);
+      const target = requestedId.current;
+      if (target !== null && list.some((item) => item.id === target)) {
+        requestedId.current = null;
+        setSelectedId(target);
+      }
     } catch (reason) {
       setListError(reason instanceof ApiError ? reason.message : "No se pudo cargar la lista.");
     }
@@ -79,7 +97,7 @@ export function ElementCollection({ projectId, config }: Props) {
   const fields = config.fields;
 
   return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
       <div className="flex flex-col gap-5">
         <form onSubmit={create} className="flex flex-col gap-2" aria-label={`Crear ${config.singular}`}>
           <label htmlFor={`nuevo-${config.route}`} className="text-sm font-medium">
@@ -148,15 +166,18 @@ export function ElementCollection({ projectId, config }: Props) {
 
       <div className="min-w-0">
         {selected ? (
-          <ElementEditor
-            key={selected.id}
-            projectId={projectId}
-            route={config.route}
-            item={selected}
-            fields={fields}
-            itemLabel={labelOf(selected, config.titleField)}
-            onChanged={changed}
-          />
+          <div className="flex flex-col gap-10">
+            <ElementEditor
+              key={selected.id}
+              projectId={projectId}
+              route={config.route}
+              item={selected}
+              fields={fields}
+              itemLabel={labelOf(selected, config.titleField)}
+              onChanged={changed}
+            />
+            <RelatedScenes projectId={projectId} route={config.route} elementId={selected.id} includeArchived={showArchived} />
+          </div>
         ) : (
           <p className="text-[var(--color-muted)]">Selecciona un elemento de la lista para verlo y editarlo.</p>
         )}

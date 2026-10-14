@@ -66,3 +66,32 @@ def test_una_reordenacion_con_vista_anterior_no_pisa_a_la_que_ya_se_confirmo(set
         assert _order(factory, project_id) == ["E2", "E1", "E0"]  # solo queda la reordenación confirmada
     finally:
         engine.dispose()
+
+
+def test_un_movimiento_con_vista_anterior_no_pisa_a_la_reordenacion_confirmada(settings) -> None:  # type: ignore[no-untyped-def]
+    """Un movimiento que ya leyó los hermanos no puede escribir sobre una reordenación posterior."""
+    clock = FakeClock()
+    factory, engine = _factory(settings)
+    try:
+        project_id, (a, b, c) = _seed(factory, clock)
+        with factory() as session_a, factory() as session_b:
+            service_a = PlanningService(session_a, clock=clock)
+            service_b = PlanningService(session_b, clock=clock)
+            real_siblings = service_a._siblings
+            competed = False
+
+            def stale_then_competing(project, parent):  # type: ignore[no-untyped-def]
+                nonlocal competed
+                result = real_siblings(project, parent)
+                if not competed:
+                    competed = True
+                    service_b.reorder(project_id, None, [c, b, a])
+                return result
+
+            service_a._siblings = stale_then_competing  # type: ignore[method-assign]
+            with pytest.raises(ConflictError):
+                service_a.move_node(project_id, a, None, 1)
+
+        assert _order(factory, project_id) == ["E2", "E1", "E0"]
+    finally:
+        engine.dispose()

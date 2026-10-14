@@ -396,6 +396,23 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 
 ---
 
+## D-061 · Reorganización de la estructura: revisión, confirmación previa de canon y navegación sin vínculos automáticos
+**Estado:** aceptada (fase 2c)
+
+**Revisión de la estructura (migración 0008).** Dos operaciones sobre la misma vista podían pisarse en silencio: la segunda reescribía la primera sin aviso. No hay una columna que detecte cambios en la estructura completa, así que cada escritura de estructura hace primero un `UPDATE` condicional sobre `projects.structure_version` y solo continúa si la revisión leída sigue vigente. Si no, responde 409 y no cambia nada. Se eligió una columna en el proyecto y no un bloqueo de tabla porque la base es SQLite y las escrituras ya son cortas y atómicas. La migración solo añade la columna con valor 0; no toca datos. Su retroceso no está implementado, como en el resto de migraciones.
+
+**Movimiento.** Un nodo cambia de padre solo a un padre compatible (la misma regla de tipos que la creación), nunca a un nodo archivado, nunca dentro de su propio subárbol y nunca de otro proyecto. El movimiento conserva el id, los datos, el estado de canon y los vínculos del nodo. Va al final de los hermanos del destino y compacta el origen. Mover no cambia el canon.
+
+**Canon.** Si un movimiento o una reordenación cambia la posición de un elemento canónico, el servidor exige `confirmar_cambio_canon` y registra una decisión (`reubicar` o `reordenar`) con el estado sin cambios. La interfaz calcula los mismos cambios antes de enviar, muestra qué elementos canónicos se afectan y solo envía la operación tras la casilla de confirmación. El cálculo de la interfaz es una vista previa: el servidor vuelve a decidir con sus propios datos.
+
+**Errores.** La interfaz nunca muestra éxito sin respuesta del servidor. Un rechazo conserva la vista tal como estaba, explica el motivo y ofrece «Actualizar la estructura». Si un cambio de nodo tiene texto sin guardar, se pide confirmación antes de mover o reordenar, porque la recarga reemplaza el formulario.
+
+**Navegación.** Desde una escena se abren sus personajes, lugares y elementos de trama con `?seleccionado=id`. Desde un personaje, lugar o elemento de trama se listan sus escenas, con los archivados marcados. Ninguna de las dos vistas crea vínculos: solo se crean desde la escena, con la operación de la API.
+
+**Límites deliberados.** El movimiento no permite elegir una posición intermedia entre los hermanos (siempre va al final; el orden se cambia con Subir y Bajar). No hay arrastre. La vista de la estructura no compara su versión con la del servidor antes de mostrar el árbol: un cambio hecho en otra pestaña se detecta al operar, no al mirar.
+
+---
+
 ## Pendientes
 
 | Decisión | Motivo | Cuándo |
@@ -412,7 +429,6 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 | **Copias fuera del equipo** | Solo hay copias locales; copiar a otro disco es manual. | Decisión del autor sobre dónde guardarlas. |
 | **Prueba de restauración en Windows** | No se ha podido ejecutar: no hay Windows en el entorno de desarrollo (D-051). | Ejecutar `python -m app.backups simulacro` en Windows. |
 | **Campos generales de la novela sin canon** | Premisa, sinopsis, género, tema y tono cambian sin protección (D-059). | Antes de que la IA pueda proponerlos. |
-| **Planificación: interfaz** | La fase 2a es solo API y datos. | Fase 2b. |
 | **Planificación: contradicciones y análisis de impacto** | La estructura lo permite (D-054, D-055); no se ha implementado. | Fase posterior. |
 | **Planificación: escena vinculada a fragmento del manuscrito** | Pendiente de diseño (D-056). | Fase posterior. |
 | **Eliminación de puntos de recuperación** | Los triggers la impiden; la vista previa no borra nada (D-048). | Fase con migración propia. |

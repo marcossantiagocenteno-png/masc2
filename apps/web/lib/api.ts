@@ -363,11 +363,28 @@ export const api = {
     }),
 
   /** Reordena los hermanos de ``parentId``. ``orden`` debe incluir a todos, archivados incluidos. */
-  reorderStructure: (projectId: number, parentId: number | null, orden: number[]) =>
+  reorderStructure: (projectId: number, parentId: number | null, orden: number[], confirmCanon = false) =>
     request<StructureNode[]>(`/projects/${projectId}/planificacion/estructura/reordenar`, {
       method: "POST",
-      body: JSON.stringify({ parent_id: parentId, orden }),
+      body: JSON.stringify({ parent_id: parentId, orden, confirmar_cambio_canon: confirmCanon }),
     }),
+
+  /** Mueve un nodo a otro padre (o a la raíz) y, opcionalmente, a una posición entre sus hermanos. */
+  moveNode: (
+    projectId: number,
+    nodeId: number,
+    body: { parent_id: number | null; posicion?: number | null; confirmar_cambio_canon?: boolean },
+  ) =>
+    request<StructureNode>(`/projects/${projectId}/planificacion/estructura/${nodeId}/mover`, {
+      method: "POST",
+      body: JSON.stringify({ posicion: null, confirmar_cambio_canon: false, ...body }),
+    }),
+
+  /** Vínculos de un personaje, lugar, elemento de trama o acontecimiento (incluye los de escenas). */
+  listElementLinks: (projectId: number, route: ElementRoute, id: number, includeArchived = false) =>
+    request<NarrativeLink[]>(
+      `/projects/${projectId}/planificacion/${route}/${id}/vinculos?include_archived=${includeArchived}`,
+    ),
 
   listNodeLinks: (projectId: number, nodeId: number, includeArchived = false) =>
     request<NarrativeLink[]>(

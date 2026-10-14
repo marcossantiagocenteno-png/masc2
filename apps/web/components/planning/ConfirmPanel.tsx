@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type Props = {
   message: ReactNode;
@@ -12,12 +12,26 @@ type Props = {
   onCancel: () => void;
 };
 
-/** Confirmación explícita y en línea: explica qué cambia y no se acepta por defecto. */
+/**
+ * Confirmación explícita y en línea: explica qué cambia y no se acepta por defecto.
+ * Al abrirse enfoca su primer control; al cerrarse (cancelar o confirmar) devuelve el foco al elemento
+ * que la abrió, si sigue en la página.
+ */
 export function ConfirmPanel({ message, confirmLabel, checkboxLabel, busy = false, onConfirm, onCancel }: Props) {
   const [checked, setChecked] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
   const blocked = busy || (checkboxLabel !== undefined && !checked);
+
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panelRef.current?.querySelector<HTMLElement>("input, button:not([disabled])")?.focus();
+    return () => {
+      if (opener && opener.isConnected) opener.focus();
+    };
+  }, []);
+
   return (
-    <div role="group" aria-label="Confirmación" className="flex flex-col gap-3 rounded border border-[var(--color-ink)] p-4">
+    <div ref={panelRef} role="group" aria-label="Confirmación" className="flex flex-col gap-3 rounded border border-[var(--color-ink)] p-4">
       <div className="text-sm">{message}</div>
       {checkboxLabel ? (
         <label className="flex items-start gap-2 text-sm">

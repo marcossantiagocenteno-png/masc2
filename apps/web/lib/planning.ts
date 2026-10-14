@@ -204,3 +204,88 @@ export function labelOf(item: { id: number } & Record<string, unknown>, titleFie
 export function toNullable(value: string): string | null {
   return value.trim() === "" ? null : value;
 }
+
+/** Ruta de la página de cada tipo de elemento, para abrirlo desde otra sección con ?seleccionado=id. */
+export const COLLECTION_PATH: Record<ElementRoute, string> = {
+  personajes: "personajes",
+  lugares: "lugares",
+  "elementos-trama": "trama",
+  acontecimientos: "cronologia",
+};
+
+/** Ids de todos los descendientes de un nodo (sin incluirlo). */
+export function descendantIds(nodes: StructureNode[], nodeId: number): Set<number> {
+  const result = new Set<number>();
+  const pending = [nodeId];
+  while (pending.length > 0) {
+    const current = pending.pop() as number;
+    for (const node of nodes) {
+      if (node.parent_id === current && !result.has(node.id)) {
+        result.add(node.id);
+        pending.push(node.id);
+      }
+    }
+  }
+  return result;
+}
+
+/** Destinos válidos para mover un nodo: raíz si el tipo la admite, y padres compatibles activos fuera de su propio subárbol. */
+export function moveTargets(nodes: StructureNode[], node: StructureNode): { root: boolean; parents: StructureNode[] } {
+  const allowed = allowedParentKinds(node.kind);
+  const excluded = descendantIds(nodes, node.id);
+  excluded.add(node.id);
+  const parents = nodes
+    .filter((item) => !item.archived_at && !excluded.has(item.id) && allowed.includes(item.kind))
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.position - b.position || a.id - b.id);
+  return { root: allowed.includes(null), parents };
+}
+
+/** Un cambio de posición que la API va a aplicar a un nodo concreto. */
+export type PlannedChange = { node: StructureNode; parentId: number | null; position: number };
+
+/**
+ * Cambios que produciría mover un nodo, con la misma regla que el servicio: el destino se renumera con el
+ * nodo insertado en ``position`` (al final si se omite) y el origen se compacta si cambia de padre.
+ * Lista vacía = no hay ningún cambio real. ``null`` = posición fuera de rango.
+ */
+export function planMove(
+  nodes: StructureNode[],
+  nodeId: number,
+  parentId: number | null,
+  position?: number | null,
+): PlannedChange[] | null {
+  const target = nodes.find((item) => item.id === nodeId);
+  if (!target) return null;
+  const destination = childrenOf(nodes, parentId, nodeId);
+  const index = position === undefined || position === null ? destination.length : position;
+  if (index < 0 || index > destination.length) return null;
+  const ordered = [...destination.slice(0, index), target, ...destination.slice(index)];
+  const changes: PlannedChange[] = [];
+  ordered.forEach((item, pos) => {
+    if (item.parent_id !== parentId || item.position !== pos) changes.push({ node: item, parentId, position: pos });
+  });
+  if (target.parent_id !== parentId) {
+    childrenOf(nodes, target.parent_id, nodeId).forEach((item, pos) => {
+      if (item.position !== pos) changes.push({ node: item, parentId: item.parent_id, position: pos });
+    });
+  }
+  return changes;
+}
+
+/** Cambios de posición de una reordenación de un paso (subir o bajar). Lista vacía si no cambia nada. */
+export function planReorder(nodes: StructureNode[], nodeId: number, direction: -1 | 1): PlannedChange[] {
+  const order = moveSibling(nodes, nodeId, direction);
+  if (!order) return [];
+  return order.flatMap((id, index) => {
+    const node = nodes.find((item) => item.id === id);
+    if (!node || node.position === index) return [];
+    return [{ node, parentId: node.parent_id, position: index }];
+  });
+}
+
+function childrenOf(nodes: StructureNode[], parentId: number | null, excludeId: number): StructureNode[] {
+  return nodes
+    .filter((item) => item.parent_id === parentId && item.id !== excludeId)
+    .sort((a, b) => a.position - b.position || a.id - b.id);
+}
+

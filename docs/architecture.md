@@ -154,6 +154,9 @@ Módulo `backend/app/planning/`. Decisiones en D-053 a D-056. Migración `0006`.
 
 Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`, `canonico`), `origen` (`autor`, `ia`), `approved_decision_id` y `archived_at`.
 
+- **Revisión de la estructura (migración 0008):** `projects.structure_version` cambia con cada escritura de estructura. Las escrituras hacen un `UPDATE` condicional sobre esa columna; una vista desfasada recibe 409 sin cambios (D-061).
+- **Movimiento de nodos:** `POST .../estructura/{id}/mover` (padre y posición). Valida tipo de padre, ciclos, archivados y proyecto antes de escribir.
+
 - **Vínculos (migración 0007):** triggers en `narrative_links` rechazan extremos inexistentes, archivados, de otro proyecto o de tipo no válido (D-057).
 - **Historial de canon:** cada decisión guarda `actor`, `snapshot` (antes) y `resultado` (después). Cada operación de escritura es atómica: un fallo deshace la sesión (D-058).
 - **Datos generales de la novela:** premisa, sinopsis, género, tema y tono no tienen estado de canon (D-059).
@@ -172,11 +175,14 @@ Rutas bajo `apps/web/app/proyectos/[id]/`. Un diseño común (`layout.tsx`) iden
 | `lib/planning.ts` | Campos de cada tipo, etiquetas de canon, árbol y reordenación. Sin React. |
 | `components/planning/ElementEditor.tsx` | Edición de un elemento y sus acciones de canon. Compartido por todos los tipos. |
 | `components/planning/ElementCollection.tsx` | Lista, creación con solo un nombre, archivados y selección protegida. |
-| `components/planning/StructureView.tsx` | Árbol de actos, capítulos y escenas, alta y reordenación entre hermanos. |
-| `components/planning/SceneDetail.tsx` | Escena por su id, planificación y vínculos. |
+| `components/planning/StructureView.tsx` | Árbol de actos, capítulos y escenas: ramas plegables, alta desde cada fila, reordenación entre hermanos y vista previa de canon. |
+| `components/planning/StructureMove.tsx` | Movimiento de un nodo con selectores de lugar y botón explícito. |
+| `components/planning/SceneDetail.tsx` | Escena por su id, planificación y vínculos, con enlaces a los elementos vinculados. |
+| `components/planning/RelatedScenes.tsx` | Escenas en las que aparece un personaje, lugar o elemento de trama (solo lectura). |
+| `components/planning/ConfirmPanel.tsx` | Confirmación en línea: enfoca su primer control al abrirse y devuelve el foco al cerrarse. |
 | `components/planning/UnsavedChanges.tsx` | Registro de cambios sin guardar: aviso al salir por un enlace o al cerrar la pestaña. |
 
-Reglas de la interfaz: el éxito solo se muestra tras una respuesta del servidor; un error conserva el texto escrito; una acción sobre canon exige la casilla de confirmación y, si la API la rechaza, se muestra el mensaje sin reintentar con la confirmación.
+Reglas de la interfaz: el éxito solo se muestra tras una respuesta del servidor; cada operación de estructura se prevé con la misma regla que el servidor (D-061); un error conserva el texto escrito; una acción sobre canon exige la casilla de confirmación y, si la API la rechaza, se muestra el mensaje sin reintentar con la confirmación.
 
 ## Copias de seguridad y restauración
 

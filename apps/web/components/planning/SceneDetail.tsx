@@ -11,7 +11,7 @@ import {
   type Place,
   type StructureNode,
 } from "@/lib/api";
-import { labelOf, RELATION_LABELS, SCENE_RELATIONS, STRUCTURE_FIELDS, STRUCTURE_LABELS } from "@/lib/planning";
+import { COLLECTION_PATH, labelOf, RELATION_LABELS, SCENE_RELATIONS, STRUCTURE_FIELDS, STRUCTURE_LABELS } from "@/lib/planning";
 import { CanonBadge } from "./CanonBadge";
 import { ConfirmPanel } from "./ConfirmPanel";
 import { ElementEditor, type Item } from "./ElementEditor";
@@ -183,20 +183,32 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
             const name = other?.name ?? `Elemento ${item.source_id}`;
             const relation = RELATION_LABELS[item.relation] ?? item.relation;
             const open = removing === item.id;
+            const route = SCENE_RELATIONS[item.source_kind]?.route;
             return (
               <li key={item.id} className="flex flex-col gap-2 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>
-                    <span className="font-medium">{name}</span> {relation} esta escena
+                  <span className="min-w-0 break-words">
+                    {route ? (
+                      <Link href={`/proyectos/${projectId}/${COLLECTION_PATH[route]}?seleccionado=${item.source_id}`} className="font-medium underline">
+                        {name}
+                      </Link>
+                    ) : (
+                      <span className="font-medium">{name}</span>
+                    )}{" "}
+                    {relation} esta escena
                     {other?.archived ? <span className="text-xs text-[var(--color-muted)]"> · archivado</span> : null}
                   </span>
                   <span className="flex items-center gap-2">
                     <CanonBadge state={item.estado} origin={item.origen} />
-                    {!open ? (
-                      <button type="button" onClick={() => setRemoving(item.id)} aria-label={`Quitar ${name} de esta escena`} className="rounded border border-[var(--color-muted)] px-2 py-0.5 text-xs">
-                        Quitar
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setRemoving(open ? null : item.id)}
+                      aria-expanded={open}
+                      aria-label={`Quitar ${name} de esta escena`}
+                      className="rounded border border-[var(--color-muted)] px-2 py-0.5 text-xs"
+                    >
+                      Quitar
+                    </button>
                   </span>
                 </div>
                 {open ? (
@@ -225,7 +237,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
         ) : null}
 
         <form onSubmit={link} aria-label="Vincular un elemento a la escena" className="flex flex-col gap-3 rounded border border-[var(--color-muted)]/60 p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1 text-sm">
               <label htmlFor="escena-tipo" className="font-medium">Tipo de elemento</label>
               <select

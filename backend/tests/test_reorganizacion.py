@@ -316,3 +316,24 @@ def test_mover_y_editar_dos_veces_no_pisan_la_revision(settings: Settings, clien
     tree = _tree(client, project)
     assert tree[n["cap2"]["id"]] == ["Escena A", "Escena B"]
     assert tree[n["cap1"]["id"]] == ["Escena C"]
+
+
+def test_una_reordenacion_con_hermanos_desactualizados_se_rechaza_sin_cambios(api: TestClient) -> None:
+    """La vista no conoce un hermano añadido en otra pestaña: la orden incompleta se rechaza y no cambia nada."""
+    project = _project(api, "Hermanos desactualizados")
+    n = _build(api, project)
+    _node(api, project, "capitulo", n["acto1"]["id"], title="Cap nuevo")
+    before = _tree(api, project)
+    response = api.post(
+        _url(project, "/estructura/reordenar"),
+        json={"parent_id": n["acto1"]["id"], "orden": [n["cap1"]["id"]]},
+    )
+    assert response.status_code == 422
+    assert _tree(api, project) == before
+
+
+def test_una_posicion_negativa_o_fuera_de_esquema_no_llega_al_servicio(api: TestClient) -> None:
+    project = _project(api, "Esquema")
+    n = _build(api, project)
+    response = _move(api, project, n["a"]["id"], n["cap2"]["id"], posicion=-1)
+    assert response.status_code == 422

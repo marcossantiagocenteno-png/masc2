@@ -81,6 +81,13 @@ class EstructuraPatch(_Strict):
 class ReordenarIn(_Strict):
     parent_id: int | None = None
     orden: list[int] = Field(min_length=0, max_length=5000)
+    confirmar_cambio_canon: bool = False
+
+
+class MoverIn(_Strict):
+    parent_id: int | None = None
+    posicion: int | None = Field(default=None, ge=0, le=5000)
+    confirmar_cambio_canon: bool = False
 
 
 class ExtremoIn(_Strict):

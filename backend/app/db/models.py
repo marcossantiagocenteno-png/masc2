@@ -44,6 +44,8 @@ class Project(Base):
     theme: Mapped[str | None] = mapped_column(Text, nullable=True)
     tone: Mapped[str | None] = mapped_column(String(200), nullable=True)
     development_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Revisión de la estructura: sube en cada cambio de árbol. Control de concurrencia (migración 0008).
+    structure_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
 class Manuscript(Base):

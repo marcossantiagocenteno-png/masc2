@@ -16,6 +16,7 @@ from app.planning.schemas import (
     EstructuraCreate,
     EstructuraPatch,
     LugarIn,
+    MoverIn,
     NarrativeIn,
     PersonajeIn,
     ReordenarIn,
@@ -166,7 +167,23 @@ def create_structure(
 def reorder_structure(
     project_id: int, payload: ReordenarIn, service: PlanningService = Depends(get_service)
 ) -> list[dict[str, Any]]:
-    return [_out(row) for row in service.reorder(project_id, payload.parent_id, payload.orden)]
+    rows = service.reorder(project_id, payload.parent_id, payload.orden, confirmar_cambio_canon=payload.confirmar_cambio_canon)
+    return [_out(row) for row in rows]
+
+
+@router.post("/estructura/{element_id}/mover")
+def move_structure_node(
+    project_id: int, element_id: int, payload: MoverIn, service: PlanningService = Depends(get_service)
+) -> dict[str, Any]:
+    """Mueve un acto, capítulo o escena a otro padre compatible, o a la raíz."""
+    row = service.move_node(
+        project_id,
+        element_id,
+        payload.parent_id,
+        payload.posicion,
+        confirmar_cambio_canon=payload.confirmar_cambio_canon,
+    )
+    return _out(row)
 
 
 @router.get("/estructura/{element_id}")

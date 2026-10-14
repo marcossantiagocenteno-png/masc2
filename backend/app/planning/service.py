@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -316,6 +316,7 @@ class PlanningService:
         """Crea un acto, capítulo o escena. La posición se añade al final de sus hermanos."""
         if node_kind not in TREE_KINDS:
             raise ValidationFailed(f"tipo de nodo no válido: '{node_kind}'")
+        expected = self._structure_version(project_id)
         self._active_project(project_id)
         parent_kind = None
         if parent_id is not None:
@@ -327,6 +328,7 @@ class PlanningService:
             raise ValidationFailed(f"un nodo «{node_kind}» no puede colgar de un nodo «{parent_kind or 'raíz'}»")
         self._check_fields("estructura", data)
         position = self._next_position(project_id, parent_id)
+        self._advance_structure(project_id, expected)
         now = self._clock()
         row = StructureNode(
             project_id=project_id,
@@ -344,11 +346,19 @@ class PlanningService:
         return row
 
     @_atomic
-    def reorder(self, project_id: int, parent_id: int | None, order: list[int]) -> list[StructureNode]:
+    def reorder(
+        self,
+        project_id: int,
+        parent_id: int | None,
+        order: list[int],
+        confirmar_cambio_canon: bool = False,
+    ) -> list[StructureNode]:
         """Reordena los hermanos de ``parent_id``. Cambia ``position``, nunca ``id``.
 
         ``order`` debe contener exactamente los hermanos del proyecto (archivados incluidos), una sola vez cada uno.
+        Si algún elemento canónico cambia de posición, exige ``confirmar_cambio_canon``.
         """
+        expected = self._structure_version(project_id)
         self._active_project(project_id)
         if parent_id is not None:
             self._node(project_id, parent_id)
@@ -359,12 +369,136 @@ class PlanningService:
                 "la lista de reordenación debe contener exactamente los hermanos del nodo, sin repetir ninguno"
             )
         by_id = {node.id: node for node in siblings}
-        now = self._clock()
-        for index, node_id in enumerate(order):
-            by_id[node_id].position = index
-            by_id[node_id].updated_at = now
-        self._session.commit()
+        moved = [
+            (by_id[node_id], by_id[node_id].parent_id, by_id[node_id].position, parent_id, index)
+            for index, node_id in enumerate(order)
+            if by_id[node_id].position != index
+        ]
+        if moved:
+            self._apply_moves(project_id, expected, moved, confirmar_cambio_canon, "reordenar")
         return [by_id[node_id] for node_id in order]
+
+    @_atomic
+    def move_node(
+        self,
+        project_id: int,
+        node_id: int,
+        parent_id: int | None,
+        position: int | None = None,
+        confirmar_cambio_canon: bool = False,
+    ) -> StructureNode:
+        """Mueve un nodo a otro padre compatible (o a la raíz) y lo coloca en ``position``.
+
+        Por defecto va al final de los hermanos del destino. Conserva el id, los datos, el estado de canon
+        y los vínculos del nodo. No se permiten: nodos archivados, destinos archivados, destinos de otro
+        proyecto, padres que no admite el tipo, ni movimientos que crearían un ciclo.
+        """
+        expected = self._structure_version(project_id)
+        self._active_project(project_id)
+        node = self._node(project_id, node_id)
+        if node.archived_at is not None:
+            raise ValidationFailed("el nodo está archivado; no se puede mover")
+        if parent_id == node_id:
+            raise ValidationFailed("un nodo no puede ser su propio padre")
+        parent_kind = None
+        if parent_id is not None:
+            parent = self._node(project_id, parent_id)
+            if parent.archived_at is not None:
+                raise ValidationFailed("el destino está archivado")
+            if self._is_within(parent, node_id):
+                raise ValidationFailed("el movimiento crearía un ciclo: el destino está dentro del propio nodo")
+            parent_kind = parent.kind
+        if parent_kind not in PARENT_KINDS[node.kind]:
+            raise ValidationFailed(f"un nodo «{node.kind}» no puede colgar de «{parent_kind or 'la raíz'}»")
+
+        destination = [item for item in self._siblings(project_id, parent_id) if item.id != node_id]
+        if position is None:
+            index = len(destination)
+        elif 0 <= position <= len(destination):
+            index = position
+        else:
+            raise ValidationFailed(f"la posición debe estar entre 0 y {len(destination)}")
+        new_destination = destination[:index] + [node] + destination[index:]
+
+        moved: list[tuple[StructureNode, int | None, int, int | None, int]] = []
+        for pos, item in enumerate(new_destination):
+            if item.parent_id != parent_id or item.position != pos:
+                moved.append((item, item.parent_id, item.position, parent_id, pos))
+        if node.parent_id != parent_id:
+            # El hueco que deja el nodo en su padre de origen se cierra renumerando a sus hermanos.
+            origin = [item for item in self._siblings(project_id, node.parent_id) if item.id != node_id]
+            for pos, item in enumerate(origin):
+                if item.position != pos:
+                    moved.append((item, item.parent_id, item.position, item.parent_id, pos))
+        if not moved:
+            return node  # Ningún cambio real: no se toca la revisión ni se escribe nada.
+        self._apply_moves(project_id, expected, moved, confirmar_cambio_canon, "reubicar")
+        return node
+
+    def _is_within(self, candidate: StructureNode, ancestor_id: int) -> bool:
+        """``True`` si ``candidate`` es ``ancestor_id`` o cuelga de él."""
+        cursor: StructureNode | None = candidate
+        while cursor is not None:
+            if cursor.id == ancestor_id:
+                return True
+            cursor = self._session.get(StructureNode, cursor.parent_id) if cursor.parent_id is not None else None
+        return False
+
+    def _structure_version(self, project_id: int) -> int:
+        """Revisión de la estructura en el momento de la lectura. Lee siempre de la base, no de la caché de sesión."""
+        return self._session.execute(
+            select(Project.structure_version)
+            .where(Project.id == project_id)
+            .execution_options(populate_existing=True)
+        ).scalar_one()
+
+    def _advance_structure(self, project_id: int, expected: int) -> None:
+        """Marca una nueva revisión solo si nadie ha cambiado la estructura desde ``expected``.
+
+        Si otra operación confirmó un cambio entre la lectura y esta escritura, no se escribe nada.
+        """
+        result = self._session.execute(
+            update(Project)
+            .where(Project.id == project_id, Project.structure_version == expected)
+            .values(structure_version=expected + 1)
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount == 0:
+            raise ConflictError(
+                "la estructura cambió mientras se modificaba. Recarga la vista y vuelve a intentarlo. No se ha cambiado nada."
+            )
+
+    def _apply_moves(
+        self,
+        project_id: int,
+        expected: int,
+        moved: list[tuple[StructureNode, int | None, int, int | None, int]],
+        confirmar_cambio_canon: bool,
+        action: str,
+    ) -> None:
+        """Aplica cambios de padre y posición de forma atómica, con control de revisión y canon.
+
+        ``moved`` lleva (nodo, padre anterior, posición anterior, padre nuevo, posición nueva).
+        """
+        canonical = [item for item in moved if item[0].estado == K.CANONICO]
+        if canonical and not confirmar_cambio_canon:
+            raise ConflictError(
+                f"este cambio reubica {len(canonical)} elemento(s) canónico(s): repítelo con "
+                "confirmar_cambio_canon=true. No se ha cambiado nada."
+            )
+        self._advance_structure(project_id, expected)
+        now = self._clock()
+        pending: list[tuple[StructureNode, str, str | None]] = []
+        for row, *_previous, new_parent, new_position in moved:
+            snapshot = self._snapshot(row) if row.estado == K.CANONICO else None
+            row.parent_id = new_parent
+            row.position = new_position
+            row.updated_at = now
+            if snapshot is not None:
+                pending.append((row, snapshot, None))
+        for row, snapshot, note in pending:
+            self._record("estructura", row, action, K.CANONICO, K.CANONICO, snapshot, note, now, AUTOR, resultado=self._snapshot(row))
+        self._session.commit()
 
     # ------------------------------------------------------------------
     # Vínculos

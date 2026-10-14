@@ -28,7 +28,7 @@ Antes de implementar nada nuevo, la auditoría encontró dos riesgos reales de p
 | Autoguardado de borrador con estados visibles, conflictos y reintento | **Implementado en fase 1b** | Pruebas de backend (`test_drafts.py`), unitarias del guardado (`tests/unit`) y E2E (`borrador.spec.ts`) |
 | Puntos de recuperación y restauración desde la interfaz | **Implementado en fase 1b** | Pruebas de backend y E2E. Sin retención todavía (D-043) |
 | Historial de versiones con restauración desde la interfaz | **No existe** | Las versiones son inmutables; se restaura por puntos de recuperación del borrador, no por versiones |
-| Planificación, personajes, capítulos, escenas | **No existen** | — |
+| Planificación, personajes, lugares, trama, cronología y estructura | **Núcleo de datos y API en fase 2a** (sin interfaz) | Pruebas de planificación (30), aislamiento, canon y atomicidad |
 | Memoria narrativa, tareas, decisiones, métodos | **No existen** | — |
 | Importación (DOCX, TXT, Markdown) | **No existe** | — |
 | Exportación del manuscrito | **No existe** | — |

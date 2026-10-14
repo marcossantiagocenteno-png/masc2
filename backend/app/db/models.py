@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
 
 from app.db.base import Base, utc_now
 
@@ -37,6 +37,13 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Planificación narrativa (migración 0006). Todos opcionales: el autor no tiene que rellenarlos.
+    premise: Mapped[str | None] = mapped_column(Text, nullable=True)
+    synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    genre: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    theme: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tone: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    development_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Manuscript(Base):
@@ -275,3 +282,156 @@ class DraftRecoveryPoint(Base):
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     draft_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+# ---------------------------------------------------------------------------
+# Planificación narrativa (fase 2a, migración 0006)
+#
+# Todas las entidades pertenecen a un proyecto y comparten el estado de canon:
+# ``estado`` (provisional, propuesta_ia, canonico) y ``origen`` (autor, ia). Solo
+# ``app.planning.service`` cambia ``estado``, y solo mediante una decisión registrada.
+# ---------------------------------------------------------------------------
+
+
+class NarrativeDecision(Base):
+    """Registro de decisiones de canon. Solo de inserción: los triggers rechazan UPDATE y DELETE."""
+
+    __tablename__ = "narrative_decisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    element_kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    element_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    accion: Mapped[str] = mapped_column(String(30), nullable=False)
+    estado_previo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    estado_nuevo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Estado del elemento antes del cambio, en JSON. Permite historial y análisis de impacto futuros.
+    snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+    nota: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class CanonColumns:
+    """Columnas comunes de las entidades narrativas. Ver el comentario de la sección."""
+
+    @declared_attr
+    def project_id(cls) -> Mapped[int]:  # noqa: N805
+        return mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="provisional", server_default="provisional")
+    origen: Mapped[str] = mapped_column(String(10), nullable=False, default="autor", server_default="autor")
+
+    @declared_attr
+    def approved_decision_id(cls) -> Mapped[int | None]:  # noqa: N805
+        return mapped_column(ForeignKey("narrative_decisions.id"), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Character(CanonColumns, Base):
+    __tablename__ = "characters"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_characters_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_characters_origen"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    goals: Mapped[str | None] = mapped_column(Text, nullable=True)
+    motivations: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conflicts: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Place(CanonColumns, Base):
+    __tablename__ = "places"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_places_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_places_origen"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    features: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class PlotElement(CanonColumns, Base):
+    __tablename__ = "plot_elements"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_plot_elements_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_plot_elements_origen"),
+        CheckConstraint(
+            "kind IN ('acontecimiento', 'conflicto', 'subtrama', 'misterio', 'pregunta_abierta')",
+            name="ck_plot_elements_kind",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class TimelineEvent(CanonColumns, Base):
+    __tablename__ = "timeline_events"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_timeline_events_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_timeline_events_origen"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    narrative_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    story_time: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class StructureNode(CanonColumns, Base):
+    """Acto, capítulo o escena. Una jerarquía en una sola tabla: ``parent_id`` y ``position`` entre hermanos."""
+
+    __tablename__ = "structure_nodes"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_structure_nodes_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_structure_nodes_origen"),
+        CheckConstraint("kind IN ('acto', 'capitulo', 'escena')", name="ck_structure_nodes_kind"),
+        CheckConstraint("position >= 0", name="ck_structure_nodes_position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("structure_nodes.id"), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class NarrativeLink(CanonColumns, Base):
+    """Relación tipada entre dos entidades del mismo proyecto. El vocabulario válido vive en ``app.planning.kinds``."""
+
+    __tablename__ = "narrative_links"
+    __table_args__ = (
+        CheckConstraint("estado IN ('provisional', 'propuesta_ia', 'canonico')", name="ck_narrative_links_estado"),
+        CheckConstraint("origen IN ('autor', 'ia')", name="ck_narrative_links_origen"),
+        UniqueConstraint(
+            "project_id", "source_kind", "source_id", "target_kind", "target_id", "relation",
+            name="uq_narrative_links_relation",
+        ),
+        Index("ix_narrative_links_source", "project_id", "source_kind", "source_id"),
+        Index("ix_narrative_links_target", "project_id", "target_kind", "target_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    source_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    target_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    relation: Mapped[str] = mapped_column(String(40), nullable=False)

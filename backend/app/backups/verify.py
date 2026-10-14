@@ -32,8 +32,22 @@ BASE_TABLES = frozenset(
     }
 )
 DRAFT_TABLES = frozenset({"manuscript_drafts", "draft_recovery_points"})
-# Primera revisión que crea las tablas de borradores. Las copias anteriores no las tienen.
-DRAFT_REVISION = "0005_borradores_y_recuperacion"
+PLANNING_TABLES = frozenset(
+    {
+        "characters",
+        "places",
+        "plot_elements",
+        "timeline_events",
+        "structure_nodes",
+        "narrative_links",
+        "narrative_decisions",
+    }
+)
+# Primera revisión que crea cada grupo de tablas. Las copias anteriores no las tienen.
+TABLES_SINCE: dict[str, frozenset[str]] = {
+    "0005_borradores_y_recuperacion": DRAFT_TABLES,
+    "0006_planificacion_narrativa": PLANNING_TABLES,
+}
 COUNTED_TABLES = (
     "projects",
     "manuscripts",
@@ -44,6 +58,13 @@ COUNTED_TABLES = (
     "analysis_findings",
     "manuscript_drafts",
     "draft_recovery_points",
+    "characters",
+    "places",
+    "plot_elements",
+    "timeline_events",
+    "structure_nodes",
+    "narrative_links",
+    "narrative_decisions",
 )
 
 
@@ -53,11 +74,19 @@ class SchemaOrder:
 
     newest_first: tuple[str, ...]
 
-    def includes_drafts(self, revision: str | None) -> bool:
-        """``True`` si ``revision`` es la de los borradores o una posterior."""
-        if revision is None or revision not in self.newest_first or DRAFT_REVISION not in self.newest_first:
+    def includes(self, revision: str | None, since: str) -> bool:
+        """``True`` si ``revision`` es ``since`` o una posterior."""
+        if revision is None or revision not in self.newest_first or since not in self.newest_first:
             return False
-        return self.newest_first.index(revision) <= self.newest_first.index(DRAFT_REVISION)
+        return self.newest_first.index(revision) <= self.newest_first.index(since)
+
+    def required_tables(self, revision: str | None) -> frozenset[str]:
+        """Tablas que debe tener una copia de esta revisión."""
+        required = set(BASE_TABLES)
+        for since, tables in TABLES_SINCE.items():
+            if self.includes(revision, since):
+                required |= tables
+        return frozenset(required)
 
     def classify(self, revision: str | None) -> str:
         """``actual``, ``anterior`` (conocida, pero no la última) o ``desconocida``."""
@@ -129,10 +158,7 @@ def verify_sqlite(path: Path, order: SchemaOrder) -> Verification:
             if "alembic_version" in tables:
                 row = connection.execute("SELECT version_num FROM alembic_version").fetchone()
                 revision = row[0] if row else None
-            required = set(BASE_TABLES)
-            if order.includes_drafts(revision):
-                required |= DRAFT_TABLES
-            missing = sorted(required - tables)
+            missing = sorted(order.required_tables(revision) - tables)
             if missing:
                 problems.append("faltan tablas: " + ", ".join(missing))
             counts = {

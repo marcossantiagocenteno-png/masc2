@@ -16,10 +16,11 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Marcador con latido** (fase 1d): el backend renueva el marcador cada 30 s. Un marcador caducado solo se considera abandonado si el sistema confirma que el proceso terminó; si no puede confirmarlo, la restauración se niega. Nunca se borra automáticamente. Pruebas: 11 de marcador (incluida una con un proceso real terminado).
 - **Simulacro de restauración** (fase 1d): `python -m app.backups simulacro`, reproducible en cualquier sistema. Ejecutado en Linux; pendiente en Windows.
 - **Advertencias de crecimiento** (fase 1d): `retencion` avisa al superar 200 MB o 100 MB al año estimados.
+- **Núcleo de planificación narrativa** (fase 2a): personajes, lugares, elementos de trama, acontecimientos, estructura (actos, capítulos y escenas) y vínculos tipados, con estado de canon (provisional, propuesta de IA, canónico) y decisiones de canon registradas. Pruebas: 30 de planificación, 3 de migración y 2 de verificación de copias con tablas nuevas. Siete mutaciones de reglas de canon, aislamiento y atomicidad se detectan. Aislado por proyecto (probado). Sin interfaz de planificación.
 - **Copias de seguridad automáticas** (fase 1c): API de backup de SQLite en una lectura consistente; verificación de integridad y esquema antes de nombrar la copia; rotación por cantidad y antigüedad que nunca borra antes de crear y verificar la nueva; nombres que nunca se sobrescriben; registro operativo sin texto. Pruebas: 17 de copias, 9 de restauración, 9 de retención y 4 de línea de comandos (39 en la fase; 335 en total). Siete mutaciones deliberadas de las reglas de seguridad (verificación previa, rotación, bloqueos, instantánea, copia preventiva, retención de conflictos) hacen fallar al menos una prueba.
 - **Restauración administrativa** (fase 1c): rechaza sin tocar la base si la copia es inválida, si el hash no coincide, si la base está en uso o si el backend parece en marcha; copia preventiva antes de reemplazar; reversión automática si la verificación posterior falla. Probado en Linux. **No probado en Windows.**
 - **Retención de puntos**: métricas y vista previa de candidatos. No borra nada (D-048).
-- **Migraciones 0001 a 0005** aplicadas y comprobadas con `alembic check`. La 0005 crea solo tablas nuevas (borradores y puntos) y no modifica datos existentes.
+- **Migraciones 0001 a 0006** aplicadas y comprobadas con `alembic check`. La 0005 crea solo tablas nuevas (borradores y puntos). La 0006 añade columnas nulables a `projects` y crea tablas de planificación; no modifica datos existentes.
 - **Borrador persistente con autoguardado** (fase 1b): escritura condicional por revisión, 409 con texto preservado, indicador de estado que nunca muestra «guardado» sin confirmación del servidor, reintento, recuperación al abrir, puntos de recuperación con política documentada, restauración transaccional y aviso al salir con cambios pendientes. Pruebas: 18 de backend en `test_drafts.py` (incluida una de concurrencia con lectura obsoleta forzada), 4 de migración en `test_migraciones_borradores.py`, 12 unitarias del guardado (`tests/unit`) y 7 E2E (`tests/e2e/borrador.spec.ts`). Comprobado también que la prueba de concurrencia falla si se quita la condición de revisión.
 
 ## Implementado, pero no verificado con servicios reales
@@ -51,6 +52,17 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 
 - Llamada real a Anthropic: requiere clave de API y un identificador de modelo que tu cuenta admita. No se inventa ninguno.
 - Exportación a EPUB: no se ha evaluado todavía si puede integrarse con garantías; se documentará si queda fuera.
+
+## Pendiente de la planificación (fase 2a no lo incluye)
+
+- Interfaz de planificación (fase 2b). Hoy solo hay API.
+- Historial y restauración de decisiones desde la interfaz. El registro existe; la vista no.
+- Mover un nodo de estructura a otro padre. Hoy solo se reordena entre hermanos.
+- Restaurar elementos archivados (la operación inversa de archivar).
+- Estado de canon para los campos narrativos del proyecto (premisa, sinopsis). Hoy son datos del autor sin estado.
+- Escena vinculada a un fragmento del manuscrito (D-056).
+- Análisis de contradicciones e impacto de una decisión. La estructura lo permite; no está implementado.
+- Chequeo de integridad de los vínculos (sin clave foránea real, D-055).
 
 ## Riesgos abiertos (verificados al cierre de la fase 1d)
 

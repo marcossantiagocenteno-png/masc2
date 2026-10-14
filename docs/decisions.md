@@ -317,6 +317,40 @@ Criterios para revisar la decisión: un procedimiento de recuperación de claves
 
 Los puntos de recuperación crecen con el uso. `retencion` muestra el número de puntos, el crecimiento por día, y avisa si la base supera 200 MB o si el crecimiento estimado supera 100 MB al año. La estimación usa 2 bytes por carácter, un término medio para texto en español, y es orientativa. Se mantiene D-048: no hay borrado automático de puntos.
 
+## D-053 · La novela es el proyecto: se reutiliza `projects` en lugar de crear otra tabla
+**Estado:** aceptada (fase 2a)
+
+`projects` ya es la novela: tiene identidad propia, archivado y aislamiento. La premisa, la sinopsis, el género, el tema, el tono y el estado de desarrollo se añaden como columnas nulables a esa tabla (migración 0006), en lugar de una tabla paralela con la misma identidad. Es un cambio aditivo: los proyectos y manuscritos existentes no se modifican. Los campos narrativos del proyecto no tienen estado de canon todavía: son la definición del propio autor. Si un día la premisa puede venir de la IA, tendrá que incorporar el mismo mecanismo que el resto (pendiente).
+
+## D-054 · Canon: estado y origen en cada elemento, cambios solo por operaciones explícitas
+**Estado:** aceptada (fase 2a)
+
+Cada entidad tiene `estado` (`provisional`, `propuesta_ia`, `canonico`) y `origen` (`autor`, `ia`). Solo cinco operaciones cambian el estado, y todas registran una fila en `narrative_decisions` con la instantánea anterior:
+
+- **Aprobar** (provisional o propuesta → canónico): exige `confirmar=true`. Sin él, 422 y nada cambia.
+- **Aceptar propuesta** (propuesta → provisional): la deja como material del autor, no como canon. El `origen` no se borra.
+- **Modificar un canónico**: exige `confirmar_cambio_canon=true`. Sin él, 409 y nada cambia. Con él, el elemento vuelve a provisional y la decisión guarda cómo era.
+- **Archivar un canónico**: exige `confirmar_canon=true`.
+- **Crear o editar propuestas y provisionales**: libre. Editar una propuesta no la convierte en canon.
+
+Ninguna operación acepta el campo `estado` en el cuerpo de la petición (422). La tabla `narrative_decisions` es de solo inserción, con triggers como el resto del historial. Queda preparada para historial y análisis de impacto sin construir ahora un sistema de auditoría.
+
+## D-055 · Vínculos tipados, con vocabulario en código y validación en el servicio
+**Estado:** aceptada (fase 2a)
+
+Las relaciones entre entidades son una sola tabla `narrative_links` con extremos tipados (`source_kind`/`source_id`, `target_kind`/`target_id`). Una tabla por cada par de tipos habría multiplicado las tablas sin ganar integridad real, porque los extremos son polimórficos de todos modos. Lo que sí se garantiza:
+
+- El par de tipos y la relación deben estar en el registro (`app/planning/kinds.py`). Añadir un vínculo nuevo es añadir una línea allí, sin migración.
+- Ambos extremos deben existir, pertenecer al mismo proyecto y no estar archivados. Si no, 404 o 422, y nada se escribe.
+- No puede haber dos vínculos iguales (409).
+
+Limitación conocida: sin clave foránea real, la integridad de los extremos depende del servicio. Como nada borra elementos (solo archiva), no pueden quedar vínculos huérfanos por borrado. Un chequeo de integridad explícito queda pendiente.
+
+## D-056 · Estructura en un solo árbol; una escena existe antes que su prosa
+**Estado:** aceptada (fase 2a)
+
+Actos, capítulos y escenas viven en `structure_nodes`, con `parent_id` y `position` entre hermanos. Reordenar cambia `position`, no `id`: una escena conserva su identidad y sus vínculos al moverse. Las reglas de jerarquía (un acto solo en raíz; un capítulo en raíz o en acto; una escena en raíz, acto o capítulo) están en el servicio. Una escena no tiene texto: vincular una escena a un fragmento del manuscrito se hará más adelante con una tabla propia que apunte al nodo, para no duplicar ni mezclar contenidos. Mover un nodo a otro padre no está soportado todavía: solo se reordena entre hermanos.
+
 ---
 
 ## Pendientes
@@ -334,6 +368,9 @@ Los puntos de recuperación crecen con el uso. `retencion` muestra el número de
 | **Cifrado de las copias** | Las copias contienen el texto legible; no hay cifrado propio (D-050). | Cuando exista procedimiento de recuperación de claves probado. |
 | **Copias fuera del equipo** | Solo hay copias locales; copiar a otro disco es manual. | Decisión del autor sobre dónde guardarlas. |
 | **Prueba de restauración en Windows** | No se ha podido ejecutar: no hay Windows en el entorno de desarrollo (D-051). | Ejecutar `python -m app.backups simulacro` en Windows. |
+| **Planificación: interfaz** | La fase 2a es solo API y datos. | Fase 2b. |
+| **Planificación: contradicciones y análisis de impacto** | La estructura lo permite (D-054, D-055); no se ha implementado. | Fase posterior. |
+| **Planificación: escena vinculada a fragmento del manuscrito** | Pendiente de diseño (D-056). | Fase posterior. |
 | **Eliminación de puntos de recuperación** | Los triggers la impiden; la vista previa no borra nada (D-048). | Fase con migración propia. |
 | **Paquete de proyecto restaurable** | Sin exportación ni importación completa. | Fase 5. |
 | **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |

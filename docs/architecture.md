@@ -47,6 +47,7 @@ masc2/
 | `backend/app/texts/routes.py` | Endpoints REST. | Reglas de negocio. |
 | `backend/migrations` | Esquema y triggers de inmutabilidad, versionados con Alembic. | Datos de ejemplo. |
 | `backend/app/analysis` | Análisis editorial de fragmentos: proveedores, verificaciones, validación y persistencia. | Generación de texto y reescritura. |
+| `backend/app/planning` | Planificación narrativa: registro de tipos, servicio con reglas de canon y aislamiento, API bajo `/projects/{id}/planificacion`. | Texto del manuscrito; IA; interfaz. |
 | `backend/app/backups` | Copias verificadas con la API de backup de SQLite, rotación, restauración administrativa, vista previa de retención, planificador y línea de comandos. | Versiones y edición: no las toca. |
 | `backend/app/drafts` | Borrador por manuscrito con escritura condicional, puntos de recuperación, política de puntos y restauración transaccional. | Versiones formales: no las crea ni las modifica. |
 | `apps/web/lib/draft-saver.ts` | Guardado del borrador sin React: una escritura en vuelo, anti-rebote, estados y conflictos. | Renderizado. |
@@ -138,6 +139,25 @@ El texto del editor es un **borrador**, separado de las versiones. Migración `0
 | Cierre o recarga con cambios pendientes | Aviso del navegador. Además, un envío `keepalive` de hasta 64 KB. Es de mejor esfuerzo: no hay respuesta que leer. |
 
 Límite del borrador: el mismo que las versiones (500.000 caracteres).
+
+## Planificación narrativa
+
+Módulo `backend/app/planning/`. Decisiones en D-053 a D-056. Migración `0006`.
+
+| Tabla | Contenido |
+|---|---|
+| `projects` (columnas nuevas) | Premisa, sinopsis, género, tema, tono y estado de desarrollo. Todas opcionales. |
+| `characters`, `places`, `plot_elements`, `timeline_events` | Personajes, lugares, elementos de trama (acontecimiento, conflicto, subtrama, misterio, pregunta abierta) y acontecimientos con orden narrativo y posición temporal libre. |
+| `structure_nodes` | Actos, capítulos y escenas en un árbol (`parent_id`, `position`). |
+| `narrative_links` | Relaciones tipadas entre entidades del mismo proyecto. |
+| `narrative_decisions` | Decisiones de canon. Solo de inserción. |
+
+Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`, `canonico`), `origen` (`autor`, `ia`), `approved_decision_id` y `archived_at`.
+
+- **Aislamiento:** cada acceso filtra por proyecto. Un id ajeno es 404.
+- **Canon:** solo cambia con aprobar, aceptar propuesta, modificar un canónico (con confirmación) o archivar un canónico (con confirmación). Todas dejan una decisión con instantánea.
+- **Atomicidad:** cada operación valida antes de escribir y confirma una vez.
+- **Archivado de proyecto:** las escrituras de planificación se rechazan, como ya ocurre con los manuscritos.
 
 ## Copias de seguridad y restauración
 

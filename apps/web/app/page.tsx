@@ -1,4 +1,6 @@
-/** Página inicial de la fase 0: solo describe el estado del proyecto. */
+import Link from "next/link";
+
+/** Página inicial: estado del proyecto y acceso a manuscritos. */
 const pendientes = [
   "Editor de manuscritos con Tiptap",
   "Generador de novelas y agentes autónomos",
@@ -16,6 +18,11 @@ export default function HomePage() {
         <p className="text-lg text-[var(--color-muted)]">
           Entorno privado de escritura y edición literaria asistida por IA.
           Esta fase establece la estructura, la rúbrica y el benchmark inicial.
+        </p>
+        <p>
+          <Link href="/manuscritos" className="font-medium underline">
+            Ir a manuscritos
+          </Link>
         </p>
       </header>
 

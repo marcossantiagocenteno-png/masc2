@@ -11,9 +11,10 @@ credentials*.json
 
 # --- Datos privados y manuscritos ---
 # Los manuscritos del autor nunca se versionan. Solo se versionan casos ficticios en evals/cases.
-manuscritos/
-manuscripts/
-data/
+# Anclados a la raíz: no deben ocultar código fuente con el mismo nombre (p. ej. app/manuscritos).
+/manuscritos/
+/manuscripts/
+/data/
 *.manuscrito.*
 *.manuscript.*
 *.docx
@@ -46,6 +47,7 @@ htmlcov/
 # --- Node / Next.js / Playwright ---
 node_modules/
 .next/
+.next-e2e/
 out/
 next-env.d.ts.bak
 playwright-report/

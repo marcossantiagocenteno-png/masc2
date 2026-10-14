@@ -82,6 +82,25 @@ export type AnalysisFinding = {
   explanation: string;
   effect: string | null;
   certainty: "verificable" | "alta" | "media" | "baja" | "no_aplica";
+  justification: string | null;
+};
+
+/** Estado del proveedor configurado. No contiene secretos. */
+export type AnalysisProviderStatus = {
+  configured: boolean;
+  name: string | null;
+  label: string | null;
+  is_simulated: boolean | null;
+  is_external: boolean | null;
+  model_name: string | null;
+  reason: string | null;
+};
+
+/** Autorización explícita de envío externo. Viaja en cada petición y no se guarda. */
+export type ExternalAuthorization = {
+  provider: string;
+  scope: "fragmento_seleccionado";
+  acknowledged: true;
 };
 
 export type AnalysisRun = {
@@ -93,6 +112,8 @@ export type AnalysisRun = {
   provider_name: string;
   provider_label: string;
   provider_simulated: boolean;
+  model_name: string | null;
+  sent_external: boolean;
   created_at: string;
   findings: AnalysisFinding[];
 };
@@ -160,7 +181,12 @@ export const api = {
 
   listAnalyses: (versionId: number) => request<AnalysisRun[]>(`/versions/${versionId}/analyses`),
 
-  analyzeFragment: (versionId: number, body: { start_offset: number; end_offset: number }) =>
+  getAnalysisProvider: () => request<AnalysisProviderStatus>("/analysis/provider"),
+
+  analyzeFragment: (
+    versionId: number,
+    body: { start_offset: number; end_offset: number; external_authorization?: ExternalAuthorization },
+  ) =>
     request<AnalysisRun>(`/versions/${versionId}/analyses`, {
       method: "POST",
       body: JSON.stringify(body),

@@ -58,11 +58,20 @@ def test_separacion_de_frases_con_posiciones() -> None:
     assert [(s.text, s.start) for s in sentences] == [("Primera.", 0), ("Segunda frase larga.", 9)]
 
 
-def test_unico_proveedor_registrado_es_el_simulado() -> None:
-    assert resolve_provider("simulado").name == "simulado"
+def test_el_simulado_se_resuelve_sin_configuracion() -> None:
+    provider = resolve_provider("simulado")
+    assert provider.name == "simulado"
+    assert provider.is_external is False
 
 
-@pytest.mark.parametrize("name", ["openai", "anthropic", "externo", "SIMULADO "])
+def test_anthropic_sin_clave_no_se_resuelve_y_no_revela_nada() -> None:
+    with pytest.raises(TextError) as info:
+        resolve_provider("anthropic")
+    assert info.value.status_code == 503
+    assert "falta ANTHROPIC_API_KEY" in str(info.value)
+
+
+@pytest.mark.parametrize("name", ["openai", "externo", "SIMULADO ", "claude"])
 def test_proveedores_no_autorizados_se_rechazan(name: str) -> None:
     with pytest.raises(TextError) as info:
         resolve_provider(name)

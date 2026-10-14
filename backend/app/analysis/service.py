@@ -21,11 +21,11 @@ from sqlalchemy.orm import Session
 
 from app.analysis.checks import run_deterministic_checks
 from app.analysis.categories import PROVENANCE_DETERMINISTIC, PROVENANCE_PROVIDER
-from app.analysis.errors import FindingsRejected, ProviderFailed
+from app.analysis.errors import AuthorizationRequired, FindingsRejected, ProviderFailed
 from app.analysis.provider import AnalysisProvider, ProviderFinding
 from app.analysis.validation import validate_finding
 from app.db.models import AnalysisFinding, AnalysisRun, ManuscriptVersion
-from app.texts.errors import ContentTooLarge, IntegrityFailure, NotFoundError, ValidationFailed
+from app.texts.errors import ContentTooLarge, IntegrityFailure, NotFoundError, TextError, ValidationFailed
 from app.texts.service import TextService
 
 DETERMINISTIC_SOURCE = "verificacion_determinista"
@@ -45,8 +45,15 @@ class AnalysisService:
         start: int,
         end: int,
         provider: AnalysisProvider,
+        *,
+        external_authorized: bool = False,
     ) -> AnalysisRun:
-        """Analiza el fragmento ``[start, end)`` de la versión y guarda el resultado."""
+        """Analiza el fragmento ``[start, end)`` de la versión y guarda el resultado.
+
+        Un proveedor externo solo se llama si ``external_authorized`` es verdadero.
+        La comprobación ocurre antes de cualquier llamada. No hay autorización
+        persistente: cada análisis exige la suya.
+        """
         version: ManuscriptVersion = self._texts.get_version(version_id)
         content = version.content
 
@@ -59,14 +66,23 @@ class AnalysisService:
                 f"el fragmento tiene {end - start} caracteres; el máximo es {self._max_chars}"
             )
 
+        if provider.is_external and not external_authorized:
+            raise AuthorizationRequired(
+                f"el proveedor '{provider.name}' envía el fragmento fuera de este equipo: "
+                "hace falta una autorización explícita en esta petición"
+            )
+
         fragment = content[start:end]
 
         try:
             provider_findings = provider.analyze(fragment)
-        except (ValidationFailed, NotFoundError):
+        except TextError:
+            # Errores de dominio del proveedor (malformado, cita inválida...): se devuelven tal cual.
             raise
-        except Exception as error:  # noqa: BLE001 - cualquier fallo del proveedor se trata igual
-            raise ProviderFailed(f"el proveedor '{provider.name}' falló: {error}") from error
+        except Exception as error:  # noqa: BLE001 - el mensaje no se expone: podría contener datos
+            raise ProviderFailed(
+                f"el proveedor '{provider.name}' falló ({type(error).__name__}). No se guardó nada."
+            ) from None
 
         candidates: list[tuple[ProviderFinding, str, str]] = [
             (finding, PROVENANCE_DETERMINISTIC, DETERMINISTIC_SOURCE)
@@ -100,6 +116,7 @@ class AnalysisService:
                     explanation=finding.explanation.strip(),
                     effect=(finding.effect or "").strip() or None,
                     certainty=finding.certainty,
+                    justification=(finding.justification or "").strip() or None,
                 )
             )
 
@@ -111,6 +128,8 @@ class AnalysisService:
             provider_name=provider.name,
             provider_label=provider.label,
             provider_simulated=provider.is_simulated,
+            model_name=getattr(provider, "model", None),
+            sent_external=provider.is_external,
         )
         run.findings = rows
         self._session.add(run)

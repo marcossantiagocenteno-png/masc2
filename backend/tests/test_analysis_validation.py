@@ -18,6 +18,7 @@ def _finding(**overrides: object) -> ProviderFinding:
         "explanation": "La frase corta detiene la escena.",
         "effect": "El silencio pesa más que cualquier acción.",
         "certainty": "media",
+        "justification": "La cita sostiene la observación sin recurrir a otros pasajes.",
     }
     data.update(overrides)
     return ProviderFinding(**data)  # type: ignore[arg-type]
@@ -46,6 +47,13 @@ def test_cita_fuera_del_fragmento_se_rechaza() -> None:
 def test_cita_vacia_se_rechaza() -> None:
     reason = validate_finding(_finding(quote="", quote_offset=0), FRAGMENT, "proveedor")
     assert reason == "la cita está vacía"
+
+
+def test_hallazgo_de_proveedor_sin_justificacion_se_rechaza() -> None:
+    reason = validate_finding(_finding(justification=None), FRAGMENT, "proveedor")
+    assert reason == "falta la justificación"
+    reason = validate_finding(_finding(justification="   "), FRAGMENT, "proveedor")
+    assert reason == "falta la justificación"
 
 
 def test_observacion_sin_efecto_se_rechaza() -> None:

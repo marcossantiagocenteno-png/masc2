@@ -60,13 +60,57 @@ Abre `http://localhost:3000/manuscritos`.
 
 En la pantalla de una versión, selecciona un fragmento del contenido y pulsa *Analizar la selección del contenido*. El resultado se muestra en cinco secciones separadas: problemas verificables, observaciones literarias, inferencias inciertas, preferencias de gusto y elementos que conviene preservar. Cada hallazgo cita su fragmento exacto, indica su línea y su certeza, y explica su efecto. El análisis no modifica el texto y queda guardado con esa versión.
 
-**Proveedor.** Por defecto se usa el analizador simulado, y así se indica en la pantalla. Sus observaciones solo describen datos de longitud. Los problemas verificables proceden de reglas mecánicas (repeticiones de palabras funcionales, espacios dobles y comillas sin pareja), no del simulador.
+**Proveedor.** Por defecto se usa el analizador simulado, y así se indica en la pantalla. Sus observaciones solo describen datos de longitud. Los problemas verificables proceden de reglas mecánicas (repeticiones de palabras funcionales, espacios dobles y comillas sin pareja), no del simulador. Con el proveedor real, cada análisis muestra el aviso azul de envío externo.
 
 1. **Crear un manuscrito.** En `/manuscritos`, escribe un título y el texto de la versión 1.
 2. **Crear una versión nueva.** Dentro del manuscrito, elige de qué versión partir, edita el texto y guarda. Se crea la versión siguiente. Las anteriores no cambian.
 3. **Comentar un fragmento.** Abre una versión, selecciona un fragmento del texto, pulsa *Usar la selección del contenido*, escribe el comentario y guárdalo. El comentario queda vinculado solo a esa versión.
 
 Cada comentario guarda la cita literal y su línea en la versión. Si el comentario es una inferencia, debe incluir su cadena de inferencia. Las sugerencias de revisión se muestran, pero no se aplican al texto.
+
+### Proveedor real (Anthropic)
+
+Por defecto el análisis usa el **analizador simulado**, que no es una IA y no envía nada fuera del equipo. Para usar Claude hace falta configurarlo, y cada análisis exige tu confirmación.
+
+**Qué se envía.** Solo el fragmento que seleccionas, con las instrucciones de análisis. No se envían el título del manuscrito, otras versiones, comentarios ni el resto del texto. Aun así, el fragmento puede contener datos personales: no lo envíes si no quieres que salgan del equipo.
+
+**Cómo se autoriza.** Al pulsar *Revisar envío a Anthropic*, la pantalla muestra el fragmento exacto y pide una casilla. La autorización vale solo para ese análisis: no se guarda, no viene de ninguna variable de entorno y no se reutiliza.
+
+**Configuración.** Exporta las variables antes de arrancar el backend (no se leen de ningún archivo):
+
+```bash
+export NOVEL_ENGINE_ANALYSIS_PROVIDER=anthropic
+export ANTHROPIC_API_KEY=...                      # tu clave; no la escribas en ningún archivo del repositorio
+export NOVEL_ENGINE_ANTHROPIC_MODEL=...           # identificador de un modelo que tu cuenta admita
+export NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS=60  # opcional
+export NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS=2000  # opcional
+uvicorn app.main:app --port 8000
+```
+
+**Elegir el modelo.** El proyecto no incluye ningún identificador de modelo: debe ser uno que tu cuenta admita. Puedes consultar los disponibles con la API de Anthropic, desde tu terminal, con tu clave (esto lo ejecutas tú; el proyecto no lo hace):
+
+```bash
+curl https://api.anthropic.com/v1/models \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01"
+```
+
+Comprueba la documentación oficial de Anthropic para la versión actual del endpoint.
+
+**Si algo falta.** Sin clave o sin modelo, el análisis responde 503 y no se llama a nadie. No hay respaldo: el simulador no sustituye a Claude en silencio.
+
+**Costes.** Cada análisis hace **una** llamada, sin reintentos. El coste depende del modelo, del número de tokens de entrada (el fragmento, de hasta `NOVEL_ENGINE_MAX_ANALYSIS_CHARS` caracteres, más las instrucciones) y de los de salida (acotados por `NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS`). Consulta la tabla de precios oficial de tu modelo. Una llamada que falla por tiempo o error puede seguir facturándose según las condiciones de Anthropic. El proyecto no registra el uso de tokens todavía.
+
+**Privacidad.** Qué hace Anthropic con los datos enviados depende de sus condiciones y de la configuración de tu cuenta. Revísalas antes de enviar textos que no sean tuyos o que no puedas compartir.
+
+**Primera llamada real (paso a paso).** No se ha ejecutado ninguna llamada real durante el desarrollo. Para hacer la primera:
+
+1. Obtén una clave en tu cuenta de Anthropic y elige un modelo que tu cuenta admita.
+2. Exporta las variables de la sección anterior y arranca el backend.
+3. Abre una versión con contenido, selecciona un fragmento corto (unas pocas frases) y pulsa *Revisar envío a Anthropic*.
+4. Lee el fragmento que aparece en la confirmación. Si no es el que quieres enviar, pulsa *Cancelar*.
+5. Marca la casilla y pulsa *Enviar a Anthropic y analizar*.
+6. Comprueba que el resultado aparece con el aviso azul de proveedor real, con el modelo indicado y con la justificación de cada hallazgo.
 
 ## Pruebas
 
@@ -160,7 +204,9 @@ PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier 
 - Un usuario, sin autenticación.
 - Los triggers protegen las versiones frente a la API y frente a SQL normal, pero no frente a quien pueda sustituir el archivo de la base de datos. La comprobación de hash detecta cualquier cambio de contenido en una versión existente.
 - Sin evaluador automático real. El único proveedor es el simulado. Las revisiones las escriben personas.
-- Sin ningún proveedor de IA conectado. Conectar uno exige código nuevo y una autorización explícita para enviar textos fuera del equipo.
+- El proveedor real (Anthropic) está implementado y probado con dobles del SDK. Las pruebas automatizadas no hacen ninguna llamada real. Ninguna llamada real se ha ejecutado en el desarrollo.
+- El juicio literario de Claude no está evaluado. El backend comprueba forma, citas, posiciones, procedencia y ausencia de atribuciones de intención, pero no si el diagnóstico es acertado.
+- No se registra el uso de tokens ni el coste por análisis.
 - Sin editor enriquecido (Tiptap): el texto se edita en áreas de texto simples.
 - Sin exportación ni copias de seguridad.
 - El benchmark de `evals/` (tarea 001) no está conectado a los textos del usuario.

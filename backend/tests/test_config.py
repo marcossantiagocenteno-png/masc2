@@ -71,3 +71,47 @@ def test_variables_de_analisis_se_leen() -> None:
 def test_limite_de_analisis_no_positivo_se_rechaza() -> None:
     with pytest.raises(ValueError):
         Settings(max_analysis_chars=0)
+
+
+def test_anthropic_sin_variables_no_tiene_clave_ni_modelo_por_defecto() -> None:
+    settings = load_settings({})
+    assert settings.anthropic_api_key is None
+    assert settings.anthropic_model is None  # nunca se inventa un identificador de modelo
+    assert settings.anthropic_timeout_seconds == 60.0
+    assert settings.anthropic_max_output_tokens == 2000
+
+
+def test_anthropic_lee_clave_modelo_timeout_y_tokens_del_entorno() -> None:
+    settings = load_settings(
+        {
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "NOVEL_ENGINE_ANTHROPIC_MODEL": "modelo-de-prueba",
+            "NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS": "15.5",
+            "NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS": "900",
+        }
+    )
+    assert settings.anthropic_api_key == "sk-ant-test"
+    assert settings.anthropic_model == "modelo-de-prueba"
+    assert settings.anthropic_timeout_seconds == 15.5
+    assert settings.anthropic_max_output_tokens == 900
+
+
+def test_la_clave_no_aparece_en_la_representacion_de_la_configuracion() -> None:
+    settings = load_settings({"ANTHROPIC_API_KEY": "sk-ant-SECRETO"})
+    assert "SECRETO" not in repr(settings)
+    assert "SECRETO" not in str(settings)
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS": "rapido"},
+        {"NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS": "0"},
+        {"NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS": "0"},
+        {"NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS": "99999"},
+        {"NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS": "mucho"},
+    ],
+)
+def test_limites_de_anthropic_fuera_de_rango_se_rechazan(env: dict[str, str]) -> None:
+    with pytest.raises(ValueError):
+        load_settings(env)

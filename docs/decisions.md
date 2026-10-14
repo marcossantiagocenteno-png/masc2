@@ -163,6 +163,56 @@ El análisis nunca modifica la versión. Los hallazgos no se ofrecen como texto 
 
 Configurable con `NOVEL_ENGINE_MAX_ANALYSIS_CHARS`. Responde `413` si se supera. Es un valor inicial para una escena.
 
+## D-028 · Proveedor real: API oficial de Anthropic, con SDK oficial de Python
+**Estado:** aceptada
+
+`app/analysis/anthropic_provider.py` usa el SDK `anthropic` (dependencia `>=1.13,<2.0`) y la Messages API. Es el único proveedor externo. Elegirlo exige `NOVEL_ENGINE_ANALYSIS_PROVIDER=anthropic`, `ANTHROPIC_API_KEY` y `NOVEL_ENGINE_ANTHROPIC_MODEL`. Si falta cualquiera, el análisis responde 503. No hay respaldo: nunca se usa el simulador ni otro servicio en su lugar.
+
+El modelo no tiene valor por defecto. El código no inventa identificadores: el usuario indica uno que su cuenta admita (README).
+
+## D-029 · Autorización explícita por petición, sin persistencia
+**Estado:** aceptada
+
+El envío de un fragmento a un proveedor externo exige `external_authorization` en el cuerpo de la petición, con el nombre del proveedor configurado, `scope: "fragmento_seleccionado"` y `acknowledged: true`. Sin ella, la ruta responde 403 antes de cualquier llamada. El servicio vuelve a comprobarlo (defensa en profundidad).
+
+La autorización no se guarda, no se deriva de una variable de entorno y no se reutiliza entre peticiones. La configuración elige el proveedor; no autoriza el envío. La interfaz muestra el fragmento exacto y pide una casilla antes de enviar; la casilla se reinicia tras cada análisis.
+
+## D-030 · Un único envío por análisis, sin reintentos
+**Estado:** aceptada
+
+El cliente se crea con `max_retries=0`. El SDK reintenta por defecto, y eso duplicaría llamadas y costes. Cada análisis hace exactamente una llamada a `messages.create`, con `max_tokens` y `timeout` configurables. Un fallo responde 502 y no guarda nada. La interfaz deshabilita el botón mientras el análisis está en curso.
+
+## D-031 · Salida estructurada forzada y posiciones calculadas por el backend
+**Estado:** aceptada
+
+La respuesta se fuerza a una herramienta con esquema (`tool_choice` de tipo `tool`). Cada hallazgo indica la cita y la aparición que se refiere (`occurrence`). El backend calcula las posiciones sobre el fragmento recibido; el modelo nunca fija desplazamientos. Si la cita no aparece, o la aparición no existe, la respuesta se rechaza. Si cualquier hallazgo del lote falla, no se guarda ninguno.
+
+La categoría `problema_verificable` queda fuera del esquema de Claude. Solo la producen las verificaciones deterministas (D-024).
+
+Limitación: la cita debe coincidir carácter a carácter. Una cita con espacios o comillas tipográficas distintas se rechaza aunque sea correcta. Es deliberado: prefiere rechazar a guardar una cita que no corresponde.
+
+## D-032 · Secretos: solo en configuración, nunca en respuestas ni logs
+**Estado:** aceptada
+
+- `ANTHROPIC_API_KEY` se lee en `app/config.py` y se oculta en `repr` (`repr=False`).
+- Los errores del SDK no se exponen: el mensaje devuelto contiene solo el tipo de error (p. ej. `APITimeoutError`).
+- Los logs registran metadatos: modelo, tamaño del fragmento, motivo de parada y tipo de error. No registran el texto, la clave, los comentarios ni la respuesta completa.
+- El estado del proveedor (`GET /analysis/provider`) no llama a ningún servicio y no incluye la clave.
+
+Las pruebas comprueban que la clave y el texto no aparecen en respuestas, logs ni en la representación de la configuración.
+
+## D-033 · Procedencia visible: real y simulado no se confunden
+**Estado:** aceptada
+
+Cada análisis guarda `provider_simulated`, `sent_external` y `model_name`. La interfaz presenta cada análisis según su propia procedencia: un aviso azul para el proveedor real y uno ámbar para el simulado. La etiqueta del análisis indica si fue real o simulado. La migración 0003 mantiene los triggers de inmutabilidad, y su bajada los recrea.
+
+## D-034 · Instrucciones de diagnóstico y límites del prompt
+**Estado:** aceptada, con limitación conocida
+
+El prompt pide cinco categorías separadas, cita literal, justificación, efecto y certeza. Prohíbe atribuir intenciones y puntuar la calidad, y pide no penalizar la ambigüedad, la contención emocional, las frases breves ni la falta de explicaciones. Trata el fragmento como dato, no como instrucción.
+
+**Limitación:** el prompt no se puede garantizar. El backend comprueba forma, citas, posiciones, procedencia, certeza y ausencia de atribuciones de intención (por léxico). No comprueba si el juicio literario es acertado. Eso requiere evaluación humana, que no está implementada.
+
 ---
 
 ## Pendientes
@@ -174,6 +224,7 @@ Configurable con `NOVEL_ENGINE_MAX_ANALYSIS_CHARS`. Responde `413` si se supera.
 | **PostgreSQL** | Requiere reescribir la inmutabilidad (D-016) y probar el motor. | Cuando se decida migrar. |
 | **Autenticación** | La aplicación es de un solo usuario en localhost (D-020). | Antes de exponerla en red. |
 | **Límite de versión** | 500.000 caracteres es un valor inicial (D-019). | Tras el uso real. |
-| **Primer proveedor real** | Exige decisión explícita sobre envío de datos a terceros (D-022). | Solo con autorización del autor. |
+| **Primera llamada real** | Requiere clave y modelo del usuario, y su aprobación de envío (D-028, D-029). No se ha ejecutado. | Cuando el usuario lo decida. |
+| **Registro de uso y coste** | La respuesta trae `usage`, pero no se guarda (evita registrar datos de más). | Si se necesita control de costes. |
 | **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
 | **Pesos de las dimensiones** | La fase 0 no combina puntuaciones. | Cuando exista una evaluación completa. |

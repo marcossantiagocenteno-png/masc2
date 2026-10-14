@@ -4,7 +4,23 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ExternalAuthorization(BaseModel):
+    """Autorización explícita para enviar el fragmento a un proveedor externo.
+
+    Viaja en cada petición y no se guarda. ``provider`` debe coincidir con el
+    proveedor configurado, y ``scope`` limita el envío al fragmento seleccionado.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=60)
+    scope: Literal["fragmento_seleccionado"]
+    acknowledged: Literal[True]
 
 
 class AnalysisRequest(BaseModel):
@@ -14,6 +30,19 @@ class AnalysisRequest(BaseModel):
 
     start_offset: int = Field(ge=0)
     end_offset: int = Field(ge=1)
+    external_authorization: ExternalAuthorization | None = None
+
+
+class ProviderStatusOut(BaseModel):
+    """Estado del proveedor configurado. No contiene ningún secreto."""
+
+    configured: bool
+    name: str | None
+    label: str | None
+    is_simulated: bool | None
+    is_external: bool | None
+    model_name: str | None
+    reason: str | None = None
 
 
 class FindingOut(BaseModel):
@@ -32,6 +61,7 @@ class FindingOut(BaseModel):
     explanation: str
     effect: str | None
     certainty: str
+    justification: str | None
 
 
 class AnalysisRunOut(BaseModel):
@@ -47,5 +77,7 @@ class AnalysisRunOut(BaseModel):
     provider_name: str
     provider_label: str
     provider_simulated: bool
+    model_name: str | None
+    sent_external: bool
     created_at: datetime
     findings: list[FindingOut]

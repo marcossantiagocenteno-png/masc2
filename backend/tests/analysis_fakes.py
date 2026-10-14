@@ -19,6 +19,7 @@ class ScriptedProvider:
     name = "doble-de-prueba"
     label = "DOBLE DE PRUEBA: no es un analizador real."
     is_simulated = True
+    is_external = False
 
     def __init__(self, findings: FindingsFn) -> None:
         self._findings = findings
@@ -33,6 +34,7 @@ class FailingProvider:
     name = "fallido-de-prueba"
     label = "FALLIDO DE PRUEBA"
     is_simulated = True
+    is_external = False
 
     def analyze(self, fragment: str) -> list[ProviderFinding]:
         raise RuntimeError("fallo simulado del proveedor")
@@ -47,6 +49,7 @@ def observation(fragment: str, quote: str, offset: int | None = None, **override
         "explanation": "La frase concentra la acción en una sola imagen.",
         "effect": "El lector percibe la inmovilidad del personaje.",
         "certainty": "media",
+        "justification": "Se sostiene en la cita indicada.",
     }
     data.update(overrides)
     return ProviderFinding(**data)  # type: ignore[arg-type]

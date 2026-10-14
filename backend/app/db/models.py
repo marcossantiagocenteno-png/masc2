@@ -148,6 +148,10 @@ class AnalysisRun(Base):
     provider_name: Mapped[str] = mapped_column(String(60), nullable=False)
     provider_label: Mapped[str] = mapped_column(String(300), nullable=False)
     provider_simulated: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # Modelo usado, si el proveedor lo tiene. Nulo para el simulador.
+    model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # True si el fragmento salió del equipo hacia un servicio externo.
+    sent_external: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
     findings: Mapped[list[AnalysisFinding]] = relationship(
@@ -184,6 +188,8 @@ class AnalysisFinding(Base):
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     effect: Mapped[str | None] = mapped_column(Text, nullable=True)
     certainty: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Nula en filas anteriores a la migración 0003. Obligatoria para hallazgos nuevos de proveedor.
+    justification: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
     run: Mapped[AnalysisRun] = relationship(back_populates="findings")

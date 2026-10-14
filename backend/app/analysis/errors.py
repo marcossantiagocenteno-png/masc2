@@ -21,3 +21,15 @@ class FindingsRejected(TextError):
     """El proveedor devolvió hallazgos que no cumplen las reglas. No se guarda nada."""
 
     status_code = 502
+
+
+class ProviderOutputInvalid(TextError):
+    """La respuesta del proveedor no cumple el esquema o sus citas no existen. No se guarda nada."""
+
+    status_code = 502
+
+
+class AuthorizationRequired(TextError):
+    """El análisis necesita una autorización explícita de envío externo, y la petición no la incluye."""
+
+    status_code = 403

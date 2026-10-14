@@ -26,7 +26,7 @@ test("analizar un fragmento muestra diagnósticos separados sin modificar el tex
   await page.getByRole("button", { name: "Analizar la selección del contenido" }).click();
 
   // El proveedor por defecto es el simulado, y así se indica.
-  await expect(page.getByRole("note").filter({ hasText: "ANALIZADOR SIMULADO" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "ANALIZADOR SIMULADO: no es una evaluación" })).toBeVisible();
 
   // Problemas verificables: la repetición «que que», y nada más.
   const verifiable = page.getByRole("region", { name: /Problemas verificables/ });
@@ -47,6 +47,6 @@ test("analizar un fragmento muestra diagnósticos separados sin modificar el tex
   // El análisis persiste: tras recargar sigue guardado con esta versión.
   await page.reload();
   await expect(page.getByLabel("Análisis guardado")).toHaveValue(/\d+/);
-  await expect(page.getByRole("note").filter({ hasText: "ANALIZADOR SIMULADO" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "ANALIZADOR SIMULADO: no es una evaluación" })).toBeVisible();
   await expect(page.locator("#contenido-version")).toHaveValue(CONTENT);
 });

@@ -50,6 +50,7 @@ class SimulatedAnalyzer:
     name = "simulado"
     label = LABEL
     is_simulated = True
+    is_external = False
 
     def analyze(self, fragment: str) -> list[ProviderFinding]:
         sentences = split_sentences(fragment)
@@ -67,6 +68,7 @@ class SimulatedAnalyzer:
                 ),
                 effect="Es un dato de longitud. Por sí solo no indica calidad.",
                 certainty="alta",
+                justification="Recuento de frases y palabras sobre el fragmento; no requiere juicio literario.",
             ),
             ProviderFinding(
                 category="preferencia_de_gusto",
@@ -78,5 +80,6 @@ class SimulatedAnalyzer:
                 ),
                 effect=None,
                 certainty="no_aplica",
+                justification="Se deduce solo de la longitud de la frase, sin juicio sobre su calidad.",
             ),
         ]

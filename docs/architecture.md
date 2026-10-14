@@ -117,9 +117,23 @@ Las variables se leen del entorno del proceso. La aplicación no carga archivos 
 
 Flujo de un análisis: se carga la versión (con comprobación de hash), se valida el rango, se ejecutan las verificaciones y el proveedor, se validan todos los hallazgos y se guardan el análisis y sus hallazgos. Si algo falla, no se guarda nada. Los análisis son inmutables (migración `0002`) y guardan el fragmento y el proveedor usado.
 
+### Proveedor real y autorización
+
+El proveedor `anthropic` (`app/analysis/anthropic_provider.py`) es el único que envía datos fuera del equipo. Su flujo:
+
+1. La configuración elige el proveedor. Sin clave o sin modelo, el análisis responde 503.
+2. La petición debe incluir `external_authorization` con el nombre del proveedor y el alcance `fragmento_seleccionado`. Sin ella, responde 403 antes de cualquier llamada.
+3. El servicio vuelve a comprobar la autorización antes de llamar al proveedor.
+4. Se hace una sola llamada, sin reintentos, con la herramienta de salida forzada.
+5. La respuesta se valida por esquema, citas, posiciones, procedencia, certeza, justificación y ausencia de atribuciones de intención. Si algo falla, no se guarda nada.
+6. El análisis se guarda con su modelo, su procedencia y si salió del equipo (`sent_external`).
+
+El estado del proveedor (`GET /analysis/provider`) no llama a ningún servicio.
+
 ## Pendiente
 
-- Proveedor de IA real. Solo con autorización explícita para enviar textos fuera del equipo (D-022).
+- Primera llamada real a Anthropic. Requiere clave, modelo y la decisión del usuario (D-028, D-029).
+- Registro de uso de tokens y coste por análisis.
 - Solicitudes de revisión y tope de puntuación (ver la propuesta de rúbrica v2).
 - Editor Tiptap.
 - Autenticación, antes de exponer la aplicación en red (D-020).

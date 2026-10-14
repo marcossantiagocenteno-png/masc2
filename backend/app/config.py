@@ -12,13 +12,19 @@ Variables:
   ``simulado``. Ningún otro valor está autorizado en esta versión.
 - ``NOVEL_ENGINE_MAX_ANALYSIS_CHARS``: tamaño máximo de un fragmento a analizar.
   Por defecto, 8.000.
+- ``ANTHROPIC_API_KEY``: clave de la API de Anthropic. Solo se lee aquí. Nunca
+  aparece en ``repr``, respuestas HTTP ni logs.
+- ``NOVEL_ENGINE_ANTHROPIC_MODEL``: identificador del modelo. No tiene valor por
+  defecto: debe ser uno que tu cuenta admita (ver README).
+- ``NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS``: tiempo máximo por llamada. Por defecto, 60.
+- ``NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS``: límite de tokens de salida. Por defecto, 2000.
 """
 
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +34,8 @@ DEFAULT_MAX_VERSION_CHARS = 500_000
 DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 DEFAULT_ANALYSIS_PROVIDER = "simulado"
 DEFAULT_MAX_ANALYSIS_CHARS = 8_000
+DEFAULT_ANTHROPIC_TIMEOUT_SECONDS = 60.0
+DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 2_000
 
 
 @dataclass(frozen=True)
@@ -39,12 +47,21 @@ class Settings:
     cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
     analysis_provider: str = DEFAULT_ANALYSIS_PROVIDER
     max_analysis_chars: int = DEFAULT_MAX_ANALYSIS_CHARS
+    # ``repr=False``: la clave no debe aparecer al imprimir o registrar la configuración.
+    anthropic_api_key: str | None = field(default=None, repr=False)
+    anthropic_model: str | None = None
+    anthropic_timeout_seconds: float = DEFAULT_ANTHROPIC_TIMEOUT_SECONDS
+    anthropic_max_output_tokens: int = DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS
 
     def __post_init__(self) -> None:
         if self.max_version_chars < 1:
             raise ValueError("max_version_chars debe ser un entero positivo")
         if self.max_analysis_chars < 1:
             raise ValueError("max_analysis_chars debe ser un entero positivo")
+        if self.anthropic_timeout_seconds <= 0:
+            raise ValueError("anthropic_timeout_seconds debe ser positivo")
+        if not 1 <= self.anthropic_max_output_tokens <= 8_192:
+            raise ValueError("anthropic_max_output_tokens debe estar entre 1 y 8192")
         if not self.database_url.strip():
             raise ValueError("database_url no puede estar vacío")
 
@@ -82,10 +99,41 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     else:
         analysis_limit = DEFAULT_MAX_ANALYSIS_CHARS
 
+    api_key = source.get("ANTHROPIC_API_KEY", "").strip() or None
+    model = source.get("NOVEL_ENGINE_ANTHROPIC_MODEL", "").strip() or None
+    timeout = _float_or_default(source, "NOVEL_ENGINE_ANTHROPIC_TIMEOUT_SECONDS", DEFAULT_ANTHROPIC_TIMEOUT_SECONDS)
+    max_tokens = _int_or_default(
+        source, "NOVEL_ENGINE_ANTHROPIC_MAX_OUTPUT_TOKENS", DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS
+    )
+
     return Settings(
         database_url=database_url,
         max_version_chars=max_chars,
         cors_origins=origins,
         analysis_provider=provider,
         max_analysis_chars=analysis_limit,
+        anthropic_api_key=api_key,
+        anthropic_model=model,
+        anthropic_timeout_seconds=timeout,
+        anthropic_max_output_tokens=max_tokens,
     )
+
+
+def _int_or_default(source: Mapping[str, str], name: str, default: int) -> int:
+    raw = source.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} debe ser un entero") from error
+
+
+def _float_or_default(source: Mapping[str, str], name: str, default: float) -> float:
+    raw = source.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} debe ser un número") from error

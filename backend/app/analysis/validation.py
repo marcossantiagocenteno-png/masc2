@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 
-from app.analysis.categories import CATEGORIES
+from app.analysis.categories import CATEGORIES, PROVENANCE_PROVIDER
 from app.analysis.provider import ProviderFinding
 
 MAX_TEXT_CHARS = 2_000
@@ -67,6 +67,12 @@ def validate_finding(finding: ProviderFinding, fragment: str, provenance: str) -
     explanation = finding.explanation.strip()
     if not explanation:
         return "falta la explicación"
+
+    justification = (finding.justification or "").strip()
+    if provenance == PROVENANCE_PROVIDER and not justification:
+        return "falta la justificación"
+    if len(justification) > MAX_TEXT_CHARS:
+        return "la justificación supera el límite"
     if len(explanation) > MAX_TEXT_CHARS:
         return "la explicación supera el límite"
 
@@ -82,7 +88,7 @@ def validate_finding(finding: ProviderFinding, fragment: str, provenance: str) -
     if effect and len(effect) > MAX_TEXT_CHARS:
         return "el efecto supera el límite"
 
-    for text in (explanation, effect):
+    for text in (explanation, effect, justification):
         attribution = find_intent_attribution(text)
         if attribution:
             return f"atribuye intención al autor: «{attribution}»"

@@ -45,8 +45,8 @@ export default function RecoveryPoints({ points, error, onRestore, onRefresh }: 
           {error}
         </p>
       ) : null}
-      {points === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
-      {points?.length === 0 ? <p className="text-[var(--color-muted)]">Todavía no hay puntos.</p> : null}
+      {points === null ? <p className="ne-meta">Cargando…</p> : null}
+      {points?.length === 0 ? <p className="ne-empty">Todavía no hay puntos.</p> : null}
       <ol className="divide-y divide-[var(--color-muted)]/40">
         {points?.map((point) => (
           <li key={point.id} className="flex flex-wrap items-center justify-between gap-2 py-3">

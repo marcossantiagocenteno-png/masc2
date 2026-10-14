@@ -195,6 +195,7 @@ export default function VersionPage() {
       {version ? (
         <AnalysisPanel
           versionId={version.id}
+          versionNumber={version.number}
           ops={versionOps(projectId, manuscriptId, version.id)}
           readSelection={readContentSelection}
         />

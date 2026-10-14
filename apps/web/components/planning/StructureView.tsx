@@ -330,14 +330,14 @@ export function StructureView({ projectId }: { projectId: number }) {
           ) : null}
         </form>
 
-        {nodes === null && !loadError ? <p className="text-[var(--color-muted)]">Cargando estructura…</p> : null}
+        {nodes === null && !loadError ? <p className="ne-meta">Cargando estructura…</p> : null}
         {loadError ? (
           <p role="alert" className="ne-notice ne-notice--danger">
             {loadError}
           </p>
         ) : null}
         {nodes?.length === 0 ? (
-          <div className="flex flex-col gap-3 text-[var(--color-muted)]">
+          <div className="ne-meta flex flex-col gap-3">
             <p>Todavía no hay actos, capítulos ni escenas. Empieza con un acto o, si prefieres, con una escena suelta.</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => prepareAdd("acto", null)} className="ne-button ne-button--small">
@@ -365,7 +365,7 @@ export function StructureView({ projectId }: { projectId: number }) {
           />
         ) : null}
         {operationError ? (
-          <div role="alert" className="flex flex-col items-start gap-2 text-sm text-red-700">
+          <div role="alert" className="ne-notice ne-notice--danger flex-col items-start">
             <p>{operationError}</p>
             <button type="button" onClick={() => void load()} className="ne-button ne-button--small ne-button--danger">
               Actualizar la estructura
@@ -414,7 +414,7 @@ export function StructureView({ projectId }: { projectId: number }) {
             />
           </div>
         ) : (
-          <p className="text-[var(--color-muted)]">Selecciona un acto, capítulo o escena para editarlo o moverlo.</p>
+          <p className="ne-empty">Selecciona un acto, capítulo o escena para editarlo o moverlo.</p>
         )}
       </div>
     </div>

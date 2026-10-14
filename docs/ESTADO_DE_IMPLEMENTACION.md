@@ -39,7 +39,7 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 ## Parcialmente implementado
 
 - **Proyectos**: falta duplicar (con operación explícita y segura), vincular proyectos, preferencias por proyecto, hitos y actividad reciente completos, y el panel con pendientes.
-- **Interfaz visual (fase 3a)**: revisadas las pantallas de proyectos, planificación, editor, versiones y comentarios. Pendiente: separar visualmente fragmento, hallazgos y justificaciones en el panel de análisis (solo cambió de clases); modo oscuro sin inspeccionar; revisión de teclado de extremo a extremo; no se consultó la documentación de Next en `node_modules/next/dist/docs` que pide AGENTS.md (los cambios no usan APIs nuevas de Next).
+- **Interfaz visual (fase 3a.1)**: panel de análisis con identificación de versión y fragmento, categorías separadas y certeza visible; colores fijos retirados del código fuente. Revisión en navegador de proyectos, planificación, manuscritos, versiones, análisis y comentarios a 1440, 1280, 768, 390 y 360 px (sin desbordamiento), modo oscuro del sistema y foco por teclado. Pendiente: el editor de escena no se ha vuelto a inspeccionar en esta pasada (el proyecto de prueba no tiene escenas); la auditoría de accesibilidad es una heurística propia, no una herramienta de conformidad; no hay alternancia manual de tema, solo la del sistema; las fuentes son pilas del sistema; no se consultó la documentación de Next en `node_modules/next/dist/docs` que pide AGENTS.md (los cambios no usan APIs nuevas de Next).
 - **Editor**: área de texto. Funciona para versiones, pero no tiene capítulos, escenas ni formato.
 - **Análisis**: el simulador produce datos de longitud y tres comprobaciones mecánicas. No es un análisis literario.
 

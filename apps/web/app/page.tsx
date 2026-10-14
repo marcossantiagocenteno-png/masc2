@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-16 sm:px-6">
       <header className="flex flex-col gap-3">
-        <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">
+        <p className="ne-kicker">
           Fase 0 · Fundamentos
         </p>
         <h1 className="ne-page-title ne-page-title--hero">Novel Engine</h1>

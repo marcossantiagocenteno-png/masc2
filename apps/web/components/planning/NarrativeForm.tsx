@@ -83,7 +83,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
       </p>
     );
   }
-  if (!values) return <p className="text-[var(--color-muted)]">Cargando visión general…</p>;
+  if (!values) return <p className="ne-meta">Cargando visión general…</p>;
 
   const field = (name: keyof Values, label: string, multiline = false, hint?: string) => (
     <div className="flex flex-col gap-1">

@@ -291,7 +291,7 @@ export default function ManuscriptPage() {
         <Link href="/manuscritos" className="ne-meta ne-link">
           Manuscritos
         </Link>
-        <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">Manuscrito</p>
+        <p className="ne-kicker">Manuscrito</p>
         <h1 className="ne-page-title">{manuscript?.title ?? "Cargando…"}</h1>
         {manuscript?.scene_node_id ? (
           <p className="ne-meta">
@@ -308,7 +308,7 @@ export default function ManuscriptPage() {
         <h2 id="versiones-titulo" className="ne-section-title">
           Versiones
         </h2>
-        {versions === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
+        {versions === null ? <p className="ne-meta">Cargando…</p> : null}
         <ol className="divide-y divide-[var(--color-muted)]/40">
           {versions?.map((version) => {
             const parent = version.parent_version_id !== null ? byId.get(version.parent_version_id) : undefined;

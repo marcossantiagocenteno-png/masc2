@@ -96,9 +96,9 @@ export default function ProjectLibraryPage() {
             {error}
           </p>
         ) : null}
-        {projects === null && !error ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
+        {projects === null && !error ? <p className="ne-meta">Cargando…</p> : null}
         {projects?.length === 0 ? (
-          <p className="text-[var(--color-muted)]">
+          <p className="ne-meta">
             {filter === "activo" ? "Todavía no hay proyectos activos." : "No hay proyectos archivados."}
           </p>
         ) : null}

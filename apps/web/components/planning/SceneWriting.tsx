@@ -117,12 +117,12 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
       </p>
     );
   }
-  if (writing === null) return <p className="text-[var(--color-muted)]">Cargando escritura…</p>;
+  if (writing === null) return <p className="ne-meta">Cargando escritura…</p>;
 
   if (writing.state === "sin_escritura" || writing.manuscript_id === null) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-[var(--color-muted)]">
+        <p className="ne-meta">
           Esta escena todavía no tiene texto. Empezar a escribirla crea su propio manuscrito vacío; no crea nada más.
         </p>
         <div>
@@ -151,7 +151,7 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
     <div className="flex flex-col gap-4">
       <p className="text-sm">
         <span className="font-medium">{hasText ? "Con texto" : "Sin texto todavía"}</span>
-        <span className="text-[var(--color-muted)]"> · el texto se guarda como borrador mientras escribes.</span>
+        <span className="ne-meta"> · el texto se guarda como borrador mientras escribes.</span>
       </p>
       <label htmlFor="escena-texto" className="flex flex-col gap-1">
         <span className="ne-label">Texto de «{sceneTitle}»</span>

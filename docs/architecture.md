@@ -239,7 +239,9 @@ El estilo vive en `apps/web/app/globals.css`, que es la única fuente de tokens 
 - **Estados**: cada estado lleva icono o texto además del color («✓ Borrador guardado», «Conflicto: …»). Los `role="status"` y `role="alert"` se mantienen donde estaban.
 - **Reglas**: sin sombras ni degradados decorativos. El acento se reserva al foco, a la selección actual y a la cita. Las pantallas nuevas usan la escala y los componentes antes que utilidades sueltas.
 
-Comprobaciones: sin desbordamiento horizontal medido en 1440, 1280, 768, 390 y 360 px en las páginas revisadas; capturas inspeccionadas en 1440 y 390 px. El modo oscuro no se ha inspeccionado visualmente.
+Comprobaciones: sin desbordamiento horizontal medido en 1440, 1280, 768, 390 y 360 px en las páginas revisadas; capturas inspeccionadas en 1440 y 390 px, incluido el modo oscuro del sistema. Auditoría en página (heurística, no sustituye a una herramienta de accesibilidad completa): sin nombres ausentes ni campos sin etiqueta, sin contraste insuficiente y con foco visible por teclado.
+
+El análisis distingue el analizador simulado (aviso de tono ámbar, «no es una IA») del proveedor externo (aviso azul), y ambos del estado de proveedor no disponible (rojo). Las categorías se muestran por separado, con certeza como insignia y justificación explícita.
 
 ## Pendiente
 

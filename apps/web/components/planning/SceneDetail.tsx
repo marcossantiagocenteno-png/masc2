@@ -124,7 +124,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
       </p>
     );
   }
-  if (links === null) return <p className="text-[var(--color-muted)]">Cargando escena…</p>;
+  if (links === null) return <p className="ne-meta">Cargando escena…</p>;
   if (missing || node === null) {
     return (
       <div className="flex flex-col gap-3">
@@ -145,7 +145,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
           Volver a la estructura
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">{STRUCTURE_LABELS[node.kind]}</p>
+          <p className="ne-kicker">{STRUCTURE_LABELS[node.kind]}</p>
           <CanonBadge state={node.estado} origin={node.origen} />
         </div>
         <p className="ne-meta">
@@ -183,7 +183,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
           Personajes, lugares y trama en esta escena
         </h2>
         {links.length === 0 ? (
-          <p className="text-[var(--color-muted)]">Todavía no hay nada vinculado a esta escena.</p>
+          <p className="ne-empty">Todavía no hay nada vinculado a esta escena.</p>
         ) : null}
         <ul className="flex flex-col divide-y divide-[var(--color-muted)]/40">
           {links.map((item) => {

@@ -42,7 +42,7 @@ export default function ManuscriptsPage() {
           Inicio
         </Link>
         <h1 className="ne-page-title">Manuscritos</h1>
-        <p className="text-[var(--color-muted)]">
+        <p className="ne-meta">
           Cada manuscrito tiene versiones numeradas. Una versión guardada no se modifica: los cambios crean una versión nueva.
         </p>
       </header>
@@ -101,8 +101,8 @@ export default function ManuscriptsPage() {
         <h2 id="lista-titulo" className="ne-section-title">
           Manuscritos guardados
         </h2>
-        {items === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
-        {items?.length === 0 ? <p className="text-[var(--color-muted)]">Todavía no hay manuscritos.</p> : null}
+        {items === null ? <p className="ne-meta">Cargando…</p> : null}
+        {items?.length === 0 ? <p className="ne-empty">Todavía no hay manuscritos.</p> : null}
         <ul className="divide-y divide-[var(--color-muted)]/40">
           {items?.map((item) => (
             <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">

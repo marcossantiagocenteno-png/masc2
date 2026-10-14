@@ -152,7 +152,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
     <section aria-label={`Editar ${itemLabel}`} className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
         <CanonBadge state={item.estado} origin={item.origen} />
-        {archived ? <span className="rounded bg-[var(--color-muted)]/20 px-2 py-0.5 text-xs">Archivado</span> : null}
+        {archived ? <span className="ne-badge">Archivado</span> : null}
         <span className="ne-meta">{CANON_HELP[item.estado]}</span>
       </div>
 
@@ -163,7 +163,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
       ) : null}
 
       {isCanon && !archived ? (
-        <div className="flex flex-col gap-2 rounded border border-emerald-800/40 bg-emerald-50/50 p-3 text-sm">
+        <div className="ne-notice ne-notice--warn flex-col gap-2">
           <p>
             Este elemento es <strong>{CANON_LABELS.canonico.toLowerCase()}</strong>. Guardar un cambio lo devolverá a
             provisional y quedará registrado como decisión de canon, con el texto anterior.
@@ -184,7 +184,6 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
             disabled: archived || busy,
             onChange: (event: { target: { value: string } }) =>
               setValues((current) => ({ ...current, [field.name]: event.target.value })),
-            className: "rounded border border-[var(--color-muted)] bg-transparent px-3 py-2",
           };
           return (
             <div key={field.name} className="flex flex-col gap-1">
@@ -236,7 +235,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
               </button>
             ) : null}
             {canAccept ? (
-              <button type="button" onClick={() => setPanel("accept")} disabled={busy} className="rounded border border-[var(--color-ink)] px-3 py-1.5 text-sm disabled:opacity-50">
+              <button type="button" onClick={() => setPanel("accept")} disabled={busy} className="ne-button ne-button--small">
                 Aceptar propuesta
               </button>
             ) : null}
@@ -291,20 +290,20 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 border-t border-[var(--color-muted)]/40 pt-4 text-sm">
+      <div className="flex flex-col gap-2 border-t border-[var(--color-line)] pt-4 text-sm">
         <h3 className="font-medium">Historial de canon</h3>
-        {decisions === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
+        {decisions === null ? <p className="ne-meta">Cargando…</p> : null}
         {decisionsError ? (
           <p role="alert" className="ne-notice ne-notice--danger">
             {decisionsError}
           </p>
         ) : null}
         {decisions?.length === 0 && !decisionsError ? (
-          <p className="text-[var(--color-muted)]">Sin decisiones de canon. Las ediciones de material provisional no se registran.</p>
+          <p className="ne-meta">Sin decisiones de canon. Las ediciones de material provisional no se registran.</p>
         ) : null}
         <ol className="flex flex-col gap-1">
           {decisions?.map((decision) => (
-            <li key={decision.id} className="text-[var(--color-muted)]">
+            <li key={decision.id} className="ne-meta">
               {formatDate(decision.created_at)} · {DECISION_TEXT[decision.accion] ?? decision.accion}
               {decision.estado_previo && decision.estado_nuevo
                 ? ` (${CANON_LABELS[decision.estado_previo]} → ${CANON_LABELS[decision.estado_nuevo]})`

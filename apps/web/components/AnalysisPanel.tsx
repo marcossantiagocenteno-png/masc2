@@ -55,6 +55,8 @@ const CERTAINTY_LABEL: Record<AnalysisFinding["certainty"], string> = {
 
 type Props = {
   versionId: number;
+  /** Número de la versión, para identificarla en el resultado. */
+  versionNumber?: number;
   /** Operaciones de la versión con su ámbito de proyecto (ver ``versionOps``). */
   ops: VersionOps;
   readSelection: () => ContentSelection | null;
@@ -64,7 +66,7 @@ type Props = {
  * Análisis editorial de un fragmento. El análisis no modifica la versión:
  * solo muestra y guarda diagnósticos vinculados a ella.
  */
-export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
+export function AnalysisPanel({ versionId, versionNumber, ops, readSelection }: Props) {
   const [runs, setRuns] = useState<AnalysisRun[] | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [provider, setProvider] = useState<AnalysisProviderStatus | null>(null);
@@ -190,10 +192,8 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
         </p>
       ) : null}
 
-      {runs === null ? <p className="text-[var(--color-muted)]">Cargando análisis…</p> : null}
-      {runs?.length === 0 ? (
-        <p className="text-[var(--color-muted)]">Esta versión todavía no tiene análisis.</p>
-      ) : null}
+      {runs === null ? <p className="ne-meta">Cargando análisis…</p> : null}
+      {runs?.length === 0 ? <p className="ne-empty">Esta versión todavía no tiene análisis.</p> : null}
 
       {runs && runs.length > 0 ? (
         <label className="flex flex-col gap-1">
@@ -212,7 +212,7 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
         </label>
       ) : null}
 
-      {selected ? <RunView run={selected} /> : null}
+      {selected ? <RunView run={selected} versionNumber={versionNumber} /> : null}
     </section>
   );
 }
@@ -222,21 +222,21 @@ function ProviderNotice({ provider }: { provider: AnalysisProviderStatus | null 
   if (provider === null) return null;
   if (!provider.configured) {
     return (
-      <div role="note" className="rounded border border-red-700 p-3 text-sm text-red-800">
+      <div role="note" className="ne-notice ne-notice--danger">
         <span className="font-medium">Proveedor de análisis no disponible.</span> {provider.reason}
       </div>
     );
   }
   if (provider.is_external) {
     return (
-      <div role="note" className="rounded border-2 border-blue-800 bg-blue-50 p-3 text-sm text-blue-900">
+      <div role="note" className="ne-notice ne-notice--info">
         <span className="font-medium">Proveedor externo configurado: Anthropic.</span> Cada análisis envía solo el
         fragmento que selecciones y exige tu confirmación. Modelo: {provider.model_name}.
       </div>
     );
   }
   return (
-    <div role="note" className="ne-panel">
+    <div role="note" className="ne-notice ne-notice--warn">
       Proveedor activo: analizador simulado. No envía nada fuera de este equipo y no es una IA.
     </div>
   );
@@ -261,8 +261,8 @@ function ExternalConfirmation({
   onCancel: () => void;
 }) {
   return (
-    <div role="dialog" aria-modal="false" aria-labelledby="confirmar-envio" className="flex flex-col gap-3 rounded border-2 border-blue-800 p-4">
-      <h3 id="confirmar-envio" className="font-medium">
+    <div role="dialog" aria-modal="false" aria-labelledby="confirmar-envio" className="ne-panel flex flex-col gap-3 border-[var(--color-accent)]">
+      <h3 id="confirmar-envio" className="ne-subtitle">
         Confirmar envío a Anthropic
       </h3>
       <p className="text-sm">
@@ -270,7 +270,7 @@ function ExternalConfirmation({
         únicamente este fragmento ({selection.end - selection.start} caracteres, posiciones {selection.start}–
         {selection.end}). No se envían el manuscrito completo, otras versiones ni los comentarios.
       </p>
-      <blockquote className="whitespace-pre-wrap border-l-4 border-blue-800 pl-3 font-serif italic">
+      <blockquote className="whitespace-pre-wrap border-l-2 border-[var(--color-accent)] pl-4 font-serif italic">
         {selection.quote}
       </blockquote>
       <label className="flex items-start gap-2 text-sm">
@@ -282,16 +282,16 @@ function ExternalConfirmation({
         />
         <span>Autorizo el envío de este fragmento a Anthropic. Esta autorización vale solo para este análisis.</span>
       </label>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onConfirm}
           disabled={!authorized || busy}
-          className="rounded bg-blue-800 px-4 py-2 text-white disabled:opacity-50"
+          className="ne-button ne-button--primary"
         >
           {busy ? "Enviando…" : "Enviar a Anthropic y analizar"}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="rounded border border-[var(--color-ink)] px-4 py-2">
+        <button type="button" onClick={onCancel} disabled={busy} className="ne-button">
           Cancelar
         </button>
       </div>
@@ -299,17 +299,10 @@ function ExternalConfirmation({
   );
 }
 
-function RunView({ run }: { run: AnalysisRun }) {
+function RunView({ run, versionNumber }: { run: AnalysisRun; versionNumber?: number }) {
   return (
-    <div className="flex flex-col gap-6">
-      <div
-        role="note"
-        className={
-          run.sent_external
-            ? "rounded border-2 border-blue-800 bg-blue-50 p-3 text-sm font-medium text-blue-900"
-            : "rounded border-2 border-amber-700 bg-amber-50 p-3 text-sm font-medium text-amber-900"
-        }
-      >
+    <div className="flex flex-col gap-8">
+      <div role="note" className={run.sent_external ? "ne-notice ne-notice--info" : "ne-notice ne-notice--warn"}>
         {run.sent_external
           ? "ANÁLISIS CON PROVEEDOR REAL: el fragmento se envió a Anthropic."
           : "ANALIZADOR SIMULADO: no es una evaluación literaria de ninguna IA."}
@@ -319,9 +312,12 @@ function RunView({ run }: { run: AnalysisRun }) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <p className="ne-label">Fragmento analizado (caracteres {run.fragment_start}–{run.fragment_end})</p>
-        <blockquote className="whitespace-pre-wrap border-l-4 border-[var(--color-muted)]/60 pl-3 font-serif italic">
+        <p className="ne-meta">
+          {versionNumber !== undefined ? `Versión ${versionNumber} · ` : ""}Análisis {run.id} · {formatDate(run.created_at)}
+        </p>
+        <blockquote className="whitespace-pre-wrap border-l-2 border-[var(--color-accent)] pl-4 font-serif text-[1.0625rem] leading-relaxed">
           {run.fragment_text}
         </blockquote>
       </div>
@@ -329,9 +325,9 @@ function RunView({ run }: { run: AnalysisRun }) {
       {SECTIONS.map((section) => {
         const items = run.findings.filter((finding) => finding.category === section.category);
         return (
-          <section key={section.category} aria-labelledby={`seccion-${run.id}-${section.category}`} className="flex flex-col gap-3">
+          <section key={section.category} aria-labelledby={`seccion-${run.id}-${section.category}`} className="flex flex-col gap-3 border-t border-[var(--color-line)] pt-8">
             <h3 id={`seccion-${run.id}-${section.category}`} className="ne-subtitle">
-              {section.title} <span className="text-sm font-normal text-[var(--color-muted)]">({items.length})</span>
+              {section.title} <span className="ne-meta">({items.length})</span>
             </h3>
             <p className="ne-meta">{section.note}</p>
             {items.length === 0 ? <p className="ne-meta">Ninguno en este fragmento.</p> : null}
@@ -351,11 +347,11 @@ function FindingView({ finding }: { finding: AnalysisFinding }) {
       ? "Verificación determinista"
       : `Proveedor «${finding.source_name}»${finding.source_name === "simulado" ? " (SIMULADO)" : ""}`;
   return (
-    <article className="flex flex-col gap-2 border-l-2 border-[var(--color-muted)]/50 pl-4">
-      <p className="flex flex-wrap gap-2 text-sm text-[var(--color-muted)]">
+    <article className="flex flex-col gap-2 border-l-2 border-[var(--color-line)] pl-4">
+      <p className="ne-meta flex flex-wrap items-center gap-x-3 gap-y-2">
         <span>Línea {finding.line_number}</span>
         <span>· posiciones {finding.start_offset}–{finding.end_offset}</span>
-        <span>· {CERTAINTY_LABEL[finding.certainty]}</span>
+        <span className="ne-badge">{CERTAINTY_LABEL[finding.certainty]}</span>
         <span>· {origin}</span>
       </p>
       <blockquote className="whitespace-pre-wrap font-serif italic">«{finding.quote}»</blockquote>

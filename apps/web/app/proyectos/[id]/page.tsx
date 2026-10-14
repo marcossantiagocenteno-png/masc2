@@ -176,9 +176,9 @@ export default function ProjectPanelPage() {
         <h2 id="manuscritos" className="ne-section-title">
           Manuscritos del proyecto
         </h2>
-        {manuscripts === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
+        {manuscripts === null ? <p className="ne-meta">Cargando…</p> : null}
         {manuscripts?.length === 0 ? (
-          <p className="text-[var(--color-muted)]">Este proyecto todavía no tiene manuscritos.</p>
+          <p className="ne-empty">Este proyecto todavía no tiene manuscritos.</p>
         ) : null}
         <ul className="divide-y divide-[var(--color-muted)]/40">
           {manuscripts?.map((item) => (
@@ -199,7 +199,7 @@ export default function ProjectPanelPage() {
           Nuevo manuscrito en este proyecto
         </h2>
         {archived ? (
-          <p className="text-[var(--color-muted)]">El proyecto está archivado. Restáuralo para añadir manuscritos.</p>
+          <p className="ne-meta">El proyecto está archivado. Restáuralo para añadir manuscritos.</p>
         ) : (
           <form onSubmit={handleCreateManuscript} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1">
@@ -250,7 +250,7 @@ export default function ProjectPanelPage() {
               
             />
           </label>
-          <button type="submit" disabled={busy} className="rounded border border-[var(--color-ink)] px-4 py-2 disabled:opacity-50">
+          <button type="submit" disabled={busy} className="ne-button">
             Guardar nombre
           </button>
         </form>

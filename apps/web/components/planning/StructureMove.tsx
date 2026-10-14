@@ -60,7 +60,7 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
             ))}
           </select>
         </div>
-        <p className="self-end text-xs text-[var(--color-muted)]">
+        <p className="ne-hint self-end">
           Se coloca al final de los elementos que ya hay en el nuevo lugar. Para cambiar su orden dentro de él, usa Subir y Bajar.
         </p>
       </div>
@@ -72,7 +72,7 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
         >
           {busy ? "Moviendo…" : "Mover aquí"}
         </button>
-        {unchanged ? <span className="ml-3 text-xs text-[var(--color-muted)]">Ya está en ese lugar.</span> : null}
+        {unchanged ? <span className="ne-hint ml-3">Ya está en ese lugar.</span> : null}
       </div>
     </form>
   );

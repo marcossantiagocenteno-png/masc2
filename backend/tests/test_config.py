@@ -52,3 +52,22 @@ def test_limite_no_positivo_se_rechaza(value: str) -> None:
 def test_settings_directos_validan_el_limite() -> None:
     with pytest.raises(ValueError):
         Settings(max_version_chars=0)
+
+
+def test_proveedor_de_analisis_por_defecto_es_simulado() -> None:
+    settings = load_settings({})
+    assert settings.analysis_provider == "simulado"
+    assert settings.max_analysis_chars == 8_000
+
+
+def test_variables_de_analisis_se_leen() -> None:
+    settings = load_settings(
+        {"NOVEL_ENGINE_ANALYSIS_PROVIDER": "openai", "NOVEL_ENGINE_MAX_ANALYSIS_CHARS": "500"}
+    )
+    assert settings.analysis_provider == "openai"
+    assert settings.max_analysis_chars == 500
+
+
+def test_limite_de_analisis_no_positivo_se_rechaza() -> None:
+    with pytest.raises(ValueError):
+        Settings(max_analysis_chars=0)

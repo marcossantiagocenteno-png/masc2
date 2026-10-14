@@ -13,8 +13,9 @@ import {
   type VersionOut,
   type VersionSummary,
 } from "@/lib/api";
+import { AnalysisPanel, type ContentSelection } from "@/components/AnalysisPanel";
 
-type Selection = { start: number; end: number; quote: string };
+type Selection = ContentSelection;
 
 /**
  * Una versión concreta: su contenido (solo lectura) y los comentarios vinculados a ella.
@@ -70,6 +71,14 @@ export default function VersionPage() {
       active = false;
     };
   }, [versionId]);
+
+  /** Selección actual del contenido, o null si no hay ningún fragmento marcado. */
+  function readContentSelection(): ContentSelection | null {
+    const element = contentRef.current;
+    if (!element || element.selectionStart === element.selectionEnd) return null;
+    const { selectionStart, selectionEnd, value } = element;
+    return { start: selectionStart, end: selectionEnd, quote: value.slice(selectionStart, selectionEnd) };
+  }
 
   function captureSelection() {
     const element = contentRef.current;
@@ -169,6 +178,8 @@ export default function VersionPage() {
           className="rounded border border-[var(--color-muted)]/60 bg-transparent px-3 py-2 font-serif leading-relaxed"
         />
       </section>
+
+      {version ? <AnalysisPanel versionId={version.id} readSelection={readContentSelection} /> : null}
 
       <section aria-labelledby="comentarios-titulo" className="flex flex-col gap-4">
         <h2 id="comentarios-titulo" className="text-xl font-medium">

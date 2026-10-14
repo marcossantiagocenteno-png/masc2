@@ -125,6 +125,44 @@ Backend y frontend se arrancan en `localhost` según el README. No hay autentica
 
 Las pruebas Playwright arrancan una API en `127.0.0.1:8100` y el frontend en `localhost:3100`, sobre `data/e2e.sqlite`. Así no interfieren con el desarrollo en los puertos 3000 y 8000. Los títulos de prueba son únicos porque la base E2E se conserva entre ejecuciones.
 
+## D-022 · Proveedores de modelos intercambiables, pero solo uno autorizado
+**Estado:** aceptada
+
+`app/analysis/provider.py` define el contrato `AnalysisProvider` y un registro `PROVIDER_FACTORIES`. Hoy el registro contiene únicamente `simulado`. Cualquier otro valor de `NOVEL_ENGINE_ANALYSIS_PROVIDER` responde `503` con el mensaje «no está autorizado ni configurado». No hay código de ningún servicio externo ni cliente de IA. Añadir uno exige código nuevo, una entrada en el registro y una decisión explícita del autor sobre el envío de manuscritos.
+
+El cliente no puede elegir proveedor: el campo `provider` se rechaza con `422`.
+
+## D-023 · El analizador simulado se identifica como tal en cada respuesta
+**Estado:** aceptada
+
+`SimulatedAnalyzer` solo produce datos estructurales: número de frases y la frase más larga, con su posición. Cada hallazgo lleva el prefijo «[Simulado]», la respuesta incluye `provider_simulated: true` y su etiqueta, y la interfaz muestra un aviso. No produce juicios literarios. Sirve para probar el flujo.
+
+## D-024 · Los problemas verificables solo los produce un proceso determinista
+**Estado:** aceptada
+
+`app/analysis/checks.py` contiene tres reglas mecánicas: palabra funcional repetida de forma inmediata («que que»), espacios dobles entre palabras y guiones o comillas de diálogo sin pareja. Son las únicas que pueden producir la categoría `problema_verificable`. Un proveedor que intente producirla recibe un rechazo. Ninguna regla mira la longitud de las frases, la ambigüedad ni la falta de explicaciones.
+
+## D-025 · Validación de cada hallazgo antes de guardar, con rechazo atómico
+**Estado:** aceptada
+
+`app/analysis/validation.py` valida cada hallazgo: la cita debe coincidir exactamente con el fragmento en la posición indicada; cada categoría admite solo sus certezas y su procedencia; las observaciones, inferencias y elementos a preservar deben explicar su efecto; y ningún texto puede atribuir intención al autor. Si un hallazgo falla, se rechaza el análisis entero y no se guarda nada (`502`).
+
+El filtro de intenciones es léxico. Reduce el riesgo, no lo elimina: un texto que atribuya intención con otra formulación pasaría.
+
+## D-026 · Análisis inmutables, con su fragmento y su proveedor
+**Estado:** aceptada
+
+La migración `0002` crea `analysis_runs` y `analysis_findings`, con triggers de SQLite que impiden modificarlos o borrarlos, como en la migración `0001`. Cada análisis guarda el texto del fragmento, el proveedor, su etiqueta y si era simulado. Al leerlo se comprueba que el fragmento coincide con la versión original; si no coincide, la API responde `500`.
+
+Las posiciones de los hallazgos son absolutas, dentro de la versión. La línea se calcula en el servidor.
+
+El análisis nunca modifica la versión. Los hallazgos no se ofrecen como texto reescrito ni como sugerencias de cambio.
+
+## D-027 · Límite de fragmento de 8.000 caracteres
+**Estado:** provisional
+
+Configurable con `NOVEL_ENGINE_MAX_ANALYSIS_CHARS`. Responde `413` si se supera. Es un valor inicial para una escena.
+
 ---
 
 ## Pendientes
@@ -136,4 +174,6 @@ Las pruebas Playwright arrancan una API en `127.0.0.1:8100` y el frontend en `lo
 | **PostgreSQL** | Requiere reescribir la inmutabilidad (D-016) y probar el motor. | Cuando se decida migrar. |
 | **Autenticación** | La aplicación es de un solo usuario en localhost (D-020). | Antes de exponerla en red. |
 | **Límite de versión** | 500.000 caracteres es un valor inicial (D-019). | Tras el uso real. |
+| **Primer proveedor real** | Exige decisión explícita sobre envío de datos a terceros (D-022). | Solo con autorización del autor. |
+| **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
 | **Pesos de las dimensiones** | La fase 0 no combina puntuaciones. | Cuando exista una evaluación completa. |

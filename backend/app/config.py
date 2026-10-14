@@ -8,6 +8,10 @@ Variables:
 - ``NOVEL_ENGINE_MAX_VERSION_CHARS``: límite de caracteres por versión, tras
   normalizar el texto. Por defecto, 500.000.
 - ``NOVEL_ENGINE_CORS_ORIGINS``: orígenes permitidos, separados por comas.
+- ``NOVEL_ENGINE_ANALYSIS_PROVIDER``: proveedor de análisis. Por defecto,
+  ``simulado``. Ningún otro valor está autorizado en esta versión.
+- ``NOVEL_ENGINE_MAX_ANALYSIS_CHARS``: tamaño máximo de un fragmento a analizar.
+  Por defecto, 8.000.
 """
 
 from __future__ import annotations
@@ -22,6 +26,8 @@ DEFAULT_DATABASE_PATH = REPO_ROOT / "data" / "novel_engine.sqlite"
 DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_DATABASE_PATH.as_posix()}"
 DEFAULT_MAX_VERSION_CHARS = 500_000
 DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+DEFAULT_ANALYSIS_PROVIDER = "simulado"
+DEFAULT_MAX_ANALYSIS_CHARS = 8_000
 
 
 @dataclass(frozen=True)
@@ -31,10 +37,14 @@ class Settings:
     database_url: str = DEFAULT_DATABASE_URL
     max_version_chars: int = DEFAULT_MAX_VERSION_CHARS
     cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
+    analysis_provider: str = DEFAULT_ANALYSIS_PROVIDER
+    max_analysis_chars: int = DEFAULT_MAX_ANALYSIS_CHARS
 
     def __post_init__(self) -> None:
         if self.max_version_chars < 1:
             raise ValueError("max_version_chars debe ser un entero positivo")
+        if self.max_analysis_chars < 1:
+            raise ValueError("max_analysis_chars debe ser un entero positivo")
         if not self.database_url.strip():
             raise ValueError("database_url no puede estar vacío")
 
@@ -61,4 +71,21 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         else DEFAULT_CORS_ORIGINS
     )
 
-    return Settings(database_url=database_url, max_version_chars=max_chars, cors_origins=origins)
+    provider = source.get("NOVEL_ENGINE_ANALYSIS_PROVIDER", "").strip() or DEFAULT_ANALYSIS_PROVIDER
+
+    raw_analysis_limit = source.get("NOVEL_ENGINE_MAX_ANALYSIS_CHARS", "").strip()
+    if raw_analysis_limit:
+        try:
+            analysis_limit = int(raw_analysis_limit)
+        except ValueError as error:
+            raise ValueError("NOVEL_ENGINE_MAX_ANALYSIS_CHARS debe ser un entero") from error
+    else:
+        analysis_limit = DEFAULT_MAX_ANALYSIS_CHARS
+
+    return Settings(
+        database_url=database_url,
+        max_version_chars=max_chars,
+        cors_origins=origins,
+        analysis_provider=provider,
+        max_analysis_chars=analysis_limit,
+    )

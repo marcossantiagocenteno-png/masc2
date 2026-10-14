@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, utc_now
@@ -123,3 +123,67 @@ class ReviewItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
     review: Mapped[EditorialReview] = relationship(back_populates="items")
+
+
+class AnalysisRun(Base):
+    """Análisis de un fragmento de una versión. Inmutable.
+
+    Guarda el texto del fragmento y el proveedor usado. El proveedor simulado
+    queda marcado con ``provider_simulated`` y su etiqueta visible.
+    """
+
+    __tablename__ = "analysis_runs"
+    __table_args__ = (
+        CheckConstraint("fragment_start >= 0", name="ck_analysis_fragment_start_non_negative"),
+        CheckConstraint("fragment_end > fragment_start", name="ck_analysis_fragment_end_after_start"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version_id: Mapped[int] = mapped_column(
+        ForeignKey("manuscript_versions.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    fragment_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    fragment_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    fragment_text: Mapped[str] = mapped_column(Text, nullable=False)
+    provider_name: Mapped[str] = mapped_column(String(60), nullable=False)
+    provider_label: Mapped[str] = mapped_column(String(300), nullable=False)
+    provider_simulated: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+    findings: Mapped[list[AnalysisFinding]] = relationship(
+        back_populates="run",
+        order_by="AnalysisFinding.id",
+    )
+
+
+class AnalysisFinding(Base):
+    """Hallazgo de un análisis. Inmutable.
+
+    ``category`` y ``provenance`` se validan en el servicio con el registro de
+    ``app.analysis.categories``. Las posiciones son absolutas, dentro de la versión.
+    """
+
+    __tablename__ = "analysis_findings"
+    __table_args__ = (
+        CheckConstraint("start_offset >= 0", name="ck_finding_start_non_negative"),
+        CheckConstraint("end_offset > start_offset", name="ck_finding_end_after_start"),
+        CheckConstraint("line_number >= 1", name="ck_finding_line_positive"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("analysis_runs.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    provenance: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(60), nullable=False)
+    quote: Mapped[str] = mapped_column(Text, nullable=False)
+    start_offset: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_offset: Mapped[int] = mapped_column(Integer, nullable=False)
+    line_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    effect: Mapped[str | None] = mapped_column(Text, nullable=True)
+    certainty: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+    run: Mapped[AnalysisRun] = relationship(back_populates="findings")

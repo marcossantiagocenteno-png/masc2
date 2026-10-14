@@ -63,6 +63,40 @@ export type ReviewItemInput = {
   suggestion?: string;
 };
 
+export type AnalysisCategory =
+  | "problema_verificable"
+  | "observacion_literaria"
+  | "inferencia_incierta"
+  | "preferencia_de_gusto"
+  | "elemento_a_preservar";
+
+export type AnalysisFinding = {
+  id: number;
+  category: AnalysisCategory;
+  provenance: "determinista" | "proveedor";
+  source_name: string;
+  quote: string;
+  start_offset: number;
+  end_offset: number;
+  line_number: number;
+  explanation: string;
+  effect: string | null;
+  certainty: "verificable" | "alta" | "media" | "baja" | "no_aplica";
+};
+
+export type AnalysisRun = {
+  id: number;
+  version_id: number;
+  fragment_start: number;
+  fragment_end: number;
+  fragment_text: string;
+  provider_name: string;
+  provider_label: string;
+  provider_simulated: boolean;
+  created_at: string;
+  findings: AnalysisFinding[];
+};
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -123,6 +157,14 @@ export const api = {
   getVersion: (versionId: number) => request<VersionOut>(`/versions/${versionId}`),
 
   listReviews: (versionId: number) => request<ReviewOut[]>(`/versions/${versionId}/reviews`),
+
+  listAnalyses: (versionId: number) => request<AnalysisRun[]>(`/versions/${versionId}/analyses`),
+
+  analyzeFragment: (versionId: number, body: { start_offset: number; end_offset: number }) =>
+    request<AnalysisRun>(`/versions/${versionId}/analyses`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   createReview: (versionId: number, body: { reviewer: string; items: ReviewItemInput[] }) =>
     request<ReviewOut>(`/versions/${versionId}/reviews`, {

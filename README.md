@@ -2,7 +2,7 @@
 
 Aplicación web privada para escribir y editar novelas con asistencia de IA.
 
-**Estado: tarea 002 (textos, versiones y comentarios editoriales).** La aplicación guarda textos en una base de datos local, conserva cada versión sin modificarla y permite comentar fragmentos concretos de una versión. **No hay generación automática de novelas, evaluador basado en IA ni conexión con servicios externos.** Los comentarios son escritos por personas.
+**Estado: análisis editorial de fragmentos.** La aplicación guarda textos en una base de datos local, conserva cada versión sin modificarla, permite comentar fragmentos y analizar un fragmento con un proveedor. **Hoy el único proveedor disponible es el analizador simulado, que no es una IA y no produce juicios literarios.** No hay generación automática de novelas ni conexión con servicios externos.
 
 ## Requisitos
 
@@ -55,6 +55,12 @@ npm run dev
 Abre `http://localhost:3000/manuscritos`.
 
 ## Uso desde la interfaz
+
+### Análisis editorial de un fragmento
+
+En la pantalla de una versión, selecciona un fragmento del contenido y pulsa *Analizar la selección del contenido*. El resultado se muestra en cinco secciones separadas: problemas verificables, observaciones literarias, inferencias inciertas, preferencias de gusto y elementos que conviene preservar. Cada hallazgo cita su fragmento exacto, indica su línea y su certeza, y explica su efecto. El análisis no modifica el texto y queda guardado con esa versión.
+
+**Proveedor.** Por defecto se usa el analizador simulado, y así se indica en la pantalla. Sus observaciones solo describen datos de longitud. Los problemas verificables proceden de reglas mecánicas (repeticiones de palabras funcionales, espacios dobles y comillas sin pareja), no del simulador.
 
 1. **Crear un manuscrito.** En `/manuscritos`, escribe un título y el texto de la versión 1.
 2. **Crear una versión nueva.** Dentro del manuscrito, elige de qué versión partir, edita el texto y guarda. Se crea la versión siguiente. Las anteriores no cambian.
@@ -113,6 +119,8 @@ Las variables se leen del entorno del proceso. **La aplicación no lee ningún a
 | `NOVEL_ENGINE_MAX_VERSION_CHARS` | `500000` | Límite de caracteres por versión. Ver abajo. |
 | `NOVEL_ENGINE_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Orígenes permitidos para el frontend. |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | URL de la API que usa el frontend. |
+| `NOVEL_ENGINE_ANALYSIS_PROVIDER` | `simulado` | Proveedor de análisis. Ningún otro valor está autorizado; responde 503. |
+| `NOVEL_ENGINE_MAX_ANALYSIS_CHARS` | `8000` | Tamaño máximo de un fragmento analizado. |
 
 ### Límite de versión
 
@@ -151,7 +159,8 @@ PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier 
 
 - Un usuario, sin autenticación.
 - Los triggers protegen las versiones frente a la API y frente a SQL normal, pero no frente a quien pueda sustituir el archivo de la base de datos. La comprobación de hash detecta cualquier cambio de contenido en una versión existente.
-- Sin evaluador automático. Las revisiones las escriben personas.
+- Sin evaluador automático real. El único proveedor es el simulado. Las revisiones las escriben personas.
+- Sin ningún proveedor de IA conectado. Conectar uno exige código nuevo y una autorización explícita para enviar textos fuera del equipo.
 - Sin editor enriquecido (Tiptap): el texto se edita en áreas de texto simples.
 - Sin exportación ni copias de seguridad.
 - El benchmark de `evals/` (tarea 001) no está conectado a los textos del usuario.

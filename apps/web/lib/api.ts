@@ -134,13 +134,51 @@ export type ProjectDetail = Project & {
   last_activity_at: string | null;
 };
 
+/** Borrador actual de un manuscrito. ``revision`` es la que debe enviarse en la próxima escritura. */
+export type DraftOut = {
+  manuscript_id: number;
+  revision: number;
+  content: string;
+  char_count: number;
+  sha256: string;
+  base_version_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DraftInitOut = { created: boolean; draft: DraftOut };
+
+export type DraftSaveBody = { content: string; base_revision: number; keep_previous: boolean };
+
+export type RecoveryPointReason =
+  | "periodico"
+  | "significativo"
+  | "conflicto"
+  | "antes_de_restaurar"
+  | "antes_de_sobrescribir";
+
+export type RecoveryPointSummary = {
+  id: number;
+  manuscript_id: number;
+  reason: RecoveryPointReason;
+  char_count: number;
+  sha256: string;
+  draft_revision: number;
+  created_at: string;
+};
+
+export type RecoveryPointOut = RecoveryPointSummary & { content: string };
+
 export class ApiError extends Error {
   readonly status: number;
+  /** Cuerpo JSON completo de la respuesta de error, si lo hubo (p. ej. datos de un conflicto 409). */
+  readonly payload: Record<string, unknown> | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, payload: Record<string, unknown> | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.payload = payload;
   }
 }
 
@@ -157,15 +195,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     let message = `Error HTTP ${response.status}.`;
+    let payload: Record<string, unknown> | null = null;
     try {
-      const body = (await response.json()) as { detail?: unknown };
+      const body = (await response.json()) as Record<string, unknown>;
+      payload = body;
       if (typeof body.detail === "string") {
         message = body.detail;
       }
     } catch {
       // El cuerpo no es JSON: se usa el mensaje genérico.
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, payload);
   }
 
   return (await response.json()) as T;
@@ -192,6 +232,36 @@ export const api = {
     }),
 
   getVersion: (versionId: number) => request<VersionOut>(`/versions/${versionId}`),
+
+  /** Devuelve el borrador existente o crea uno desde la última versión. Nunca sobrescribe. */
+  initDraft: (manuscriptId: number) =>
+    request<DraftInitOut>(`/manuscripts/${manuscriptId}/draft`, { method: "POST" }),
+
+  saveDraft: (manuscriptId: number, body: DraftSaveBody) =>
+    request<DraftOut>(`/manuscripts/${manuscriptId}/draft`, { method: "PUT", body: JSON.stringify(body) }),
+
+  /**
+   * Guardado de último recurso al cerrar la página (pagehide). Es best-effort: no hay
+   * respuesta que leer ni reintento posible. ``keepalive`` permite que la petición
+   * sobreviva a la descarga de la página.
+   */
+  saveDraftKeepalive: (manuscriptId: number, body: DraftSaveBody) => {
+    void fetch(`${API_BASE_URL}/manuscripts/${manuscriptId}/draft`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => undefined);
+  },
+
+  listRecoveryPoints: (manuscriptId: number) =>
+    request<RecoveryPointSummary[]>(`/manuscripts/${manuscriptId}/recovery-points`),
+
+  restoreRecoveryPoint: (manuscriptId: number, pointId: number, baseRevision: number) =>
+    request<DraftOut>(`/manuscripts/${manuscriptId}/recovery-points/${pointId}/restore`, {
+      method: "POST",
+      body: JSON.stringify({ base_revision: baseRevision }),
+    }),
 
   listReviews: (versionId: number) => request<ReviewOut[]>(`/versions/${versionId}/reviews`),
 

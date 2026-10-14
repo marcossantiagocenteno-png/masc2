@@ -2,9 +2,11 @@
 
 ## Estado actual
 
-**No hay copias automáticas.** La única vía de respaldo disponible hoy es copiar el archivo de la base de datos a mano. Está probada en `backend/tests/test_recovery.py`: una copia restaurada devuelve el estado anterior y conserva la inmutabilidad de las versiones.
+**No hay copias automáticas de la base de datos.** La única vía de respaldo disponible hoy es copiar el archivo a mano. Está probada en `backend/tests/test_recovery.py`: una copia restaurada devuelve el estado anterior y conserva la inmutabilidad de las versiones.
 
-Las copias automáticas y el paquete de proyecto restaurable están previstos en la fase 1b y en la fase 5 (ver `PLAN_IMPLEMENTACION.md`).
+Dentro de la aplicación hay otra protección, distinta de la copia: el **borrador** se guarda en el servidor mientras escribes, y tiene **puntos de recuperación** que puedes restaurar desde la página del manuscrito. Restaurar no borra nada: guarda antes el estado actual como punto. Los puntos no son copias de la base de datos.
+
+Las copias automáticas de la base de datos son la siguiente tarea de la fase 1b (decisión D-044). El paquete de proyecto restaurable está previsto en la fase 5 (ver `PLAN_IMPLEMENTACION.md`).
 
 ## Cómo hacer una copia manual
 
@@ -23,10 +25,10 @@ Conserva siempre el archivo que sustituyes, por si la copia era anterior a algo 
 
 ## Migraciones y copias
 
-Antes de aplicar una migración a una base con datos reales, **haz una copia** como se describe arriba. La migración `0004` no tiene reversión automática: para volver atrás, restaura la copia previa.
+Antes de aplicar una migración a una base con datos reales, **haz una copia** como se describe arriba. Las migraciones `0004` y `0005` no tienen reversión automática: para volver atrás, restaura la copia previa.
 
 ## Qué no protege una copia manual
 
-- Cambios hechos en el editor sin pulsar «Guardar como nueva versión» (el autoguardado no existe todavía).
+- Borradores y puntos de recuperación escritos después de la copia. Están en la misma base de datos, así que una copia antigua no los contiene.
 - Errores de hardware del disco que ocurran antes de la copia: la copia es tan segura como el medio donde se guarda.
 - Un archivo copiado mientras la aplicación escribe puede no ser consistente. Por eso se pide detener el backend.

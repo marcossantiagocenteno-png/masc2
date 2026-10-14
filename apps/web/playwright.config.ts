@@ -36,6 +36,11 @@ export default defineConfig({
   },
   projects: [
     {
+      // Pruebas unitarias del guardado: sin navegador, con temporizadores controlados.
+      name: "unit",
+      testDir: "./tests/unit",
+    },
+    {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],

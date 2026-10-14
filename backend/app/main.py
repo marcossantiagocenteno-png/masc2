@@ -6,6 +6,7 @@ Endpoints:
 - ``/manuscripts``, ``/versions``: textos, versiones y revisiones editoriales (ver ``app.texts.routes``).
 - ``/versions/{id}/analyses``: análisis editorial de fragmentos (ver ``app.analysis.routes``).
 - ``/projects``: proyectos (novelas) aislados, archivables y restaurables (ver ``app.projects.routes``).
+- ``/manuscripts/{id}/draft`` y ``/recovery-points``: borradores y puntos de recuperación (ver ``app.drafts.routes``).
 
 La base de datos debe estar migrada antes de arrancar: ``python -m alembic upgrade head``.
 """
@@ -19,7 +20,10 @@ from pydantic import BaseModel
 
 from app import __version__
 from app.config import Settings, load_settings
+from app.db.base import utc_now
 from app.db.session import create_engine_for, create_session_factory
+from app.drafts.errors import DraftConflict
+from app.drafts.routes import router as drafts_router
 from app.analysis.routes import router as analysis_router
 from app.projects.routes import router as projects_router
 from app.texts.errors import TextError
@@ -43,17 +47,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = settings
     application.state.engine = engine
     application.state.session_factory = create_session_factory(engine)
+    # Reloj inyectable: las pruebas lo sustituyen para controlar los intervalos de los puntos.
+    application.state.clock = utc_now
 
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PUT"],
         allow_headers=["Content-Type"],
     )
 
     @application.exception_handler(TextError)
     def _handle_text_error(_request: Request, error: TextError) -> JSONResponse:
-        return JSONResponse(status_code=error.status_code, content={"detail": str(error)})
+        content: dict[str, object] = {"detail": str(error)}
+        if isinstance(error, DraftConflict):
+            content.update(error.payload)
+        return JSONResponse(status_code=error.status_code, content=content)
 
     @application.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -63,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(texts_router)
     application.include_router(analysis_router)
     application.include_router(projects_router)
+    application.include_router(drafts_router)
     return application
 
 

@@ -7,7 +7,7 @@ La especificación completa de Novel Engine se mantiene en el mensaje de encargo
 | 1. Biblioteca de novelas | Crear, abrir, renombrar, archivar, restaurar, duplicar proyectos aislados | Parcial: crear, renombrar, archivar, restaurar y listar. Falta duplicar, buscar y vincular. |
 | 2. Panel de control | Dónde se quedó, pendientes, observaciones, acciones rápidas | Parcial: estado, recuento y último manuscrito. Faltan pendientes, observaciones y actividad. |
 | 3. Planificación narrativa | Elementos opcionales, estados de información, decisiones | No implementado |
-| 4. Manuscrito y editor | Capítulos y escenas, guardado automático, puntos de recuperación | Parcial: versiones inmutables. No hay capítulos ni autoguardado. |
+| 4. Manuscrito y editor | Capítulos y escenas, guardado automático, puntos de recuperación | Parcial: versiones inmutables, borrador con autoguardado y puntos de recuperación. No hay capítulos. |
 | 5. Memoria narrativa | Hechos con fuentes, contradicciones, distinción de niveles de certeza | No implementado |
 | 6. Centro editorial | Tareas con estados, dependencias, historial | No implementado |
 | 7. Tareas y decisiones | Decisiones con alternativas y escenarios separados del canon | No implementado |

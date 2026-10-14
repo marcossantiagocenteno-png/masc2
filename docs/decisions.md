@@ -250,6 +250,27 @@ La auditoría muestra que el editor puede perder texto. La fase de persistencia 
 
 No hay copias automáticas. La copia manual del archivo SQLite, con la aplicación detenida, está documentada en `docs/RESPALDO_Y_RESTAURACION.md` y probada (`test_recovery.py`). Se sustituirá por copias automáticas en la fase 1b.
 
+
+## D-041 · El borrador vive en tablas propias, no en las versiones
+**Estado:** aceptada
+
+El texto de trabajo se guarda en `manuscript_drafts` (una fila por manuscrito) y sus copias en `draft_recovery_points`, inmutables. `manuscript_versions` no cambia. Motivo: las versiones son el registro inmutable del autor (D-016). Un estado «borrador» en la misma tabla obligaría a relajar esa garantía. La migración `0005` solo crea tablas.
+
+## D-042 · Escritura condicional por revisión, con 409 que preserva el texto
+**Estado:** aceptada
+
+Cada escritura indica la revisión que conoce el cliente. La condición y la escritura son una sola sentencia SQL, así que dos escrituras no pueden aplicarse sobre la misma revisión. Una escritura no válida responde 409 y guarda el texto rechazado como punto `conflicto` antes de responder. Restaurar y «Mantener mi texto» son transaccionales: guardan el estado anterior en el mismo `COMMIT`. Probado con una prueba que falla si se quita la condición.
+
+## D-043 · Política de puntos de recuperación
+**Estado:** aceptada, provisional
+
+Un punto al primer guardado; después, uno cada 5 minutos con cambios, o uno por cambio importante (500 caracteres de diferencia de longitud, con 60 s desde el último). La longitud es una aproximación barata: un cambio que sustituya 500 caracteres por otros 500 no cuenta como importante. No se guarda un punto por pulsación. Los puntos no se borran todavía: el crecimiento está acotado por los intervalos, pero no hay retención (ver pendientes).
+
+## D-044 · Copias automáticas aplazadas
+**Estado:** aceptada
+
+No se han implementado copias automáticas en esta fase. Copiar un archivo SQLite mientras se escribe exige la API de copia en caliente de SQLite, una rotación con límite de retención y una restauración probada. Mezclarlo con el borrador añadía riesgo a la parte que ya funciona. Es la primera tarea de la siguiente fase de persistencia.
+
 ---
 
 ## Pendientes
@@ -264,7 +285,8 @@ No hay copias automáticas. La copia manual del archivo SQLite, con la aplicaci�
 | **Primera llamada real** | Requiere clave y modelo del usuario, y su aprobación de envío (D-028, D-029). No se ha ejecutado. | Cuando el usuario lo decida. |
 | **Registro de uso y coste** | La respuesta trae `usage`, pero no se guarda (evita registrar datos de más). | Si se necesita control de costes. |
 | **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
-| **Autoguardado y puntos de recuperación** | El editor puede perder texto sin guardar (AUDITORIA_TECNICA.md). | Fase 1b, prioridad máxima. |
-| **Copias automáticas y paquete de proyecto** | Solo hay copia manual (D-040). | Fases 1b y 5. |
+| **Copias automáticas de la base de datos** | Solo hay copia manual (D-040, D-044). | Siguiente tarea inmediata. |
+| **Retención de puntos de recuperación** | Los puntos no se borran nunca (D-043). | Antes de que el tamaño sea un problema real. |
+| **Paquete de proyecto restaurable** | Sin exportación ni importación completa. | Fase 5. |
 | **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |
 | **Pesos de las dimensiones** | La fase 0 no combina puntuaciones. | Cuando exista una evaluación completa. |

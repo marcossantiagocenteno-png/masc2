@@ -223,3 +223,55 @@ class AnalysisFinding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
     run: Mapped[AnalysisRun] = relationship(back_populates="findings")
+
+
+class ManuscriptDraft(Base):
+    """Borrador en edición de un manuscrito. Mutable, pero solo mediante escritura condicional.
+
+    ``revision`` es un contador que sube en cada cambio. Una escritura solo se aplica
+    si la revisión que conoce el cliente es la actual: así una respuesta o una escritura
+    antigua no puede reemplazar un borrador más reciente.
+
+    Un borrador no es una versión formal: no aparece en ``manuscript_versions`` hasta
+    que el autor lo guarda como versión explícitamente.
+    """
+
+    __tablename__ = "manuscript_drafts"
+    __table_args__ = (CheckConstraint("revision >= 1", name="ck_draft_revision_positive"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    manuscript_id: Mapped[int] = mapped_column(
+        ForeignKey("manuscripts.id", ondelete="RESTRICT"), nullable=False, unique=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    base_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("manuscript_versions.id", ondelete="RESTRICT"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class DraftRecoveryPoint(Base):
+    """Copia recuperable de un borrador. Inmutable.
+
+    ``reason`` indica por qué se creó: ``periodico``, ``significativo``, ``conflicto``,
+    ``antes_de_sobrescribir`` o ``antes_de_restaurar``. Ningún punto se modifica ni se
+    borra: restaurar crea un estado nuevo, nunca destruye el anterior.
+    """
+
+    __tablename__ = "draft_recovery_points"
+    __table_args__ = (CheckConstraint("draft_revision >= 0", name="ck_point_revision_non_negative"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    manuscript_id: Mapped[int] = mapped_column(
+        ForeignKey("manuscripts.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    reason: Mapped[str] = mapped_column(String(40), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    draft_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)

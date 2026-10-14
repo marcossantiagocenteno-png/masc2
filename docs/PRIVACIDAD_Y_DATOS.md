@@ -4,6 +4,7 @@
 
 - **Base de datos local**: `data/novel_engine.sqlite` dentro del repositorio. La carpeta `data/` está en `.gitignore`. Contiene manuscritos, versiones, comentarios y análisis.
 - **Pruebas**: usan bases temporales (`pytest`) y `data/e2e.sqlite` (Playwright). Tampoco se versionan.
+- **Borradores y puntos de recuperación**: el texto en edición y sus copias viven en la misma base local (`data/`). No salen del equipo.
 - **Nada se sube al repositorio** salvo código, documentación y casos ficticios de `evals/cases`.
 
 ## Qué sale del equipo

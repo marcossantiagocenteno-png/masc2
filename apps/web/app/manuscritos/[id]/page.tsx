@@ -2,10 +2,37 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { api, ApiError, formatDate, type ManuscriptSummary, type VersionOut, type VersionSummary } from "@/lib/api";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import DraftStatus from "@/components/DraftStatus";
+import RecoveryPoints from "@/components/RecoveryPoints";
+import {
+  api,
+  ApiError,
+  formatDate,
+  type ManuscriptSummary,
+  type RecoveryPointSummary,
+  type VersionOut,
+  type VersionSummary,
+} from "@/lib/api";
+import { DraftSaver, type SaveStatus } from "@/lib/draft-saver";
 
-/** Versiones de un manuscrito y creación de una versión nueva a partir de cualquiera de ellas. */
+const NETWORK_HINT = "No se pudo completar la operación.";
+
+function loadPoints(manuscriptId: number) {
+  return api.listRecoveryPoints(manuscriptId);
+}
+
+function messageOf(reason: unknown, fallback = NETWORK_HINT): string {
+  return reason instanceof ApiError ? reason.message : fallback;
+}
+
+/**
+ * Versiones de un manuscrito y su borrador de trabajo.
+ *
+ * El texto del editor es el borrador. Se guarda en el servidor mientras se escribe
+ * (ver ``DraftSaver``), se recupera al volver a abrir la página y tiene puntos de
+ * recuperación. Crear una versión formal sigue siendo una acción explícita.
+ */
 export default function ManuscriptPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -15,63 +42,218 @@ export default function ManuscriptPage() {
   const [versions, setVersions] = useState<VersionSummary[] | null>(null);
   const [baseId, setBaseId] = useState<number | null>(null);
   const [content, setContent] = useState("");
-  // Contenido tal como llegó de la versión de partida. Si difiere, hay texto sin guardar.
-  const [loadedContent, setLoadedContent] = useState("");
-  // true si el autor ha escrito en el editor desde la última carga. La carga asíncrona
-  // de la versión de partida no debe sustituir ese texto.
-  const userEditedRef = useRef(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<SaveStatus | null>(null);
+  const [points, setPoints] = useState<RecoveryPointSummary[] | null>(null);
+  const [pointsError, setPointsError] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const saverRef = useRef<DraftSaver | null>(null);
 
   const byId = useMemo(() => new Map((versions ?? []).map((v) => [v.id, v])), [versions]);
+  const ready = status !== null;
 
+  function refreshPoints() {
+    loadPoints(manuscriptId).then(
+      (list) => {
+        setPoints(list);
+        setPointsError(null);
+      },
+      (reason: unknown) => setPointsError(messageOf(reason, "No se pudieron cargar los puntos.")),
+    );
+  }
+
+  // Carga: versiones, manuscrito y borrador. El borrador existente nunca se reemplaza.
   useEffect(() => {
     let active = true;
-    Promise.all([api.getManuscript(manuscriptId), api.listVersions(manuscriptId)])
-      .then(([manuscriptData, versionData]) => {
+    async function load() {
+      try {
+        const [manuscriptData, versionData, initialized] = await Promise.all([
+          api.getManuscript(manuscriptId),
+          api.listVersions(manuscriptId),
+          api.initDraft(manuscriptId),
+        ]);
         if (!active) return;
         setManuscript(manuscriptData);
         setVersions(versionData);
         const latest = versionData[versionData.length - 1];
         if (latest) setBaseId(latest.id);
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "Error desconocido.");
-      });
+
+        saverRef.current?.dispose();
+        // Un guardado confirmado puede haber creado un punto de recuperación: la lista se refresca.
+        let savingInFlight = false;
+        saverRef.current = new DraftSaver(
+          initialized.draft,
+          (body) => api.saveDraft(manuscriptId, body),
+          (next) => {
+            if (!active) return;
+            if (next.kind === "saving") savingInFlight = true;
+            if (next.kind === "saved" && savingInFlight) {
+              savingInFlight = false;
+              void loadPoints(manuscriptId).then(
+                (list) => active && setPoints(list),
+                () => undefined,
+              );
+            }
+            setStatus(next);
+          },
+        );
+        setContent(initialized.draft.content);
+        setStatus({ kind: "saved", at: null });
+        const list = await api.listRecoveryPoints(manuscriptId);
+        if (active) setPoints(list);
+      } catch (reason: unknown) {
+        if (active) setError(messageOf(reason, "Error desconocido."));
+      }
+    }
+    void load();
     return () => {
       active = false;
     };
   }, [manuscriptId]);
 
-  // Al cambiar la versión de partida, se carga su contenido para editarlo como punto de partida.
   useEffect(() => {
-    if (baseId === null) return;
-    api
-      .getVersion(baseId)
-      .then((version: VersionOut) => {
-        setLoadedContent(version.content);
-        if (!userEditedRef.current) setContent(version.content);
-      })
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Error desconocido."));
-  }, [baseId]);
+    return () => saverRef.current?.dispose();
+  }, []);
 
-  /** Cambia la versión de partida. Si hay texto sin guardar, pide confirmación antes de sustituirlo. */
-  function handleBaseChange(nextId: number) {
-    if (nextId === baseId) return;
-    const hasUnsavedText = content !== loadedContent;
-    if (hasUnsavedText && !window.confirm("Hay texto sin guardar en la nueva versión. ¿Reemplazarlo con el contenido de la versión elegida?")) {
+  // Cerrar o recargar con cambios sin confirmar: aviso del navegador y envío de último recurso.
+  useEffect(() => {
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (saverRef.current?.hasUnsavedChanges()) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    }
+    function onPageHide() {
+      const body = saverRef.current?.keepaliveRequest();
+      if (body) api.saveDraftKeepalive(manuscriptId, body);
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [manuscriptId]);
+
+  function handleEdit(value: string) {
+    setContent(value);
+    saverRef.current?.edit(value);
+  }
+
+  /** Cambia la versión de partida. Si el texto difiere, pide confirmación y lo guarda como punto antes de reemplazarlo. */
+  async function handleBaseChange(nextId: number) {
+    if (nextId === baseId || !saverRef.current) return;
+    setFormError(null);
+    let version: VersionOut;
+    try {
+      version = await api.getVersion(nextId);
+    } catch (reason) {
+      setFormError(messageOf(reason, "No se pudo cargar la versión elegida."));
+      return;
+    }
+    if (
+      version.content !== content &&
+      !window.confirm(
+        "Se reemplazará el texto del editor por el de la versión elegida. El texto anterior queda en los puntos de recuperación. ¿Continuar?",
+      )
+    ) {
       return; // El select es controlado: vuelve a mostrar la versión anterior.
     }
-    userEditedRef.current = false;
+    const replaced = await saverRef.current.replace(version.content);
+    if (!replaced) {
+      setFormError("No se ha podido guardar el texto actual; no se ha reemplazado. Reintenta o descarga una copia.");
+      return;
+    }
+    setContent(version.content);
     setBaseId(nextId);
+    refreshPoints();
+  }
+
+  /** Antes de salir por un enlace interno, guarda lo pendiente. Si no puede, avisa. */
+  async function guardNavigation(event: MouseEvent<HTMLElement>) {
+    const saver = saverRef.current;
+    const anchor = (event.target as HTMLElement).closest("a");
+    if (!saver || !anchor || !saver.hasUnsavedChanges()) return;
+    const href = anchor.getAttribute("href");
+    if (!href || !href.startsWith("/")) return;
+    event.preventDefault();
+    if (await saver.flush()) {
+      router.push(href);
+      return;
+    }
+    if (window.confirm("No se ha podido guardar el texto. ¿Salir igualmente? El texto que no está guardado se perdería.")) {
+      router.push(href);
+    }
+  }
+
+  async function handleRetry() {
+    await saverRef.current?.retry();
+  }
+
+  function handleUseServer() {
+    const text = saverRef.current?.useServerContent();
+    if (text !== null && text !== undefined) setContent(text);
+    refreshPoints();
+  }
+
+  async function handleKeepMine() {
+    await saverRef.current?.keepMine();
+    refreshPoints();
+  }
+
+  function downloadCopy() {
+    const safeName = (manuscript?.title ?? "manuscrito").replace(/[^\p{L}\p{N} _-]+/gu, "_");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${safeName}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleRestore(point: RecoveryPointSummary) {
+    const saver = saverRef.current;
+    if (!saver) return;
+    if (
+      !window.confirm(
+        "El texto actual se guardará como punto «Antes de restaurar» y el borrador pasará a ser el de este punto. ¿Restaurar?",
+      )
+    ) {
+      return;
+    }
+    setRestoreError(null);
+    if (!(await saver.flush())) {
+      setRestoreError("No se ha podido guardar el texto actual. No se ha restaurado nada.");
+      return;
+    }
+    try {
+      const draft = await api.restoreRecoveryPoint(manuscriptId, point.id, saver.getRevision());
+      saver.reset(draft);
+      setContent(draft.content);
+      refreshPoints();
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.status === 409) {
+        setRestoreError("El borrador ha cambiado en otra ventana. Recarga la página antes de restaurar.");
+      } else {
+        setRestoreError(messageOf(reason, "No se pudo restaurar el punto."));
+      }
+    }
   }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (baseId === null) return;
+    if (baseId === null || !saverRef.current) return;
     setSaving(true);
-    setError(null);
+    setFormError(null);
+    // El borrador debe contener el mismo texto que la versión que se crea, así que se guarda antes.
+    if (!(await saverRef.current.flush())) {
+      setFormError("No se ha podido guardar el borrador; la versión no se ha creado.");
+      setSaving(false);
+      return;
+    }
     try {
       const created = await api.createVersion(manuscriptId, {
         content,
@@ -80,7 +262,7 @@ export default function ManuscriptPage() {
       });
       router.push(`/manuscritos/${manuscriptId}/versiones/${created.id}`);
     } catch (reason) {
-      setError(reason instanceof ApiError ? reason.message : "No se pudo crear la versión.");
+      setFormError(messageOf(reason, "No se pudo crear la versión."));
       setSaving(false);
     }
   }
@@ -99,7 +281,10 @@ export default function ManuscriptPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6">
+    <main
+      onClickCapture={guardNavigation}
+      className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6"
+    >
       <header className="flex flex-col gap-2">
         <Link href="/manuscritos" className="text-sm text-[var(--color-muted)] underline">
           Manuscritos
@@ -143,14 +328,15 @@ export default function ManuscriptPage() {
           Nueva versión
         </h2>
         <p className="text-sm text-[var(--color-muted)]">
-          Guardar crea una versión nueva. Las versiones anteriores no cambian.
+          El texto se guarda como borrador mientras escribes. Guardar como nueva versión crea una versión formal; las
+          anteriores no cambian.
         </p>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Partir de</span>
             <select
               value={baseId ?? ""}
-              onChange={(event) => handleBaseChange(Number(event.target.value))}
+              onChange={(event) => void handleBaseChange(Number(event.target.value))}
               className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
             >
               {versions?.map((version) => (
@@ -165,14 +351,19 @@ export default function ManuscriptPage() {
             <textarea
               required
               rows={12}
+              disabled={!ready}
               value={content}
-              onChange={(event) => {
-                userEditedRef.current = true;
-                setContent(event.target.value);
-              }}
+              onChange={(event) => handleEdit(event.target.value)}
               className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2 font-serif"
             />
           </label>
+          <DraftStatus
+            status={status}
+            onRetry={() => void handleRetry()}
+            onUseServer={handleUseServer}
+            onKeepMine={() => void handleKeepMine()}
+            onDownload={downloadCopy}
+          />
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Nota (opcional)</span>
             <input
@@ -185,19 +376,26 @@ export default function ManuscriptPage() {
           <div>
             <button
               type="submit"
-              disabled={saving || baseId === null}
+              disabled={saving || baseId === null || !ready}
               className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Guardar como nueva versión"}
             </button>
           </div>
         </form>
-        {error ? (
+        {formError ? (
           <p role="alert" className="text-red-700">
-            {error}
+            {formError}
           </p>
         ) : null}
       </section>
+
+      <RecoveryPoints points={points} error={pointsError} onRestore={(point) => void handleRestore(point)} onRefresh={refreshPoints} />
+      {restoreError ? (
+        <p role="alert" className="text-red-700">
+          {restoreError}
+        </p>
+      ) : null}
     </main>
   );
 }

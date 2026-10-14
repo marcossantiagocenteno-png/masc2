@@ -187,7 +187,9 @@ El backend y el frontend escuchan solo en `localhost` cuando se arrancan con los
 
 ## Respaldo y restauración
 
-**No hay copias automáticas todavía.** Para respaldar, detén el backend y copia `data\novel_engine.sqlite`. Para restaurar, detén el backend y sustituye el archivo por la copia. Detalles y advertencias en [`docs/RESPALDO_Y_RESTAURACION.md`](docs/RESPALDO_Y_RESTAURACION.md).
+El texto que escribes en el editor se guarda solo como **borrador** en la base de datos (autoguardado), y se recupera al volver a abrir la página. El borrador no es una versión: las versiones solo se crean con «Guardar como nueva versión». Hay puntos de recuperación del borrador, que puedes restaurar desde la página del manuscrito.
+
+**No hay copias automáticas de la base de datos todavía.** Para respaldar, detén el backend y copia `data\novel_engine.sqlite`. Para restaurar, detén el backend y sustituye el archivo por la copia. Detalles y advertencias en [`docs/RESPALDO_Y_RESTAURACION.md`](docs/RESPALDO_Y_RESTAURACION.md).
 
 ## Migraciones
 
@@ -198,7 +200,7 @@ python -m alembic downgrade base    # revierte todas (borra las tablas)
 python -m alembic check             # comprueba que los modelos coinciden con las migraciones
 ```
 
-La migración `0004` (proyectos) no tiene bajada automática: para revertirla, restaura la copia de la base de datos anterior a la migración. PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier motor que no sea SQLite, porque la inmutabilidad se implementa con triggers de SQLite.
+Las migraciones `0004` (proyectos) y `0005` (borradores y puntos de recuperación) no tienen bajada automática: para revertirlas, restaura la copia de la base de datos anterior a la migración. PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier motor que no sea SQLite, porque la inmutabilidad se implementa con triggers de SQLite.
 
 ## Documentación
 
@@ -219,5 +221,6 @@ La migración `0004` (proyectos) no tiene bajada automática: para revertirla, r
 - El juicio literario de Claude no está evaluado. El backend comprueba forma, citas, posiciones, procedencia y ausencia de atribuciones de intención, pero no si el diagnóstico es acertado.
 - No se registra el uso de tokens ni el coste por análisis.
 - Sin editor enriquecido (Tiptap): el texto se edita en áreas de texto simples.
-- Sin exportación ni copias de seguridad.
+- Sin exportación ni copias automáticas de la base de datos.
+- El autoguardado necesita el backend en marcha. Si cae o no hay conexión, el texto sigue en el editor, el indicador lo dice y no se confirma como guardado hasta que el servidor responda. Un cierre de la pestaña con cambios sin confirmar muestra un aviso del navegador, pero el envío de último recurso no tiene garantía.
 - El benchmark de `evals/` (tarea 001) no está conectado a los textos del usuario.

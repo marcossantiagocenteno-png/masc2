@@ -47,6 +47,8 @@ masc2/
 | `backend/app/texts/routes.py` | Endpoints REST. | Reglas de negocio. |
 | `backend/migrations` | Esquema y triggers de inmutabilidad, versionados con Alembic. | Datos de ejemplo. |
 | `backend/app/analysis` | Análisis editorial de fragmentos: proveedores, verificaciones, validación y persistencia. | Generación de texto y reescritura. |
+| `backend/app/drafts` | Borrador por manuscrito con escritura condicional, puntos de recuperación, política de puntos y restauración transaccional. | Versiones formales: no las crea ni las modifica. |
+| `apps/web/lib/draft-saver.ts` | Guardado del borrador sin React: una escritura en vuelo, anti-rebote, estados y conflictos. | Renderizado. |
 | `backend/app/benchmark` | Validación de casos y rúbricas (tarea 001). | No se usa en la aplicación de textos. |
 
 ## Modelo de datos
@@ -54,6 +56,8 @@ masc2/
 | Tabla | Contenido | Inmutable |
 |---|---|---|
 | `projects` | Nombre, estado (`activo` o `archivado`), fechas. Sin borrado. | No se borra; se archiva. |
+| `manuscript_drafts` | Texto de trabajo de un manuscrito (uno por manuscrito), revisión, hash y recuento. | No. Cambia solo con escritura condicional. |
+| `draft_recovery_points` | Copias del borrador con su motivo (`periodico`, `significativo`, `conflicto`, `antes_de_sobrescribir`, `antes_de_restaurar`). | Sí (triggers). |
 | `manuscripts` | Título, fecha y `project_id` (nulo para manuscritos anteriores a los proyectos). Sin contenido propio. | No (no hay endpoints para editarlo). |
 | `manuscript_versions` | Número correlativo, contenido normalizado, SHA-256, número de caracteres, nota, `parent_version_id`. | Sí (servicio y triggers). |
 | `analysis_runs` | Versión analizada, fragmento y su texto, proveedor, etiqueta y si era simulado. | Sí (triggers). |
@@ -109,6 +113,30 @@ Las variables se leen del entorno del proceso. La aplicación no carga archivos 
 - Los textos se guardan en `data/`, que está en `.gitignore`.
 - Los manuscritos no se deben añadir a `evals/cases`, que es la carpeta de casos ficticios del benchmark.
 - Las pruebas E2E usan `data/e2e.sqlite`, también ignorado.
+
+## Persistencia del borrador
+
+El texto del editor es un **borrador**, separado de las versiones. Migración `0005`.
+
+- **Un borrador por manuscrito**, con un número de revisión que sube en cada guardado. Abrir la página lo crea desde la última versión si no existe, y nunca reemplaza uno existente (`POST /manuscripts/{id}/draft` devuelve `created: false` si ya estaba).
+- **Escritura condicional.** `PUT /manuscripts/{id}/draft` indica la revisión que conoce el cliente. La comprobación y la escritura son una sola sentencia SQL (`UPDATE ... WHERE revision = ?`). Si no coincide, responde **409** con `current_revision`, `current_content` y `preserved_point_id`, y el texto rechazado queda en un punto `conflicto`. Nada se sobrescribe.
+- **Mantener el texto propio.** Con `keep_previous`, el contenido anterior se guarda antes como punto `antes_de_sobrescribir`, en la misma transacción.
+- **Puntos de recuperación.** Política en `app/drafts/policy.py`: uno al primer guardado; después, uno cada 5 minutos de cambios, o uno por cambio importante (500 caracteres de diferencia de longitud, con al menos 60 s desde el último). No hay un punto por pulsación.
+- **Restaurar.** `POST /manuscripts/{id}/recovery-points/{punto}/restore` guarda el estado actual como `antes_de_restaurar` y cambia el borrador, en una sola transacción. Crea una revisión nueva. No toca las versiones.
+- **Las versiones formales no cambian.** Ninguna operación del borrador crea versiones. «Guardar como nueva versión» sigue siendo explícito.
+
+### Comportamiento ante fallos
+
+| Caso | Qué ocurre |
+|---|---|
+| El servidor no responde o no hay conexión | El indicador muestra el error. El texto queda en el editor. «Reintentar» envía de nuevo. No se muestra «guardado». |
+| Escrituras fuera de orden | Solo hay una escritura en vuelo; las demás esperan y usan la revisión que devolvió la anterior. Una escritura con revisión antigua recibe 409. |
+| Otra ventana guardó antes | 409 y estado «conflicto». El texto de esta ventana se conserva en un punto `conflicto`. El usuario elige entre la versión guardada y «Mantener mi texto». |
+| Error de validación o límite (413) | El borrador no cambia. El texto sigue en el editor, con copia `.txt` disponible. |
+| Cambio de página con cambios pendientes | Se guarda antes de navegar. Si no puede, pide confirmación. |
+| Cierre o recarga con cambios pendientes | Aviso del navegador. Además, un envío `keepalive` de hasta 64 KB. Es de mejor esfuerzo: no hay respuesta que leer. |
+
+Límite del borrador: el mismo que las versiones (500.000 caracteres).
 
 ## Análisis editorial de fragmentos
 

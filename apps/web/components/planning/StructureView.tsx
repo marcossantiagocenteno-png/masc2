@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { api, ApiError, type StructureKind, type StructureNode } from "@/lib/api";
+import { api, ApiError, type SceneWritingState, type StructureKind, type StructureNode } from "@/lib/api";
 import {
   allowedParentKinds,
   buildTree,
@@ -21,6 +21,12 @@ import { StructureMove } from "./StructureMove";
 import { useUnsavedChanges } from "./UnsavedChanges";
 
 const KIND_OPTIONS: StructureKind[] = ["acto", "capitulo", "escena"];
+
+const WRITING_LABELS: Record<SceneWritingState, string> = {
+  sin_escritura: "Sin escritura",
+  sin_texto: "Sin texto",
+  con_texto: "Con texto",
+};
 
 /** Una operación que cambia el canon de algún nodo: se muestra antes de enviarla y se envía solo con confirmación. */
 type PendingChange = {
@@ -256,9 +262,12 @@ export function StructureView({ projectId }: { projectId: number }) {
             </button>
           ))}
           {node.kind === "escena" ? (
-            <Link href={`/proyectos/${projectId}/estructura/${node.id}`} aria-label={`Abrir ${label}`} className="text-xs underline">
-              Abrir escena
-            </Link>
+            <>
+              <span className="text-xs text-[var(--color-muted)]">{WRITING_LABELS[node.escritura ?? "sin_escritura"]}</span>
+              <Link href={`/proyectos/${projectId}/estructura/${node.id}`} aria-label={`Abrir ${label}`} className="text-xs underline">
+                Escribir
+              </Link>
+            </>
           ) : null}
         </div>
         {children.length > 0 && expanded ? <ul className="flex flex-col">{children.map(renderNode)}</ul> : null}

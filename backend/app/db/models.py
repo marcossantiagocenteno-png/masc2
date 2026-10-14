@@ -441,3 +441,24 @@ class NarrativeLink(CanonColumns, Base):
     target_kind: Mapped[str] = mapped_column(String(30), nullable=False)
     target_id: Mapped[int] = mapped_column(Integer, nullable=False)
     relation: Mapped[str] = mapped_column(String(40), nullable=False)
+
+
+class SceneManuscript(Base):
+    """Unión inmutable entre una escena y su manuscrito propio (migración 0009).
+
+    El texto vive en el manuscrito (borrador, versiones y puntos de recuperación). Esta fila solo
+    identifica la pareja: ni el título ni la posición forman parte de la unión.
+    """
+
+    __tablename__ = "scene_manuscripts"
+    __table_args__ = (
+        UniqueConstraint("node_id", name="uq_scene_manuscripts_node"),
+        UniqueConstraint("manuscript_id", name="uq_scene_manuscripts_manuscript"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("structure_nodes.id"), nullable=False)
+    manuscript_id: Mapped[int] = mapped_column(ForeignKey("manuscripts.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+

@@ -47,6 +47,7 @@ PLANNING_TABLES = frozenset(
 TABLES_SINCE: dict[str, frozenset[str]] = {
     "0005_borradores_y_recuperacion": DRAFT_TABLES,
     "0006_planificacion_narrativa": PLANNING_TABLES,
+    "0009_escritura_escenas": frozenset({"scene_manuscripts"}),
 }
 COUNTED_TABLES = (
     "projects",

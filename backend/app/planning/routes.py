@@ -6,7 +6,7 @@ necesita los tipos resueltos en tiempo de ejecución.
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.planning.schemas import (
@@ -22,6 +22,8 @@ from app.planning.schemas import (
     ReordenarIn,
     VinculoIn,
 )
+from app.drafts.schemas import DraftOut, DraftSave
+from app.planning.escritura import SIN_ESCRITURA, SceneWritingService, scene_states
 from app.planning.service import PlanningService
 from app.texts.routes import get_session
 
@@ -150,9 +152,61 @@ _register_kind("acontecimientos", "acontecimiento", AcontecimientoIn)
 
 @router.get("/estructura")
 def list_structure(
-    project_id: int, include_archived: bool = False, service: PlanningService = Depends(get_service)
+    project_id: int,
+    include_archived: bool = False,
+    service: PlanningService = Depends(get_service),
+    session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    return [_out(row) for row in service.list("estructura", project_id, include_archived)]
+    """Nodos de la estructura. Cada escena lleva ``escritura``: ``sin_escritura``, ``sin_texto`` o ``con_texto``."""
+    states = scene_states(session, project_id)
+    rows = []
+    for row in service.list("estructura", project_id, include_archived):
+        data = _out(row)
+        if row.kind == "escena":
+            data["escritura"] = states.get(row.id, SIN_ESCRITURA)
+        rows.append(data)
+    return rows
+
+
+def get_writing_service(request: Request, session: Session = Depends(get_session)) -> SceneWritingService:
+    return SceneWritingService(session, clock=request.app.state.clock, max_chars=request.app.state.settings.max_version_chars)
+
+
+@router.get("/estructura/{element_id}/escritura")
+def read_scene_writing(
+    project_id: int, element_id: int, service: SceneWritingService = Depends(get_writing_service)
+) -> dict[str, Any]:
+    """Estado de la escritura de una escena y su borrador. Solo accesible dentro de su proyecto."""
+    info = service.read(project_id, element_id)
+    draft = info.pop("draft")
+    info["draft"] = DraftOut.model_validate(draft, from_attributes=True).model_dump() if draft is not None else None
+    return info
+
+
+@router.post("/estructura/{element_id}/escritura", status_code=status.HTTP_201_CREATED, response_model=None)
+def start_scene_writing(
+    project_id: int, element_id: int, response: Response, service: SceneWritingService = Depends(get_writing_service)
+) -> dict[str, Any]:
+    """Inicia la escritura de una escena. Idempotente: si ya existe, devuelve la existente (200)."""
+    _, created = service.start(project_id, element_id)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    info = service.read(project_id, element_id)
+    draft = info.pop("draft")
+    info["draft"] = DraftOut.model_validate(draft, from_attributes=True).model_dump() if draft is not None else None
+    return info
+
+
+@router.put("/estructura/{element_id}/escritura/borrador")
+def save_scene_draft(
+    project_id: int,
+    element_id: int,
+    payload: DraftSave,
+    service: SceneWritingService = Depends(get_writing_service),
+) -> dict[str, Any]:
+    """Guarda el texto de una escena con escritura condicional (409 si la revisión no es la actual)."""
+    draft = service.save(project_id, element_id, payload.content, payload.base_revision, keep_previous=payload.keep_previous)
+    return DraftOut.model_validate(draft, from_attributes=True).model_dump()
 
 
 @router.post("/estructura", status_code=status.HTTP_201_CREATED)

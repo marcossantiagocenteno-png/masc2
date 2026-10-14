@@ -15,6 +15,7 @@ import { COLLECTION_PATH, labelOf, RELATION_LABELS, SCENE_RELATIONS, STRUCTURE_F
 import { CanonBadge } from "./CanonBadge";
 import { ConfirmPanel } from "./ConfirmPanel";
 import { ElementEditor, type Item } from "./ElementEditor";
+import { SceneWriting } from "./SceneWriting";
 
 type Endpoint = { kind: string; id: number; name: string; archived: boolean };
 
@@ -151,6 +152,13 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
           Una escena no es un capítulo del manuscrito y no tiene texto propio: aquí se planifica lo que ocurre en ella.
         </p>
       </div>
+
+      <section aria-labelledby="escena-escritura" className="flex flex-col gap-4">
+        <h2 id="escena-escritura" className="text-xl font-medium">
+          Escritura
+        </h2>
+        <SceneWriting projectId={projectId} nodeId={node.id} sceneTitle={sceneTitle} />
+      </section>
 
       <section aria-labelledby="escena-datos" className="flex flex-col gap-4">
         <h2 id="escena-datos" className="text-xl font-medium">

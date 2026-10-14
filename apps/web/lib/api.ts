@@ -148,6 +148,17 @@ export type DraftOut = {
 
 export type DraftInitOut = { created: boolean; draft: DraftOut };
 
+/** Escritura de una escena. ``sin_escritura``: no tiene manuscrito; ``sin_texto``: tiene manuscrito vacío; ``con_texto``: hay caracteres. */
+export type SceneWritingState = "sin_escritura" | "sin_texto" | "con_texto";
+
+export type SceneWriting = {
+  node_id: number;
+  manuscript_id: number | null;
+  state: SceneWritingState;
+  draft: DraftOut | null;
+  versions_count: number;
+};
+
 export type DraftSaveBody = { content: string; base_revision: number; keep_previous: boolean };
 
 export type RecoveryPointReason =
@@ -380,6 +391,30 @@ export const api = {
       body: JSON.stringify({ posicion: null, confirmar_cambio_canon: false, ...body }),
     }),
 
+  /** Estado de la escritura de una escena y su borrador. Solo accesible dentro de su proyecto. */
+  getSceneWriting: (projectId: number, nodeId: number) =>
+    request<SceneWriting>(`/projects/${projectId}/planificacion/estructura/${nodeId}/escritura`),
+
+  /** Inicia la escritura de una escena. Idempotente: si ya existe, devuelve la existente. */
+  startSceneWriting: (projectId: number, nodeId: number) =>
+    request<SceneWriting>(`/projects/${projectId}/planificacion/estructura/${nodeId}/escritura`, { method: "POST" }),
+
+  saveSceneDraft: (projectId: number, nodeId: number, body: DraftSaveBody) =>
+    request<DraftOut>(`/projects/${projectId}/planificacion/estructura/${nodeId}/escritura/borrador`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  /** Guardado de último recurso de una escena al cerrar la página. Mismo criterio que ``saveDraftKeepalive``. */
+  saveSceneDraftKeepalive: (projectId: number, nodeId: number, body: DraftSaveBody) => {
+    void fetch(`${API_BASE_URL}/projects/${projectId}/planificacion/estructura/${nodeId}/escritura/borrador`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => undefined);
+  },
+
   /** Vínculos de un personaje, lugar, elemento de trama o acontecimiento (incluye los de escenas). */
   listElementLinks: (projectId: number, route: ElementRoute, id: number, includeArchived = false) =>
     request<NarrativeLink[]>(
@@ -468,6 +503,8 @@ export type StructureNode = CanonFields & {
   title: string | null;
   summary: string | null;
   notes: string | null;
+  /** Solo en escenas: estado de su escritura (migración 0009). */
+  escritura?: SceneWritingState;
 };
 
 export type NarrativeLink = CanonFields & {

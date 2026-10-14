@@ -156,6 +156,7 @@ Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`
 
 - **Revisión de la estructura (migración 0008):** `projects.structure_version` cambia con cada escritura de estructura. Las escrituras hacen un `UPDATE` condicional sobre esa columna; una vista desfasada recibe 409 sin cambios (D-061).
 - **Movimiento de nodos:** `POST .../estructura/{id}/mover` (padre y posición). Valida tipo de padre, ciclos, archivados y proyecto antes de escribir.
+- **Escritura de escenas (migración 0009):** `scene_manuscripts` une una escena con su manuscrito propio (uno a uno, mismo proyecto, inmutable). El texto es el borrador de ese manuscrito. `app/planning/escritura.py` inicia la escritura de forma idempotente y delega el guardado en `DraftService` (D-062).
 
 - **Vínculos (migración 0007):** triggers en `narrative_links` rechazan extremos inexistentes, archivados, de otro proyecto o de tipo no válido (D-057).
 - **Historial de canon:** cada decisión guarda `actor`, `snapshot` (antes) y `resultado` (después). Cada operación de escritura es atómica: un fallo deshace la sesión (D-058).
@@ -178,6 +179,7 @@ Rutas bajo `apps/web/app/proyectos/[id]/`. Un diseño común (`layout.tsx`) iden
 | `components/planning/StructureView.tsx` | Árbol de actos, capítulos y escenas: ramas plegables, alta desde cada fila, reordenación entre hermanos y vista previa de canon. |
 | `components/planning/StructureMove.tsx` | Movimiento de un nodo con selectores de lugar y botón explícito. |
 | `components/planning/SceneDetail.tsx` | Escena por su id, planificación y vínculos, con enlaces a los elementos vinculados. |
+| `components/planning/SceneWriting.tsx` | Editor de la escena: usa `DraftSaver` y `DraftStatus` del manuscrito, con los endpoints de escena. |
 | `components/planning/RelatedScenes.tsx` | Escenas en las que aparece un personaje, lugar o elemento de trama (solo lectura). |
 | `components/planning/ConfirmPanel.tsx` | Confirmación en línea: enfoca su primer control al abrirse y devuelve el foco al cerrarse. |
 | `components/planning/UnsavedChanges.tsx` | Registro de cambios sin guardar: aviso al salir por un enlace o al cerrar la pestaña. |

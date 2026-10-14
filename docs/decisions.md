@@ -411,6 +411,23 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 
 **Límites deliberados.** El movimiento no permite elegir una posición intermedia entre los hermanos (siempre va al final; el orden se cambia con Subir y Bajar). No hay arrastre. La vista de la estructura no compara su versión con la del servidor antes de mostrar el árbol: un cambio hecho en otra pestaña se detecta al operar, no al mirar.
 
+## D-062 · Escritura de escenas: un manuscrito propio por escena, unido por una tabla
+**Estado:** aceptada (fase 2d)
+
+**Diseño anterior.** El manuscrito es el contenedor de texto: tiene versiones inmutables (`manuscript_versions`), un borrador único y mutable (`manuscript_drafts`, una fila por manuscrito) y puntos de recuperación inmutables (`draft_recovery_points`). El proyecto agrupa manuscritos por `project_id`, pero las rutas `/manuscripts/{id}/…` no comprueban el proyecto. No había unidades de escritura más pequeñas que el manuscrito.
+
+**Decisión.** Cada escena puede tener un manuscrito propio, unido por la tabla `scene_manuscripts` (migración 0009): `node_id` y `manuscript_id` son únicos, y `project_id` debe coincidir con ambos. El texto de una escena es el borrador de su manuscrito, y sus versiones y puntos de recuperación son los de siempre: no hay copias. Así D-056 se cumple: la escena es el nodo, el texto está en el manuscrito, y la unión no depende del título ni de la posición.
+
+**Reglas.** Iniciar la escritura crea, en una transacción, el manuscrito, su versión 1 vacía y su borrador. Es idempotente: una segunda petición, incluso concurrente, recibe la unión existente y el intento se deshace entero. La base impide unir un acto o un manuscrito de otro proyecto, y la fila es inmutable (no se actualiza ni se borra). Mover la escena no toca la unión. Renombrarla copia el título al manuscrito en la misma transacción, para que ambos nombres no se separen; el título del manuscrito es solo una copia. Una escena archivada conserva su texto, pero no admite escritura nueva. Un proyecto archivado no admite iniciar ni guardar.
+
+**Guardado.** Escribir desde la escena usa el mismo `DraftSaver` y el mismo `DraftStatus` que el manuscrito: escritura condicional por revisión, 409 que conserva el texto, reintento y «Guardado» solo tras la respuesta del servidor. Los endpoints de escena (`/estructura/{id}/escritura`) comprueban el proyecto a través del nodo; los endpoints de manuscrito existentes no se han cambiado.
+
+**Versiones formales.** Guardar como versión sigue siendo una acción explícita, en la página del manuscrito. Desde la escena se enlaza a esa página, pero no se duplica el editor de versiones: un guardado ordinario nunca crea una versión.
+
+**Consecuencias visibles.** Los manuscritos de escena no aparecen en la lista de manuscritos del proyecto (sí en `/manuscritos`, con el título copiado). La estructura muestra «Sin escritura», «Sin texto» o «Con texto» en cada escena.
+
+**Límites deliberados.** Una escena es un manuscrito completo: no hay fragmentos dentro de un manuscrito compartido, y no se reparte un manuscrito entre varias escenas. Las versiones y los puntos se gestionan en la página del manuscrito, no dentro de la ficha de escena. Ninguna operación usa IA ni reescribe texto.
+
 ---
 
 ## Pendientes
@@ -430,7 +447,6 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 | **Prueba de restauración en Windows** | No se ha podido ejecutar: no hay Windows en el entorno de desarrollo (D-051). | Ejecutar `python -m app.backups simulacro` en Windows. |
 | **Campos generales de la novela sin canon** | Premisa, sinopsis, género, tema y tono cambian sin protección (D-059). | Antes de que la IA pueda proponerlos. |
 | **Planificación: contradicciones y análisis de impacto** | La estructura lo permite (D-054, D-055); no se ha implementado. | Fase posterior. |
-| **Planificación: escena vinculada a fragmento del manuscrito** | Pendiente de diseño (D-056). | Fase posterior. |
 | **Eliminación de puntos de recuperación** | Los triggers la impiden; la vista previa no borra nada (D-048). | Fase con migración propia. |
 | **Paquete de proyecto restaurable** | Sin exportación ni importación completa. | Fase 5. |
 | **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |

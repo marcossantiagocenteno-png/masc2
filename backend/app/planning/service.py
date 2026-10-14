@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.db.base import utc_now
 from app.db.models import NarrativeDecision, NarrativeLink, Project, StructureNode
 from app.planning import kinds as K
+from app.planning.escritura import sync_title
 from app.texts.errors import ConflictError, NotFoundError, ValidationFailed
 
 Clock = Callable[[], datetime]
@@ -181,6 +182,8 @@ class PlanningService:
         snapshot = self._snapshot(row)
         for field, value in changes.items():
             setattr(row, field, value)
+        if kind == "estructura" and "title" in changes:
+            sync_title(self._session, element_id, row.title)
         now = self._clock()
         row.updated_at = now
         if was_canon:

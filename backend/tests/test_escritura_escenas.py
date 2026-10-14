@@ -192,8 +192,14 @@ def test_las_versiones_y_los_puntos_de_recuperacion_del_manuscrito_de_escena_sig
     _save(api, project, scene["id"], "Primera idea", 1)
     _save(api, project, scene["id"], "Segunda idea", 2)
 
-    version = api.post(
+    # La ruta heredada no escribe sobre el texto de una escena; la acotada al proyecto sí.
+    legacy = api.post(
         f"/manuscripts/{manuscript_id}/versions",
+        json={"content": "Segunda idea", "note": "Versión formal", "based_on_version_id": None},
+    )
+    assert legacy.status_code == 422
+    version = api.post(
+        f"/projects/{project}/manuscripts/{manuscript_id}/versions",
         json={"content": "Segunda idea", "note": "Versión formal", "based_on_version_id": None},
     )
     assert version.status_code == 201, version.text
@@ -207,8 +213,13 @@ def test_las_versiones_y_los_puntos_de_recuperacion_del_manuscrito_de_escena_sig
     points = api.get(f"/manuscripts/{manuscript_id}/recovery-points").json()
     assert points, "debe haber puntos de recuperación tras los guardados"
     first_point = points[-1]
-    restored = api.post(
+    legacy_restore = api.post(
         f"/manuscripts/{manuscript_id}/recovery-points/{first_point['id']}/restore",
+        json={"base_revision": _read(api, project, scene["id"])["draft"]["revision"]},
+    )
+    assert legacy_restore.status_code == 422
+    restored = api.post(
+        f"/projects/{project}/manuscripts/{manuscript_id}/recovery-points/{first_point['id']}/restore",
         json={"base_revision": _read(api, project, scene["id"])["draft"]["revision"]},
     )
     assert restored.status_code == 200, restored.text

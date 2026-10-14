@@ -9,10 +9,13 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://loca
 
 export type ManuscriptSummary = {
   id: number;
+  project_id: number | null;
   title: string;
   created_at: string;
   version_count: number;
   latest_version_number: number;
+  /** Escena que escribe este manuscrito. Si existe, su título es el de la escena y se edita allí. */
+  scene_node_id: number | null;
 };
 
 export type VersionSummary = {
@@ -147,6 +150,41 @@ export type DraftOut = {
 };
 
 export type DraftInitOut = { created: boolean; draft: DraftOut };
+
+export type ManuscriptOps = ReturnType<typeof manuscriptOps>;
+
+/**
+ * Operaciones de un manuscrito con su ámbito. Si pertenece a un proyecto, usa las rutas acotadas, que
+ * comprueban la pertenencia; si no tiene proyecto, usa las heredadas. El ámbito lo decide el manuscrito.
+ */
+export function manuscriptOps(projectId: number | null, manuscriptId: number) {
+  const base =
+    projectId === null ? `/manuscripts/${manuscriptId}` : `/projects/${projectId}/manuscripts/${manuscriptId}`;
+  return {
+    listVersions: () => request<VersionSummary[]>(`${base}/versions`),
+    getVersion: (versionId: number) =>
+      request<VersionOut>(projectId === null ? `/versions/${versionId}` : `${base}/versions/${versionId}`),
+    createVersion: (body: { content: string; note?: string; based_on_version_id: number | null }) =>
+      request<VersionOut>(`${base}/versions`, { method: "POST", body: JSON.stringify(body) }),
+    initDraft: () => request<DraftInitOut>(`${base}/draft`, { method: "POST" }),
+    saveDraft: (body: DraftSaveBody) => request<DraftOut>(`${base}/draft`, { method: "PUT", body: JSON.stringify(body) }),
+    /** Guardado de último recurso al cerrar la página. Best-effort, sin respuesta que leer. */
+    saveDraftKeepalive: (body: DraftSaveBody) => {
+      void fetch(`${API_BASE_URL}${base}/draft`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        keepalive: true,
+      }).catch(() => undefined);
+    },
+    listRecoveryPoints: () => request<RecoveryPointSummary[]>(`${base}/recovery-points`),
+    restoreRecoveryPoint: (pointId: number, baseRevision: number) =>
+      request<DraftOut>(`${base}/recovery-points/${pointId}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ base_revision: baseRevision }),
+      }),
+  };
+}
 
 /** Escritura de una escena. ``sin_escritura``: no tiene manuscrito; ``sin_texto``: tiene manuscrito vacío; ``con_texto``: hay caracteres. */
 export type SceneWritingState = "sin_escritura" | "sin_texto" | "con_texto";

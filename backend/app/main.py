@@ -31,6 +31,7 @@ from app.drafts.routes import router as drafts_router
 from app.analysis.routes import router as analysis_router
 from app.planning.routes import router as planning_router
 from app.projects.routes import router as projects_router
+from app.projects.scoped_routes import router as scoped_manuscripts_router
 from app.texts.errors import TextError
 from app.texts.routes import router as texts_router
 
@@ -86,6 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(texts_router)
     application.include_router(analysis_router)
     application.include_router(projects_router)
+    application.include_router(scoped_manuscripts_router)
     application.include_router(drafts_router)
     application.include_router(planning_router)
     return application

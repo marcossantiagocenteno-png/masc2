@@ -218,3 +218,17 @@ test("la escena escrita se ve bien en 360 px sin desbordamiento horizontal", asy
   expect(await overflows()).toBeLessThanOrEqual(0);
   await expect(page.getByText("Versiones y puntos de recuperación")).toBeVisible();
 });
+
+test("el manuscrito de una escena indica que su título se cambia en la escena, y el enlace lleva allí", async ({ page }) => {
+  await createProject(page, `Titulo derivado ${runId}`);
+  await section(page, "Estructura");
+  const title = `Titulo escena ${runId}`;
+  await addScene(page, title);
+  await openScene(page, title);
+  await startWriting(page);
+  await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
+  await expect(page).toHaveURL(/\/manuscritos\/\d+$/);
+  await expect(page.getByText("Es el texto de una escena. Su título es el de la escena y se cambia allí:")).toBeVisible();
+  await page.getByRole("link", { name: "editar la escena" }).click();
+  await expect(page.getByRole("heading", { name: `Planificación de «${title}»` })).toBeVisible();
+});

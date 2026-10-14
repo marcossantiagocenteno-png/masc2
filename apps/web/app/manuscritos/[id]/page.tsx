@@ -9,6 +9,8 @@ import {
   api,
   ApiError,
   formatDate,
+  manuscriptOps,
+  type ManuscriptOps,
   type ManuscriptSummary,
   type RecoveryPointSummary,
   type VersionOut,
@@ -17,10 +19,6 @@ import {
 import { DraftSaver, type SaveStatus } from "@/lib/draft-saver";
 
 const NETWORK_HINT = "No se pudo completar la operación.";
-
-function loadPoints(manuscriptId: number) {
-  return api.listRecoveryPoints(manuscriptId);
-}
 
 function messageOf(reason: unknown, fallback = NETWORK_HINT): string {
   return reason instanceof ApiError ? reason.message : fallback;
@@ -51,12 +49,16 @@ export default function ManuscriptPage() {
   const [pointsError, setPointsError] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const saverRef = useRef<DraftSaver | null>(null);
+  // Operaciones con el ámbito del proyecto del manuscrito; se fijan al cargarlo.
+  const opsRef = useRef<ManuscriptOps | null>(null);
 
   const byId = useMemo(() => new Map((versions ?? []).map((v) => [v.id, v])), [versions]);
   const ready = status !== null;
 
   function refreshPoints() {
-    loadPoints(manuscriptId).then(
+    const ops = opsRef.current;
+    if (!ops) return;
+    ops.listRecoveryPoints().then(
       (list) => {
         setPoints(list);
         setPointsError(null);
@@ -70,11 +72,11 @@ export default function ManuscriptPage() {
     let active = true;
     async function load() {
       try {
-        const [manuscriptData, versionData, initialized] = await Promise.all([
-          api.getManuscript(manuscriptId),
-          api.listVersions(manuscriptId),
-          api.initDraft(manuscriptId),
-        ]);
+        // Primero el manuscrito: dice a qué proyecto pertenece y, por tanto, qué rutas usar.
+        const manuscriptData = await api.getManuscript(manuscriptId);
+        const ops = manuscriptOps(manuscriptData.project_id, manuscriptId);
+        opsRef.current = ops;
+        const [versionData, initialized] = await Promise.all([ops.listVersions(), ops.initDraft()]);
         if (!active) return;
         setManuscript(manuscriptData);
         setVersions(versionData);
@@ -86,13 +88,13 @@ export default function ManuscriptPage() {
         let savingInFlight = false;
         saverRef.current = new DraftSaver(
           initialized.draft,
-          (body) => api.saveDraft(manuscriptId, body),
+          (body) => ops.saveDraft(body),
           (next) => {
             if (!active) return;
             if (next.kind === "saving") savingInFlight = true;
             if (next.kind === "saved" && savingInFlight) {
               savingInFlight = false;
-              void loadPoints(manuscriptId).then(
+              void ops.listRecoveryPoints().then(
                 (list) => active && setPoints(list),
                 () => undefined,
               );
@@ -102,7 +104,7 @@ export default function ManuscriptPage() {
         );
         setContent(initialized.draft.content);
         setStatus({ kind: "saved", at: null });
-        const list = await api.listRecoveryPoints(manuscriptId);
+        const list = await ops.listRecoveryPoints();
         if (active) setPoints(list);
       } catch (reason: unknown) {
         if (active) setError(messageOf(reason, "Error desconocido."));
@@ -128,7 +130,7 @@ export default function ManuscriptPage() {
     }
     function onPageHide() {
       const body = saverRef.current?.keepaliveRequest();
-      if (body) api.saveDraftKeepalive(manuscriptId, body);
+      if (body) opsRef.current?.saveDraftKeepalive(body);
     }
     window.addEventListener("beforeunload", onBeforeUnload);
     window.addEventListener("pagehide", onPageHide);
@@ -145,11 +147,11 @@ export default function ManuscriptPage() {
 
   /** Cambia la versión de partida. Si el texto difiere, pide confirmación y lo guarda como punto antes de reemplazarlo. */
   async function handleBaseChange(nextId: number) {
-    if (nextId === baseId || !saverRef.current) return;
+    if (nextId === baseId || !saverRef.current || !opsRef.current) return;
     setFormError(null);
     let version: VersionOut;
     try {
-      version = await api.getVersion(nextId);
+      version = await opsRef.current.getVersion(nextId);
     } catch (reason) {
       setFormError(messageOf(reason, "No se pudo cargar la versión elegida."));
       return;
@@ -230,7 +232,7 @@ export default function ManuscriptPage() {
       return;
     }
     try {
-      const draft = await api.restoreRecoveryPoint(manuscriptId, point.id, saver.getRevision());
+      const draft = await opsRef.current!.restoreRecoveryPoint(point.id, saver.getRevision());
       saver.reset(draft);
       setContent(draft.content);
       refreshPoints();
@@ -245,7 +247,7 @@ export default function ManuscriptPage() {
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (baseId === null || !saverRef.current) return;
+    if (baseId === null || !saverRef.current || !opsRef.current) return;
     setSaving(true);
     setFormError(null);
     // El borrador debe contener el mismo texto que la versión que se crea, así que se guarda antes.
@@ -255,7 +257,7 @@ export default function ManuscriptPage() {
       return;
     }
     try {
-      const created = await api.createVersion(manuscriptId, {
+      const created = await opsRef.current.createVersion({
         content,
         note: note || undefined,
         based_on_version_id: baseId,
@@ -291,6 +293,15 @@ export default function ManuscriptPage() {
         </Link>
         <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">Manuscrito</p>
         <h1 className="text-3xl font-semibold">{manuscript?.title ?? "Cargando…"}</h1>
+        {manuscript?.scene_node_id ? (
+          <p className="text-sm text-[var(--color-muted)]">
+            Es el texto de una escena. Su título es el de la escena y se cambia allí:{" "}
+            <Link href={`/proyectos/${manuscript.project_id}/estructura/${manuscript.scene_node_id}`} className="underline">
+              editar la escena
+            </Link>
+            .
+          </p>
+        ) : null}
       </header>
 
       <section aria-labelledby="versiones-titulo" className="flex flex-col gap-3">

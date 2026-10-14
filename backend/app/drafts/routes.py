@@ -27,6 +27,7 @@ from app.drafts.schemas import (
     RestoreIn,
 )
 from app.drafts.service import DraftService
+from app.projects.membership import reject_legacy_write_for_scene
 
 router = APIRouter()
 
@@ -64,8 +65,12 @@ def init_draft(manuscript_id: int, service: DraftService = Depends(get_service))
 
 @router.put("/manuscripts/{manuscript_id}/draft", response_model=DraftOut)
 def save_draft(
-    manuscript_id: int, payload: DraftSave, service: DraftService = Depends(get_service)
+    manuscript_id: int,
+    payload: DraftSave,
+    session: Session = Depends(get_session),
+    service: DraftService = Depends(get_service),
 ) -> DraftOut:
+    reject_legacy_write_for_scene(session, manuscript_id)
     return _draft_out(
         service.save(manuscript_id, payload.content, payload.base_revision, keep_previous=payload.keep_previous)
     )
@@ -94,6 +99,8 @@ def restore_point(
     manuscript_id: int,
     point_id: int,
     payload: RestoreIn,
+    session: Session = Depends(get_session),
     service: DraftService = Depends(get_service),
 ) -> DraftOut:
+    reject_legacy_write_for_scene(session, manuscript_id)
     return _draft_out(service.restore(manuscript_id, point_id, payload.base_revision))

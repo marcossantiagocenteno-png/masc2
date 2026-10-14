@@ -428,6 +428,19 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 
 **Límites deliberados.** Una escena es un manuscrito completo: no hay fragmentos dentro de un manuscrito compartido, y no se reparte un manuscrito entre varias escenas. Las versiones y los puntos se gestionan en la página del manuscrito, no dentro de la ficha de escena. Ninguna operación usa IA ni reescribe texto.
 
+## D-063 · Pertenencia de manuscritos a proyectos y fuente de verdad del título
+**Estado:** aceptada (fase 2e)
+
+**Pertenencia.** Las rutas heredadas (`/manuscripts/{id}/…`) no reciben proyecto, así que no pueden comprobar pertenencia. Las rutas nuevas `/projects/{p}/manuscripts/{m}/…` (`app/projects/scoped_routes.py`) sí la comprueban: el manuscrito debe existir y pertenecer a `p`. Un id de otro proyecto y un id inexistente dan la misma 404, para no revelar en qué novela existe un manuscrito. Las escrituras acotadas exigen proyecto activo, como la planificación. Es aislamiento entre novelas, no autenticación: la aplicación sigue siendo local y de un solo usuario.
+
+**Compatibilidad.** La interfaz usa `manuscriptOps(projectId, manuscriptId)`: si el manuscrito tiene proyecto, usa las rutas acotadas; si no, las heredadas. No cambia ninguna URL de página ni ningún contrato de respuesta existente. El resumen del manuscrito gana dos campos (`project_id`, que ya existía en la API, y `scene_node_id`).
+
+**Escrituras heredadas sobre escenas.** Guardar un borrador, restaurar un punto y crear una versión por la ruta heredada se rechazan (422) si el manuscrito es el texto de una escena. Sin esta guarda, esas rutas saltarían el archivado de la escena y la pertenencia. Las lecturas heredadas siguen abiertas, y los manuscritos sin proyecto siguen funcionando igual.
+
+**Título.** La escena es la única fuente de verdad del título de su manuscrito. Ninguna interfaz ni ruta edita el título de un manuscrito: lo fija su creación y, si es de escena, lo copia la escena al renombrarse, en la misma transacción. Un fallo de sincronización deshace el renombrado completo (no quedan títulos contradictorios). La página del manuscrito de escena lo indica y enlaza a la escena. Los manuscritos independientes no se tocan. Así no hay sincronizaciones recursivas ni actualizaciones parciales.
+
+**Límites que quedan.** Las revisiones editoriales y el análisis siguen en rutas por id de versión (no comprueban proyecto). No modifican borradores ni textos, pero sí crean registros, así que quedan como límite conocido. Las lecturas heredadas (`/manuscripts/{id}`, `/versions/{id}`, puntos) siguen aceptando ids de cualquier proyecto para los manuscritos sin proyecto. Restaurar una copia anterior a 0009 sin migrar dejaría sin tabla `scene_manuscripts`: hay que ejecutar `alembic upgrade head` tras restaurar.
+
 ---
 
 ## Pendientes

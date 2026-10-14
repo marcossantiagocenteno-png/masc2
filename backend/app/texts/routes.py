@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.db.models import EditorialReview, Manuscript, ManuscriptVersion
 from app.texts.schemas import (
@@ -17,6 +17,7 @@ from app.texts.schemas import (
     VersionOut,
     VersionSummary,
 )
+from app.projects.membership import reject_legacy_write_for_scene, scene_node_id
 from app.texts.service import TextService
 
 router = APIRouter()
@@ -42,6 +43,7 @@ def _summary(version: ManuscriptVersion) -> VersionSummary:
 
 def manuscript_summary(manuscript: Manuscript) -> ManuscriptSummary:
     latest = manuscript.versions[-1].number if manuscript.versions else 0
+    session = object_session(manuscript)
     return ManuscriptSummary(
         id=manuscript.id,
         project_id=manuscript.project_id,
@@ -49,6 +51,7 @@ def manuscript_summary(manuscript: Manuscript) -> ManuscriptSummary:
         created_at=manuscript.created_at,
         version_count=len(manuscript.versions),
         latest_version_number=latest,
+        scene_node_id=scene_node_id(session, manuscript.id) if session is not None else None,
     )
 
 
@@ -83,9 +86,11 @@ def get_manuscript(manuscript_id: int, service: TextService = Depends(get_servic
 def create_version(
     manuscript_id: int,
     payload: VersionCreate,
+    session: Session = Depends(get_session),
     service: TextService = Depends(get_service),
 ) -> VersionOut:
-    """Crea una versión nueva. Nunca modifica las anteriores."""
+    """Crea una versión nueva. Nunca modifica las anteriores. Ruta heredada: no admite escenas."""
+    reject_legacy_write_for_scene(session, manuscript_id)
     version = service.add_version(
         manuscript_id, payload.content, payload.note, payload.based_on_version_id
     )

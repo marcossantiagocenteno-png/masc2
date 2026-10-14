@@ -110,3 +110,5 @@ class ManuscriptSummary(BaseModel):
     created_at: datetime
     version_count: int
     latest_version_number: int
+    # Escena que escribe este manuscrito, si es el texto de una escena (migración 0009). Su título es derivado.
+    scene_node_id: int | None = None

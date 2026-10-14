@@ -7,6 +7,8 @@ import {
   api,
   ApiError,
   formatDate,
+  manuscriptOps,
+  type ManuscriptOps,
   type ManuscriptSummary,
   type ReviewItemInput,
   type ReviewOut,
@@ -46,15 +48,19 @@ export default function VersionPage() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const opsRef = useRef<ManuscriptOps | null>(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const loaded = await api.getVersion(versionId);
-        const [manuscriptData, versionList, reviewList] = await Promise.all([
-          api.getManuscript(loaded.manuscript_id),
-          api.listVersions(loaded.manuscript_id),
+        // El manuscrito indica su proyecto; la versión se pide por la ruta acotada a ese proyecto.
+        const manuscriptData = await api.getManuscript(manuscriptId);
+        const ops = manuscriptOps(manuscriptData.project_id, manuscriptId);
+        opsRef.current = ops;
+        const [loaded, versionList, reviewList] = await Promise.all([
+          ops.getVersion(versionId),
+          ops.listVersions(),
           api.listReviews(versionId),
         ]);
         if (!active) return;
@@ -113,7 +119,7 @@ export default function VersionPage() {
     try {
       await api.createReview(version.id, { reviewer, items: [item] });
       setReviews(await api.listReviews(version.id));
-      setVersion(await api.getVersion(version.id));
+      setVersion(await opsRef.current!.getVersion(version.id));
       setSelection(null);
       setComment("");
       setInferenceBasis("");

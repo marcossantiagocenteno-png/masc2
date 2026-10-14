@@ -20,6 +20,7 @@ masc2/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py            Factoría FastAPI, CORS, /health
+│   │   ├── projects/          Proyectos (novelas) aislados: archivar, restaurar, manuscritos por proyecto
 │   │   ├── config.py          Configuración desde variables de entorno
 │   │   ├── db/                Base declarativa, motor, sesiones y modelos SQLAlchemy
 │   │   ├── texts/             Dominio: normalización, tipos de ítem, servicio, rutas
@@ -52,7 +53,8 @@ masc2/
 
 | Tabla | Contenido | Inmutable |
 |---|---|---|
-| `manuscripts` | Título y fecha de creación. Sin contenido propio. | No (no hay endpoints para editarlo). |
+| `projects` | Nombre, estado (`activo` o `archivado`), fechas. Sin borrado. | No se borra; se archiva. |
+| `manuscripts` | Título, fecha y `project_id` (nulo para manuscritos anteriores a los proyectos). Sin contenido propio. | No (no hay endpoints para editarlo). |
 | `manuscript_versions` | Número correlativo, contenido normalizado, SHA-256, número de caracteres, nota, `parent_version_id`. | Sí (servicio y triggers). |
 | `analysis_runs` | Versión analizada, fragmento y su texto, proveedor, etiqueta y si era simulado. | Sí (triggers). |
 | `analysis_findings` | Categoría, procedencia, cita, posiciones, línea, explicación, efecto y certeza. | Sí (triggers). |
@@ -64,6 +66,12 @@ Restricciones relevantes:
 - `(manuscript_id, number)` es único.
 - `end_offset > start_offset` y `line_number >= 1`.
 - Un ítem pertenece a una revisión y a la versión de esa revisión.
+
+## Proyectos
+
+Un proyecto es una novela. Sus manuscritos quedan aislados de los de otros proyectos: la API de proyectos solo devuelve los manuscritos del proyecto indicado, y el listado global `/manuscripts` sigue mostrando todos. Archivar no borra nada; un proyecto archivado no admite manuscritos nuevos hasta restaurarse.
+
+Pendiente: duplicar proyectos, vincular proyectos (compartir personajes o cronologías), preferencias por proyecto y memoria narrativa propia de cada proyecto.
 
 ## Flujo de una revisión
 

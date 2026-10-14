@@ -5,6 +5,7 @@ Endpoints:
 - ``GET /health``: estado del servicio.
 - ``/manuscripts``, ``/versions``: textos, versiones y revisiones editoriales (ver ``app.texts.routes``).
 - ``/versions/{id}/analyses``: análisis editorial de fragmentos (ver ``app.analysis.routes``).
+- ``/projects``: proyectos (novelas) aislados, archivables y restaurables (ver ``app.projects.routes``).
 
 La base de datos debe estar migrada antes de arrancar: ``python -m alembic upgrade head``.
 """
@@ -20,6 +21,7 @@ from app import __version__
 from app.config import Settings, load_settings
 from app.db.session import create_engine_for, create_session_factory
 from app.analysis.routes import router as analysis_router
+from app.projects.routes import router as projects_router
 from app.texts.errors import TextError
 from app.texts.routes import router as texts_router
 
@@ -60,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(texts_router)
     application.include_router(analysis_router)
+    application.include_router(projects_router)
     return application
 
 

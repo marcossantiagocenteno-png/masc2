@@ -19,9 +19,12 @@ export default function HomePage() {
           Entorno privado de escritura y edición literaria asistida por IA.
           Esta fase establece la estructura, la rúbrica y el benchmark inicial.
         </p>
-        <p>
+        <p className="flex gap-4">
+          <Link href="/proyectos" className="font-medium underline">
+            Proyectos
+          </Link>
           <Link href="/manuscritos" className="font-medium underline">
-            Ir a manuscritos
+            Manuscritos sueltos
           </Link>
         </p>
       </header>

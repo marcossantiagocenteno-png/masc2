@@ -118,6 +118,22 @@ export type AnalysisRun = {
   findings: AnalysisFinding[];
 };
 
+export type ProjectStatus = "activo" | "archivado";
+
+export type Project = {
+  id: number;
+  name: string;
+  status: ProjectStatus;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+};
+
+export type ProjectDetail = Project & {
+  manuscript_count: number;
+  last_activity_at: string | null;
+};
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -182,6 +198,26 @@ export const api = {
   listAnalyses: (versionId: number) => request<AnalysisRun[]>(`/versions/${versionId}/analyses`),
 
   getAnalysisProvider: () => request<AnalysisProviderStatus>("/analysis/provider"),
+
+  listProjects: (status: ProjectStatus | "todos" = "activo") =>
+    request<Project[]>(`/projects?status_filter=${encodeURIComponent(status)}`),
+
+  getProject: (id: number) => request<ProjectDetail>(`/projects/${id}`),
+
+  createProject: (name: string) =>
+    request<Project>("/projects", { method: "POST", body: JSON.stringify({ name }) }),
+
+  renameProject: (id: number, name: string) =>
+    request<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+
+  archiveProject: (id: number) => request<Project>(`/projects/${id}/archive`, { method: "POST" }),
+
+  restoreProject: (id: number) => request<Project>(`/projects/${id}/restore`, { method: "POST" }),
+
+  listProjectManuscripts: (id: number) => request<ManuscriptSummary[]>(`/projects/${id}/manuscripts`),
+
+  createProjectManuscript: (id: number, body: { title: string; content: string; note?: string }) =>
+    request<ManuscriptSummary>(`/projects/${id}/manuscripts`, { method: "POST", body: JSON.stringify(body) }),
 
   analyzeFragment: (
     versionId: number,

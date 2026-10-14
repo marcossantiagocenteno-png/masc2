@@ -105,6 +105,7 @@ class ManuscriptSummary(BaseModel):
     """Manuscrito con el número de su última versión."""
 
     id: int
+    project_id: int | None = None
     title: str
     created_at: datetime
     version_count: int

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, formatDate, type ManuscriptSummary, type VersionOut, type VersionSummary } from "@/lib/api";
 
 /** Versiones de un manuscrito y creación de una versión nueva a partir de cualquiera de ellas. */
@@ -15,6 +15,11 @@ export default function ManuscriptPage() {
   const [versions, setVersions] = useState<VersionSummary[] | null>(null);
   const [baseId, setBaseId] = useState<number | null>(null);
   const [content, setContent] = useState("");
+  // Contenido tal como llegó de la versión de partida. Si difiere, hay texto sin guardar.
+  const [loadedContent, setLoadedContent] = useState("");
+  // true si el autor ha escrito en el editor desde la última carga. La carga asíncrona
+  // de la versión de partida no debe sustituir ese texto.
+  const userEditedRef = useRef(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -44,9 +49,23 @@ export default function ManuscriptPage() {
     if (baseId === null) return;
     api
       .getVersion(baseId)
-      .then((version: VersionOut) => setContent(version.content))
+      .then((version: VersionOut) => {
+        setLoadedContent(version.content);
+        if (!userEditedRef.current) setContent(version.content);
+      })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Error desconocido."));
   }, [baseId]);
+
+  /** Cambia la versión de partida. Si hay texto sin guardar, pide confirmación antes de sustituirlo. */
+  function handleBaseChange(nextId: number) {
+    if (nextId === baseId) return;
+    const hasUnsavedText = content !== loadedContent;
+    if (hasUnsavedText && !window.confirm("Hay texto sin guardar en la nueva versión. ¿Reemplazarlo con el contenido de la versión elegida?")) {
+      return; // El select es controlado: vuelve a mostrar la versión anterior.
+    }
+    userEditedRef.current = false;
+    setBaseId(nextId);
+  }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,7 +150,7 @@ export default function ManuscriptPage() {
             <span className="text-sm font-medium">Partir de</span>
             <select
               value={baseId ?? ""}
-              onChange={(event) => setBaseId(Number(event.target.value))}
+              onChange={(event) => handleBaseChange(Number(event.target.value))}
               className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
             >
               {versions?.map((version) => (
@@ -147,7 +166,10 @@ export default function ManuscriptPage() {
               required
               rows={12}
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                userEditedRef.current = true;
+                setContent(event.target.value);
+              }}
               className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2 font-serif"
             />
           </label>

@@ -213,6 +213,43 @@ El prompt pide cinco categorías separadas, cita literal, justificación, efecto
 
 **Limitación:** el prompt no se puede garantizar. El backend comprueba forma, citas, posiciones, procedencia, certeza y ausencia de atribuciones de intención (por léxico). No comprueba si el juicio literario es acertado. Eso requiere evaluación humana, que no está implementada.
 
+## D-035 · Proyectos como contenedor de manuscritos, sin borrado
+**Estado:** aceptada
+
+Cada novela es un proyecto (`projects`). Un manuscrito pertenece a un proyecto mediante `project_id`, que es nulo solo para los manuscritos anteriores a la migración 0004 que no se asignen. Los proyectos **no se borran**: se archivan y se restauran. Mientras están archivados, sus textos siguen siendo legibles, pero no admiten manuscritos nuevos. No hay endpoint de borrado (probado: responde 405).
+
+## D-036 · Migración 0004 con ALTER TABLE y bajada no automática
+**Estado:** aceptada
+
+La columna `project_id` se añade con `ALTER TABLE ... REFERENCES`, sin reconstruir `manuscripts`. Reconstruir esa tabla con versiones que la referencian hace fallar `DROP TABLE` con claves foráneas activas (comprobado). Por la misma razón, la bajada no es automática: lanza un error explícito que indica restaurar la copia previa. Los datos se conservan (probado).
+
+Limitación conocida: SQLAlchemy no reconstruye el `ON DELETE` de claves añadidas con `ALTER TABLE` en SQLite. El modelo no declara `ondelete` para que `alembic check` sea coherente. La base de datos sí tiene `RESTRICT`. Como un proyecto nunca se borra, la diferencia no llega a actuar.
+
+## D-037 · Nunca editar una migración ya aplicada
+**Estado:** aceptada
+
+Durante el desarrollo de 0004, un intento anterior dejó la base de desarrollo con una columna sin clave foránea. `alembic check` lo detectó. Se hizo una copia de seguridad de las bases de desarrollo y se regeneraron desde las migraciones. Regla: cada cambio de esquema va en una migración nueva, y una migración ya aplicada no se edita.
+
+## D-038 · Edición segura de la versión de partida
+**Estado:** aceptada
+
+Dos correcciones a la página de nueva versión:
+
+1. Cambiar la versión de partida con texto sin guardar pide confirmación. Al cancelar, se conservan el texto y la versión elegida.
+2. La carga asíncrona de la versión de partida no sustituye un texto que el autor ya ha escrito desde la última carga (`userEditedRef`).
+
+Ambas están probadas con pruebas E2E. La segunda se reprodujo de forma determinista retrasando la respuesta del servidor.
+
+## D-039 · Persistencia antes que planificación
+**Estado:** aceptada (reordena la especificación, sin eliminar requisitos)
+
+La auditoría muestra que el editor puede perder texto. La fase de persistencia fiable (autoguardado, puntos de recuperación, copias) pasa antes de la planificación narrativa. Ver `docs/PLAN_IMPLEMENTACION.md`.
+
+## D-040 · Recuperación por copia como única vía de respaldo hoy
+**Estado:** aceptada, provisional
+
+No hay copias automáticas. La copia manual del archivo SQLite, con la aplicación detenida, está documentada en `docs/RESPALDO_Y_RESTAURACION.md` y probada (`test_recovery.py`). Se sustituirá por copias automáticas en la fase 1b.
+
 ---
 
 ## Pendientes
@@ -227,4 +264,7 @@ El prompt pide cinco categorías separadas, cita literal, justificación, efecto
 | **Primera llamada real** | Requiere clave y modelo del usuario, y su aprobación de envío (D-028, D-029). No se ha ejecutado. | Cuando el usuario lo decida. |
 | **Registro de uso y coste** | La respuesta trae `usage`, pero no se guarda (evita registrar datos de más). | Si se necesita control de costes. |
 | **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
+| **Autoguardado y puntos de recuperación** | El editor puede perder texto sin guardar (AUDITORIA_TECNICA.md). | Fase 1b, prioridad máxima. |
+| **Copias automáticas y paquete de proyecto** | Solo hay copia manual (D-040). | Fases 1b y 5. |
+| **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |
 | **Pesos de las dimensiones** | La fase 0 no combina puntuaciones. | Cuando exista una evaluación completa. |

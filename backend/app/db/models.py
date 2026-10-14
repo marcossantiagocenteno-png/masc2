@@ -22,14 +22,44 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, utc_now
 
 
+class Project(Base):
+    """Proyecto (novela). Contenedor aislado de manuscritos.
+
+    No se borra: se archiva y puede restaurarse. ``status`` vale ``activo`` o ``archivado``.
+    """
+
+    __tablename__ = "projects"
+    __table_args__ = (CheckConstraint("status IN ('activo', 'archivado')", name="ck_project_status"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="activo")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Manuscript(Base):
-    """Manuscrito: agrupa sus versiones. No tiene contenido propio."""
+    """Manuscrito: agrupa sus versiones. No tiene contenido propio.
+
+    ``project_id`` es nulo solo para manuscritos creados fuera de un proyecto
+    (flujo anterior a la tarea de proyectos).
+    """
 
     __tablename__ = "manuscripts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    # Sin ``ondelete`` en el modelo: el inspector de SQLite no reconstruye ``ON DELETE``
+    # de claves añadidas con ALTER TABLE, y ``alembic check`` compararía mal. La base de
+    # datos sí tiene RESTRICT (migración 0004). En la práctica, un proyecto no se borra:
+    # se archiva, así que ninguna de las dos reglas llega a actuar.
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"),
+        nullable=True,
+        index=True,
+    )
 
     versions: Mapped[list[ManuscriptVersion]] = relationship(
         back_populates="manuscript",

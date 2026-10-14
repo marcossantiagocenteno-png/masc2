@@ -56,6 +56,10 @@ Abre `http://localhost:3000/manuscritos`.
 
 ## Uso desde la interfaz
 
+### Proyectos
+
+Cada novela es un proyecto independiente. Desde `/proyectos` puedes crear un proyecto, abrirlo, renombrarlo, archivarlo y restaurarlo. Archivar no borra nada: los textos siguen disponibles, pero el proyecto no admite manuscritos nuevos hasta restaurarlo. Los manuscritos creados antes de los proyectos se asignaron a «Proyecto inicial».
+
 ### Análisis editorial de un fragmento
 
 En la pantalla de una versión, selecciona un fragmento del contenido y pulsa *Analizar la selección del contenido*. El resultado se muestra en cinco secciones separadas: problemas verificables, observaciones literarias, inferencias inciertas, preferencias de gusto y elementos que conviene preservar. Cada hallazgo cita su fragmento exacto, indica su línea y su certeza, y explica su efecto. El análisis no modifica el texto y queda guardado con esa versión.
@@ -181,6 +185,10 @@ El backend y el frontend escuchan solo en `localhost` cuando se arrancan con los
 - **Citas exactas.** Un comentario se guarda solo si su cita coincide literalmente con el texto de la versión en esas posiciones.
 - **Revisiones vinculadas.** Un comentario pertenece a una versión concreta y no aparece en las demás.
 
+## Respaldo y restauración
+
+**No hay copias automáticas todavía.** Para respaldar, detén el backend y copia `data\novel_engine.sqlite`. Para restaurar, detén el backend y sustituye el archivo por la copia. Detalles y advertencias en [`docs/RESPALDO_Y_RESTAURACION.md`](docs/RESPALDO_Y_RESTAURACION.md).
+
 ## Migraciones
 
 ```bash
@@ -190,12 +198,15 @@ python -m alembic downgrade base    # revierte todas (borra las tablas)
 python -m alembic check             # comprueba que los modelos coinciden con las migraciones
 ```
 
-PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier motor que no sea SQLite, porque la inmutabilidad se implementa con triggers de SQLite.
+La migración `0004` (proyectos) no tiene bajada automática: para revertirla, restaura la copia de la base de datos anterior a la migración. PostgreSQL no está soportado todavía. La migración inicial rechaza cualquier motor que no sea SQLite, porque la inmutabilidad se implementa con triggers de SQLite.
 
 ## Documentación
 
 - [`docs/architecture.md`](docs/architecture.md): responsabilidades de cada componente.
 - [`docs/decisions.md`](docs/decisions.md): decisiones técnicas, su estado y los pendientes.
+- [`docs/AUDITORIA_TECNICA.md`](docs/AUDITORIA_TECNICA.md): estado real, riesgos y deuda técnica.
+- [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md) y [`docs/ESTADO_DE_IMPLEMENTACION.md`](docs/ESTADO_DE_IMPLEMENTACION.md): fases y estado.
+- [`docs/PRIVACIDAD_Y_DATOS.md`](docs/PRIVACIDAD_Y_DATOS.md): qué sale del equipo y qué se guarda.
 - [`docs/literary-standard.md`](docs/literary-standard.md): criterio de calidad del benchmark y sus límites.
 - [`evals/README.md`](evals/README.md): formato de casos, rúbricas e informes.
 

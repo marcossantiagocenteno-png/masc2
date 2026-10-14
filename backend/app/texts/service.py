@@ -45,10 +45,16 @@ class TextService:
     # Manuscritos
     # ------------------------------------------------------------------
 
-    def create_manuscript(self, title: str, content: str, note: str | None) -> Manuscript:
-        """Crea un manuscrito con su versión 1."""
+    def create_manuscript(
+        self,
+        title: str,
+        content: str,
+        note: str | None,
+        project_id: int | None = None,
+    ) -> Manuscript:
+        """Crea un manuscrito con su versión 1, dentro de ``project_id`` si se indica."""
         normalized = self._prepare_content(content)
-        manuscript = Manuscript(title=title)
+        manuscript = Manuscript(title=title, project_id=project_id)
         self._session.add(manuscript)
         self._session.flush()
         self._insert_version(manuscript.id, 1, normalized, note, parent_version_id=None)

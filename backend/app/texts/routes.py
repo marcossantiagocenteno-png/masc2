@@ -40,10 +40,11 @@ def _summary(version: ManuscriptVersion) -> VersionSummary:
     return VersionSummary.model_validate(version, from_attributes=True)
 
 
-def _manuscript_summary(manuscript: Manuscript) -> ManuscriptSummary:
+def manuscript_summary(manuscript: Manuscript) -> ManuscriptSummary:
     latest = manuscript.versions[-1].number if manuscript.versions else 0
     return ManuscriptSummary(
         id=manuscript.id,
+        project_id=manuscript.project_id,
         title=manuscript.title,
         created_at=manuscript.created_at,
         version_count=len(manuscript.versions),
@@ -59,19 +60,19 @@ def _review_out(review: EditorialReview) -> ReviewOut:
 def create_manuscript(payload: ManuscriptCreate, service: TextService = Depends(get_service)) -> ManuscriptSummary:
     """Crea un manuscrito con la versión 1."""
     manuscript = service.create_manuscript(payload.title, payload.content, payload.note)
-    return _manuscript_summary(manuscript)
+    return manuscript_summary(manuscript)
 
 
 @router.get("/manuscripts", response_model=list[ManuscriptSummary])
 def list_manuscripts(service: TextService = Depends(get_service)) -> list[ManuscriptSummary]:
     """Lista de manuscritos."""
-    return [_manuscript_summary(item) for item in service.list_manuscripts()]
+    return [manuscript_summary(item) for item in service.list_manuscripts()]
 
 
 @router.get("/manuscripts/{manuscript_id}", response_model=ManuscriptSummary)
 def get_manuscript(manuscript_id: int, service: TextService = Depends(get_service)) -> ManuscriptSummary:
     """Detalle de un manuscrito."""
-    return _manuscript_summary(service.get_manuscript(manuscript_id))
+    return manuscript_summary(service.get_manuscript(manuscript_id))
 
 
 @router.post(

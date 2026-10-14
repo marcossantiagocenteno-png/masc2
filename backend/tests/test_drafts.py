@@ -323,15 +323,19 @@ def test_proyecto_archivado_conserva_su_borrador_y_su_comportamiento(
     proyectos = ProjectService(session, service)
     proyecto = proyectos.create_project("Proyecto con borrador")
     manuscript = service.create_manuscript("En proyecto", "Texto.", None, project_id=proyecto.id)
-    api.post(f"/manuscripts/{manuscript.id}/draft")
-    _save(api, manuscript.id, "Texto editado.", 1)
+    base = f"/projects/{proyecto.id}/manuscripts/{manuscript.id}"
+    api.post(base + "/draft")
+    api.put(base + "/draft", json={"content": "Texto editado.", "base_revision": 1})
 
     proyectos.archive_project(proyecto.id)
-    assert api.get(f"/manuscripts/{manuscript.id}/draft").json()["content"] == "Texto editado."
-    assert _save(api, manuscript.id, "Texto editado en archivo.", 2).status_code == 200
+    assert api.get(base + "/draft").json()["content"] == "Texto editado."
+    # Un proyecto archivado no admite escrituras por su ruta acotada (422), y no cambia el borrador.
+    rejected = api.put(base + "/draft", json={"content": "Texto editado en archivo.", "base_revision": 2})
+    assert rejected.status_code == 422
+    assert api.get(base + "/draft").json()["content"] == "Texto editado."
 
     proyectos.restore_project(proyecto.id)
-    assert api.get(f"/manuscripts/{manuscript.id}/draft").json()["revision"] == 3
+    assert api.get(base + "/draft").json()["revision"] == 2
 
 
 # 11. Sin exceso de puntos durante la escritura normal -----------------------

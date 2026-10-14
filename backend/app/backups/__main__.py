@@ -178,7 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument(
         "--permitir-esquema-anterior",
         action="store_true",
-        help="acepta una copia de una versión de esquema anterior (luego: alembic upgrade head)",
+        help="acepta una copia de esquema anterior: se migra a la revisión actual en un temporal antes de sustituir la base",
     )
     restore.add_argument(
         "--ignorar-marcador",

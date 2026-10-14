@@ -156,6 +156,8 @@ Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`
 
 - **Revisión de la estructura (migración 0008):** `projects.structure_version` cambia con cada escritura de estructura. Las escrituras hacen un `UPDATE` condicional sobre esa columna; una vista desfasada recibe 409 sin cambios (D-061).
 - **Movimiento de nodos:** `POST .../estructura/{id}/mover` (padre y posición). Valida tipo de padre, ciclos, archivados y proyecto antes de escribir.
+- **Análisis y revisiones (fase 2f):** `versionOps` en el cliente y rutas acotadas en `app/projects/scoped_routes.py`. Las rutas heredadas por versión rechazan manuscritos de proyecto (D-064).
+- **Restauración de copias anteriores (fase 2f):** `app/backups/restore.py` migra solo un temporal a la revisión actual antes de sustituir la base activa (D-064).
 - **Aislamiento de manuscritos (fase 2e):** `app/projects/membership.py` centraliza la comprobación de pertenencia y la guarda de escrituras heredadas sobre escenas. Las rutas `/projects/{p}/manuscripts/{m}/…` la usan; las heredadas se mantienen para manuscritos sin proyecto (D-063).
 - **Escritura de escenas (migración 0009):** `scene_manuscripts` une una escena con su manuscrito propio (uno a uno, mismo proyecto, inmutable). El texto es el borrador de ese manuscrito. `app/planning/escritura.py` inicia la escritura de forma idempotente y delega el guardado en `DraftService` (D-062).
 

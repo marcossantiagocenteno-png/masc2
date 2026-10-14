@@ -8,6 +8,7 @@ import {
   ApiError,
   formatDate,
   manuscriptOps,
+  versionOps,
   type ManuscriptOps,
   type ManuscriptSummary,
   type ReviewItemInput,
@@ -49,6 +50,7 @@ export default function VersionPage() {
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const opsRef = useRef<ManuscriptOps | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -58,11 +60,9 @@ export default function VersionPage() {
         const manuscriptData = await api.getManuscript(manuscriptId);
         const ops = manuscriptOps(manuscriptData.project_id, manuscriptId);
         opsRef.current = ops;
-        const [loaded, versionList, reviewList] = await Promise.all([
-          ops.getVersion(versionId),
-          ops.listVersions(),
-          api.listReviews(versionId),
-        ]);
+        setProjectId(manuscriptData.project_id);
+        const [loaded, versionList] = await Promise.all([ops.getVersion(versionId), ops.listVersions()]);
+        const reviewList = await versionOps(manuscriptData.project_id, manuscriptId, versionId).listReviews();
         if (!active) return;
         setVersion(loaded);
         setManuscript(manuscriptData);
@@ -117,8 +117,9 @@ export default function VersionPage() {
     };
 
     try {
-      await api.createReview(version.id, { reviewer, items: [item] });
-      setReviews(await api.listReviews(version.id));
+      const reviewOps = versionOps(projectId, manuscriptId, version.id);
+      await reviewOps.createReview({ reviewer, items: [item] });
+      setReviews(await reviewOps.listReviews());
       setVersion(await opsRef.current!.getVersion(version.id));
       setSelection(null);
       setComment("");
@@ -185,7 +186,13 @@ export default function VersionPage() {
         />
       </section>
 
-      {version ? <AnalysisPanel versionId={version.id} readSelection={readContentSelection} /> : null}
+      {version ? (
+        <AnalysisPanel
+          versionId={version.id}
+          ops={versionOps(projectId, manuscriptId, version.id)}
+          readSelection={readContentSelection}
+        />
+      ) : null}
 
       <section aria-labelledby="comentarios-titulo" className="flex flex-col gap-4">
         <h2 id="comentarios-titulo" className="text-xl font-medium">

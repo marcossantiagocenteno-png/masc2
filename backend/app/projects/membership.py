@@ -36,10 +36,15 @@ def manuscript_in_project(session: Session, project_id: int, manuscript_id: int)
 
 
 def version_in_manuscript(session: Session, project_id: int, manuscript_id: int, version_id: int) -> ManuscriptVersion:
-    manuscript_in_project(session, project_id, manuscript_id)
+    """Versión del manuscrito, dentro del proyecto. Inexistente, de otro manuscrito o de otro proyecto: el mismo 404."""
+    # El mismo mensaje para «no existe» y «es de otro proyecto»: no debe revelar ni el id ni la novela.
+    not_found = NotFoundError("no existe esa versión en este manuscrito del proyecto indicado")
     version = session.get(ManuscriptVersion, version_id)
     if version is None or version.manuscript_id != manuscript_id:
-        raise NotFoundError(f"no existe la versión {version_id} en el manuscrito {manuscript_id}")
+        raise not_found
+    manuscript = session.get(Manuscript, manuscript_id)
+    if manuscript is None or manuscript.project_id != project_id:
+        raise not_found
     return version
 
 
@@ -54,9 +59,28 @@ def scene_node_id(session: Session, manuscript_id: int) -> int | None:
     return session.scalar(select(SceneManuscript.node_id).where(SceneManuscript.manuscript_id == manuscript_id))
 
 
-def reject_legacy_write_for_scene(session: Session, manuscript_id: int) -> None:
-    """Las rutas heredadas no escriben sobre el texto de una escena: se usa su ruta o la acotada."""
-    if scene_node_id(session, manuscript_id) is not None:
-        raise ValidationFailed(
-            "este manuscrito es el texto de una escena: escríbelo desde la estructura o con la ruta del proyecto"
-        )
+LEGACY_HINT = (
+    "este manuscrito pertenece a un proyecto: usa la ruta /projects/{p}/manuscripts/{m}/… "
+    "(las rutas sin proyecto no lo atienden)"
+)
+
+
+def guard_manuscript_legacy(session: Session, manuscript_id: int, *, write: bool) -> None:
+    """Las rutas heredadas no atienden contenido de manuscritos con proyecto.
+
+    Sin esta guarda, un id de cualquier novela sería accesible por una ruta que no comprueba pertenencia.
+    La lectura responde 404 y la escritura 422, y ninguna escribe nada. Los manuscritos sin proyecto siguen igual.
+    El metadato (``GET /manuscripts/{id}``) no pasa por aquí: sirve para descubrir el proyecto.
+    """
+    manuscript = session.get(Manuscript, manuscript_id)
+    if manuscript is None or manuscript.project_id is None:
+        return
+    if write:
+        raise ValidationFailed(LEGACY_HINT)
+    raise NotFoundError(LEGACY_HINT)
+
+
+def guard_version_legacy(session: Session, version_id: int, *, write: bool) -> None:
+    version = session.get(ManuscriptVersion, version_id)
+    if version is not None:
+        guard_manuscript_legacy(session, version.manuscript_id, write=write)

@@ -1,7 +1,7 @@
 """Rutas de manuscritos acotadas a un proyecto: ``/projects/{p}/manuscripts/{m}/...``.
 
 Comprueban pertenencia (ver ``membership``) antes de leer o escribir. Las escrituras exigen un proyecto
-activo. La lógica de versiones, borradores y puntos es la de los servicios existentes, sin cambios.
+activo. La lógica de versiones, borradores, puntos, análisis y revisiones es la de los servicios existentes.
 """
 
 from __future__ import annotations
@@ -12,9 +12,12 @@ from sqlalchemy.orm import Session
 from app.db.models import ManuscriptDraft
 from app.drafts.schemas import DraftInitOut, DraftOut, DraftSave, RecoveryPointOut, RecoveryPointSummary, RestoreIn
 from app.drafts.service import DraftService
+from app.analysis.routes import get_analysis_service, run_analysis
+from app.analysis.schemas import AnalysisRequest, AnalysisRunOut
+from app.analysis.service import AnalysisService
 from app.projects.membership import manuscript_in_project, require_writable, version_in_manuscript
-from app.texts.routes import _version_out, get_service, get_session, manuscript_summary
-from app.texts.schemas import ManuscriptSummary, VersionCreate, VersionOut, VersionSummary
+from app.texts.routes import _review_out, _version_out, get_service, get_session, manuscript_summary
+from app.texts.schemas import ManuscriptSummary, ReviewCreate, ReviewOut, VersionCreate, VersionOut, VersionSummary
 from app.texts.service import TextService
 
 router = APIRouter(prefix="/projects/{project_id}/manuscripts/{manuscript_id}")
@@ -133,3 +136,63 @@ def restore_point(
     manuscript_in_project(session, project_id, manuscript_id)
     require_writable(session, project_id)
     return _draft_out(service.restore(manuscript_id, point_id, payload.base_revision))
+
+
+# ----------------------------------------------------------------------
+# Análisis y revisiones de una versión. Pertenencia antes de cualquier proveedor o escritura.
+# ----------------------------------------------------------------------
+
+
+@router.post("/versions/{version_id}/analyses", status_code=status.HTTP_201_CREATED, response_model=AnalysisRunOut)
+def create_analysis(
+    project_id: int,
+    manuscript_id: int,
+    version_id: int,
+    payload: AnalysisRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    service: AnalysisService = Depends(get_analysis_service),
+) -> AnalysisRunOut:
+    """Analiza un fragmento de una versión del proyecto. No modifica la versión."""
+    version_in_manuscript(session, project_id, manuscript_id, version_id)
+    require_writable(session, project_id)
+    return run_analysis(request, service, version_id, payload)
+
+
+@router.get("/versions/{version_id}/analyses", response_model=list[AnalysisRunOut])
+def list_analyses(
+    project_id: int,
+    manuscript_id: int,
+    version_id: int,
+    session: Session = Depends(get_session),
+    service: AnalysisService = Depends(get_analysis_service),
+) -> list[AnalysisRunOut]:
+    version_in_manuscript(session, project_id, manuscript_id, version_id)
+    return [AnalysisRunOut.model_validate(run, from_attributes=True) for run in service.list_runs(version_id)]
+
+
+@router.post("/versions/{version_id}/reviews", status_code=status.HTTP_201_CREATED, response_model=ReviewOut)
+def create_review(
+    project_id: int,
+    manuscript_id: int,
+    version_id: int,
+    payload: ReviewCreate,
+    session: Session = Depends(get_session),
+    service: TextService = Depends(get_service),
+) -> ReviewOut:
+    """Crea una revisión vinculada a una versión del proyecto. Valida las citas antes de guardar nada."""
+    version_in_manuscript(session, project_id, manuscript_id, version_id)
+    require_writable(session, project_id)
+    return _review_out(service.create_review(version_id, payload.reviewer, payload.items))
+
+
+@router.get("/versions/{version_id}/reviews", response_model=list[ReviewOut])
+def list_reviews(
+    project_id: int,
+    manuscript_id: int,
+    version_id: int,
+    session: Session = Depends(get_session),
+    service: TextService = Depends(get_service),
+) -> list[ReviewOut]:
+    version_in_manuscript(session, project_id, manuscript_id, version_id)
+    return [_review_out(item) for item in service.list_reviews(version_id)]

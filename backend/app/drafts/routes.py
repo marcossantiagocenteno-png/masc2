@@ -27,7 +27,7 @@ from app.drafts.schemas import (
     RestoreIn,
 )
 from app.drafts.service import DraftService
-from app.projects.membership import reject_legacy_write_for_scene
+from app.projects.membership import guard_manuscript_legacy
 
 router = APIRouter()
 
@@ -53,12 +53,18 @@ def _draft_out(draft: ManuscriptDraft) -> DraftOut:
 
 
 @router.get("/manuscripts/{manuscript_id}/draft", response_model=DraftOut)
-def get_draft(manuscript_id: int, service: DraftService = Depends(get_service)) -> DraftOut:
+def get_draft(
+    manuscript_id: int, session: Session = Depends(get_session), service: DraftService = Depends(get_service)
+) -> DraftOut:
+    guard_manuscript_legacy(session, manuscript_id, write=False)
     return _draft_out(service.get_draft(manuscript_id))
 
 
 @router.post("/manuscripts/{manuscript_id}/draft", response_model=DraftInitOut)
-def init_draft(manuscript_id: int, service: DraftService = Depends(get_service)) -> DraftInitOut:
+def init_draft(
+    manuscript_id: int, session: Session = Depends(get_session), service: DraftService = Depends(get_service)
+) -> DraftInitOut:
+    guard_manuscript_legacy(session, manuscript_id, write=True)
     draft, created = service.init_draft(manuscript_id)
     return DraftInitOut(created=created, draft=_draft_out(draft))
 
@@ -70,14 +76,17 @@ def save_draft(
     session: Session = Depends(get_session),
     service: DraftService = Depends(get_service),
 ) -> DraftOut:
-    reject_legacy_write_for_scene(session, manuscript_id)
+    guard_manuscript_legacy(session, manuscript_id, write=True)
     return _draft_out(
         service.save(manuscript_id, payload.content, payload.base_revision, keep_previous=payload.keep_previous)
     )
 
 
 @router.get("/manuscripts/{manuscript_id}/recovery-points", response_model=list[RecoveryPointSummary])
-def list_points(manuscript_id: int, service: DraftService = Depends(get_service)) -> list[RecoveryPointSummary]:
+def list_points(
+    manuscript_id: int, session: Session = Depends(get_session), service: DraftService = Depends(get_service)
+) -> list[RecoveryPointSummary]:
+    guard_manuscript_legacy(session, manuscript_id, write=False)
     return [
         RecoveryPointSummary.model_validate(point, from_attributes=True)
         for point in service.list_points(manuscript_id)
@@ -86,8 +95,9 @@ def list_points(manuscript_id: int, service: DraftService = Depends(get_service)
 
 @router.get("/manuscripts/{manuscript_id}/recovery-points/{point_id}", response_model=RecoveryPointOut)
 def get_point(
-    manuscript_id: int, point_id: int, service: DraftService = Depends(get_service)
+    manuscript_id: int, point_id: int, session: Session = Depends(get_session), service: DraftService = Depends(get_service)
 ) -> RecoveryPointOut:
+    guard_manuscript_legacy(session, manuscript_id, write=False)
     return RecoveryPointOut.model_validate(service.get_point(manuscript_id, point_id), from_attributes=True)
 
 
@@ -102,5 +112,5 @@ def restore_point(
     session: Session = Depends(get_session),
     service: DraftService = Depends(get_service),
 ) -> DraftOut:
-    reject_legacy_write_for_scene(session, manuscript_id)
+    guard_manuscript_legacy(session, manuscript_id, write=True)
     return _draft_out(service.restore(manuscript_id, point_id, payload.base_revision))

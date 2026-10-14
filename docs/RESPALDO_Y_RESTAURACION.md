@@ -92,20 +92,30 @@ La restauración **no se hace desde la interfaz**. Es un procedimiento administr
    ```
 
 4. **Comprueba el resultado.** La salida indica la copia preventiva creada. Arranca el backend y verifica que tus manuscritos, borradores y puntos de recuperación están presentes.
-5. Si la copia es de una **versión de esquema anterior** (la salida lo dirá), ejecuta después `python -m alembic upgrade head` desde `backend/`. La restauración **nunca migra** automáticamente.
+5. Si la copia es de una **versión de esquema anterior**, la restauración solo se hace con `--permitir-esquema-anterior`. La copia se migra a la revisión actual **en un temporal**, nunca en la base activa, y después se verifica. No tienes que ejecutar nada más.
 
 ### Qué garantiza
 
 - Rechaza una copia que no supera la verificación, o cuyo hash no coincide con su manifiesto, **sin tocar la base activa**.
 - Rechaza si la aplicación parece estar en marcha (marcador `.app-running`), o si otro proceso tiene abierta la base.
 - Guarda una **copia preventiva** de la base actual (`preventiva-*.sqlite`, con manifiesto) antes de reemplazarla. Lo que estaba en la base actual no se pierde.
-- Crea el temporal desde la copia y lo verifica (integridad y recuentos) antes de reemplazar nada.
-- Si la base restaurada no supera la verificación posterior, **vuelve automáticamente a la copia preventiva**. El resultado es `revertida`.
-- No ejecuta migraciones, no borra copias ni datos.
+- Crea el temporal desde la copia y lo verifica (integridad, tablas de su revisión, recuentos y revisión actual) antes de reemplazar nada.
+- Si la base restaurada no supera la verificación posterior, o no queda en la **revisión actual del código**, **vuelve automáticamente a la copia preventiva**. El resultado es `revertida`.
+- Solo migra un temporal copiado de la copia de origen, y nunca la base activa. La copia de origen no se modifica.
+- No borra copias ni datos.
 
 ### Copia de un esquema anterior
 
-Una copia de una revisión anterior a la actual se rechaza salvo que añadas `--permitir-esquema-anterior`. Con ese flag se restaura y, después, debes ejecutar `python -m alembic upgrade head`. Las migraciones de esta aplicación son aditivas, pero esa decisión la tomas tú, después de leer el registro. No hay una bajada automática (`0004` y `0005` no se revierten solas: restaura la copia anterior).
+Una copia de una revisión anterior a la actual se rechaza salvo que añadas `--permitir-esquema-anterior`. Con ese flag:
+
+1. La copia se verifica y se copia a un temporal junto a la base activa.
+2. El temporal se migra a la revisión actual con `alembic upgrade head`. Las migraciones desde `0005` son aditivas (tablas y columnas nuevas, sin borrar datos), y así lo prueban las pruebas de migración.
+3. El temporal se verifica (integridad, tablas de la revisión actual, recuentos iguales a los de la copia en sus tablas originales).
+4. Solo entonces sustituye a la base activa. El resultado es `restaurada`, con la base ya en la revisión actual.
+
+Si la migración del temporal falla, la restauración se **rechaza**: la base activa no se toca, y el mensaje indica el procedimiento manual. Si la base final no quedara en la revisión actual, se revierte a la copia preventiva.
+
+**Procedimiento manual de recuperación** (solo con la aplicación detenida, si la restauración automática se rechaza): copia el archivo de la copia a una carpeta de trabajo; desde `backend/`, ejecuta `DATABASE_URL=sqlite:///RUTA_DE_LA_COPIA python -m alembic upgrade head`; verifica el resultado con `python -m app.backups verificar RUTA_DE_LA_COPIA` y comprueba que la revisión es la actual; y solo entonces reemplaza la base activa, guardando antes una copia de ella. No borres copias antiguas para hacerlo.
 
 ### Marcador de backend en marcha
 

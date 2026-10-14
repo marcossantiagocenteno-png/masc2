@@ -318,9 +318,7 @@ export const api = {
       body: JSON.stringify({ base_revision: baseRevision }),
     }),
 
-  listReviews: (versionId: number) => request<ReviewOut[]>(`/versions/${versionId}/reviews`),
 
-  listAnalyses: (versionId: number) => request<AnalysisRun[]>(`/versions/${versionId}/analyses`),
 
   getAnalysisProvider: () => request<AnalysisProviderStatus>("/analysis/provider"),
 
@@ -343,21 +341,6 @@ export const api = {
 
   createProjectManuscript: (id: number, body: { title: string; content: string; note?: string }) =>
     request<ManuscriptSummary>(`/projects/${id}/manuscripts`, { method: "POST", body: JSON.stringify(body) }),
-
-  analyzeFragment: (
-    versionId: number,
-    body: { start_offset: number; end_offset: number; external_authorization?: ExternalAuthorization },
-  ) =>
-    request<AnalysisRun>(`/versions/${versionId}/analyses`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-
-  createReview: (versionId: number, body: { reviewer: string; items: ReviewItemInput[] }) =>
-    request<ReviewOut>(`/versions/${versionId}/reviews`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
 
   /* ---- Planificación ---- */
 
@@ -594,4 +577,25 @@ export const DEVELOPMENT_STATUS_LABELS: Record<DevelopmentStatus, string> = {
 export function formatDate(iso: string): string {
   const date = new Date(iso.endsWith("Z") ? iso : `${iso}Z`);
   return date.toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
+}
+
+export type VersionOps = ReturnType<typeof versionOps>;
+
+/**
+ * Análisis y revisiones de una versión, con su ámbito. Con proyecto usa las rutas acotadas (comprueban
+ * pertenencia); sin proyecto, las heredadas. El análisis no modifica la versión; la revisión no cambia el texto.
+ */
+export function versionOps(projectId: number | null, manuscriptId: number, versionId: number) {
+  const base =
+    projectId === null
+      ? `/versions/${versionId}`
+      : `/projects/${projectId}/manuscripts/${manuscriptId}/versions/${versionId}`;
+  return {
+    listAnalyses: () => request<AnalysisRun[]>(`${base}/analyses`),
+    analyzeFragment: (body: { start_offset: number; end_offset: number; external_authorization?: ExternalAuthorization }) =>
+      request<AnalysisRun>(`${base}/analyses`, { method: "POST", body: JSON.stringify(body) }),
+    listReviews: () => request<ReviewOut[]>(`${base}/reviews`),
+    createReview: (body: { reviewer: string; items: ReviewItemInput[] }) =>
+      request<ReviewOut>(`${base}/reviews`, { method: "POST", body: JSON.stringify(body) }),
+  };
 }

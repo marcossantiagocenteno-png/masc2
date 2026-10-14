@@ -10,6 +10,7 @@ import {
   type AnalysisProviderStatus,
   type AnalysisRun,
   type ExternalAuthorization,
+  type VersionOps,
 } from "@/lib/api";
 
 /** Selección del contenido de la versión, en posiciones de caracteres. */
@@ -54,6 +55,8 @@ const CERTAINTY_LABEL: Record<AnalysisFinding["certainty"], string> = {
 
 type Props = {
   versionId: number;
+  /** Operaciones de la versión con su ámbito de proyecto (ver ``versionOps``). */
+  ops: VersionOps;
   readSelection: () => ContentSelection | null;
 };
 
@@ -61,7 +64,7 @@ type Props = {
  * Análisis editorial de un fragmento. El análisis no modifica la versión:
  * solo muestra y guarda diagnósticos vinculados a ella.
  */
-export function AnalysisPanel({ versionId, readSelection }: Props) {
+export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
   const [runs, setRuns] = useState<AnalysisRun[] | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [provider, setProvider] = useState<AnalysisProviderStatus | null>(null);
@@ -73,7 +76,7 @@ export function AnalysisPanel({ versionId, readSelection }: Props) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([api.listAnalyses(versionId), api.getAnalysisProvider()])
+    Promise.all([ops.listAnalyses(), api.getAnalysisProvider()])
       .then(([list, status]) => {
         if (!active) return;
         setRuns(list);
@@ -97,12 +100,12 @@ export function AnalysisPanel({ versionId, readSelection }: Props) {
     setError(null);
     setBusy(true);
     try {
-      const run = await api.analyzeFragment(versionId, {
+      const run = await ops.analyzeFragment({
         start_offset: selection.start,
         end_offset: selection.end,
         ...(authorization ? { external_authorization: authorization } : {}),
       });
-      const list = await api.listAnalyses(versionId);
+      const list = await ops.listAnalyses();
       setRuns(list);
       setSelectedId(run.id);
     } catch (reason) {

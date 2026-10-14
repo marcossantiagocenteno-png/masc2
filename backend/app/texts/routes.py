@@ -17,7 +17,7 @@ from app.texts.schemas import (
     VersionOut,
     VersionSummary,
 )
-from app.projects.membership import reject_legacy_write_for_scene, scene_node_id
+from app.projects.membership import guard_manuscript_legacy, guard_version_legacy, scene_node_id
 from app.texts.service import TextService
 
 router = APIRouter()
@@ -90,7 +90,7 @@ def create_version(
     service: TextService = Depends(get_service),
 ) -> VersionOut:
     """Crea una versión nueva. Nunca modifica las anteriores. Ruta heredada: no admite escenas."""
-    reject_legacy_write_for_scene(session, manuscript_id)
+    guard_manuscript_legacy(session, manuscript_id, write=True)
     version = service.add_version(
         manuscript_id, payload.content, payload.note, payload.based_on_version_id
     )
@@ -98,13 +98,19 @@ def create_version(
 
 
 @router.get("/manuscripts/{manuscript_id}/versions", response_model=list[VersionSummary])
-def list_versions(manuscript_id: int, service: TextService = Depends(get_service)) -> list[VersionSummary]:
+def list_versions(
+    manuscript_id: int, session: Session = Depends(get_session), service: TextService = Depends(get_service)
+) -> list[VersionSummary]:
+    guard_manuscript_legacy(session, manuscript_id, write=False)
     """Versiones de un manuscrito, sin contenido."""
     return [_summary(item) for item in service.list_versions(manuscript_id)]
 
 
 @router.get("/versions/{version_id}", response_model=VersionOut)
-def get_version(version_id: int, service: TextService = Depends(get_service)) -> VersionOut:
+def get_version(
+    version_id: int, session: Session = Depends(get_session), service: TextService = Depends(get_service)
+) -> VersionOut:
+    guard_version_legacy(session, version_id, write=False)
     """Versión completa, con su contenido y el número de revisiones."""
     return _version_out(service, service.get_version(version_id))
 
@@ -117,16 +123,21 @@ def get_version(version_id: int, service: TextService = Depends(get_service)) ->
 def create_review(
     version_id: int,
     payload: ReviewCreate,
+    session: Session = Depends(get_session),
     service: TextService = Depends(get_service),
 ) -> ReviewOut:
-    """Crea una revisión vinculada a esta versión."""
+    """Crea una revisión vinculada a esta versión. Ruta heredada: no atiende versiones de proyectos."""
+    guard_version_legacy(session, version_id, write=True)
     review = service.create_review(version_id, payload.reviewer, payload.items)
     return _review_out(review)
 
 
 @router.get("/versions/{version_id}/reviews", response_model=list[ReviewOut])
-def list_reviews(version_id: int, service: TextService = Depends(get_service)) -> list[ReviewOut]:
-    """Revisiones vinculadas a esta versión."""
+def list_reviews(
+    version_id: int, session: Session = Depends(get_session), service: TextService = Depends(get_service)
+) -> list[ReviewOut]:
+    """Revisiones vinculadas a esta versión. Ruta heredada: no atiende versiones de proyectos."""
+    guard_version_legacy(session, version_id, write=False)
     return [_review_out(item) for item in service.list_reviews(version_id)]
 
 

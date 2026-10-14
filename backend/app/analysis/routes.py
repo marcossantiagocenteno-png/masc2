@@ -11,6 +11,7 @@ from app.analysis.errors import AuthorizationRequired
 from app.analysis.provider import resolve_provider
 from app.analysis.schemas import AnalysisRequest, AnalysisRunOut, ProviderStatusOut
 from app.analysis.service import AnalysisService
+from app.projects.membership import guard_version_legacy
 from app.texts.errors import TextError
 from app.texts.routes import get_session
 from app.texts.service import TextService
@@ -37,12 +38,25 @@ def create_analysis(
     version_id: int,
     payload: AnalysisRequest,
     request: Request,
+    session: Session = Depends(get_session),
     service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisRunOut:
-    """Analiza un fragmento con el proveedor configurado. No modifica la versión.
+    """Analiza un fragmento con el proveedor configurado. Ruta heredada: no atiende versiones de proyectos.
 
     Para un proveedor externo, la petición debe llevar ``external_authorization``
     con el nombre del proveedor configurado. Sin ella, no se realiza ninguna llamada.
+    """
+    guard_version_legacy(session, version_id, write=True)
+    return run_analysis(request, service, version_id, payload)
+
+
+def run_analysis(
+    request: Request, service: AnalysisService, version_id: int, payload: AnalysisRequest
+) -> AnalysisRunOut:
+    """Ejecuta un análisis ya autorizado por pertenencia. Compartido por la ruta heredada y la acotada.
+
+    La comprobación de la autorización externa va antes de resolver el proveedor: una petición
+    rechazada nunca llega a un proveedor.
     """
     settings = request.app.state.settings
     provider = resolve_provider(settings.analysis_provider, settings)
@@ -98,7 +112,9 @@ def provider_status(request: Request) -> ProviderStatusOut:
 @router.get("/versions/{version_id}/analyses", response_model=list[AnalysisRunOut])
 def list_analyses(
     version_id: int,
+    session: Session = Depends(get_session),
     service: AnalysisService = Depends(get_analysis_service),
 ) -> list[AnalysisRunOut]:
-    """Análisis guardados de una versión."""
+    """Análisis guardados de una versión. Ruta heredada: no atiende versiones de proyectos."""
+    guard_version_legacy(session, version_id, write=False)
     return [AnalysisRunOut.model_validate(run, from_attributes=True) for run in service.list_runs(version_id)]

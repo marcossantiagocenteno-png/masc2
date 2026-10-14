@@ -282,6 +282,7 @@ La copia usa la API de backup de SQLite, dentro de una lectura abierta: todo el 
 Las copias automáticas corren en un hilo del backend, cada 60 minutos por defecto (`NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES`). La lógica está en `tick`, sin hilos, para que las pruebas la controlen con un reloj. Un bloqueo por creación exclusiva de archivo (`.backup.lock`) impide dos copias a la vez, y también una copia y una restauración; funciona igual en Linux y Windows. Un bloqueo de más de dos horas se considera abandonado y se retira. Mientras el backend corre, existe el marcador `.app-running`: la restauración se niega mientras exista. Un cierre brusco deja el marcador; entonces hay que usar `--ignorar-marcador` tras comprobar que no hay ningún proceso.
 
 ## D-047 · Restauración administrativa, con copia preventiva y reversión
+**Estado:** aceptada. La regla «nunca se ejecutan migraciones durante la restauración» se ha **superado para copias anteriores** por D-064 (fase 2f).
 **Estado:** aceptada
 
 La restauración es un comando (`python -m app.backups restaurar --confirmar`), no una función de la interfaz, porque reemplaza la base con la aplicación detenida. Orden: rechazar si el marcador existe; verificar la copia (integridad, esquema conocido, hash del manifiesto); bloquear la base activa en exclusiva (si otro proceso la usa, rechazar); guardar la copia preventiva y verificarla; crear el temporal desde la copia y verificarlo; reemplazar; verificar de nuevo. Si la verificación posterior falla, se devuelve la preventiva. Ninguna copia de esquema anterior se restaura sin `--permitir-esquema-anterior`, y nunca se ejecutan migraciones durante la restauración. La copia preventiva se hace como copia de archivo porque, con el bloqueo exclusivo, el archivo es consistente; la API de backup desde esa conexión se colgaba (ver D-045).
@@ -440,6 +441,19 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 **Título.** La escena es la única fuente de verdad del título de su manuscrito. Ninguna interfaz ni ruta edita el título de un manuscrito: lo fija su creación y, si es de escena, lo copia la escena al renombrarse, en la misma transacción. Un fallo de sincronización deshace el renombrado completo (no quedan títulos contradictorios). La página del manuscrito de escena lo indica y enlaza a la escena. Los manuscritos independientes no se tocan. Así no hay sincronizaciones recursivas ni actualizaciones parciales.
 
 **Límites que quedan.** Las revisiones editoriales y el análisis siguen en rutas por id de versión (no comprueban proyecto). No modifican borradores ni textos, pero sí crean registros, así que quedan como límite conocido. Las lecturas heredadas (`/manuscripts/{id}`, `/versions/{id}`, puntos) siguen aceptando ids de cualquier proyecto para los manuscritos sin proyecto. Restaurar una copia anterior a 0009 sin migrar dejaría sin tabla `scene_manuscripts`: hay que ejecutar `alembic upgrade head` tras restaurar.
+
+---
+
+## D-064 · Aislamiento de análisis y revisiones; restauración de copias antiguas migradas en un temporal
+**Estado:** aceptada (fase 2f)
+
+**Análisis y revisiones.** Son registros de una versión. Se añaden rutas `/projects/{p}/manuscripts/{m}/versions/{v}/analyses` y `…/reviews` (GET y POST) que comprueban la pertenencia de la versión antes de cualquier efecto. Una versión inexistente y una de otra novela dan el mismo 404 y el mismo mensaje, sin revelar el id. La autorización externa del análisis se evalúa después de la pertenencia y antes de resolver ningún proveedor, así que una petición rechazada no llega a un proveedor. Las escrituras exigen proyecto activo.
+
+**Rutas heredadas.** Las rutas por id de versión y de manuscrito (`/versions/{v}/reviews`, `/versions/{v}/analyses`, borradores, puntos y versiones) no atienden manuscritos que pertenecen a un proyecto: leer da 404 y escribir da 422, con un mensaje que indica la ruta correcta. Los manuscritos sin proyecto siguen igual. El metadato `GET /manuscripts/{id}` sigue abierto para descubrir el proyecto. Así la ruta heredada no es una vía alternativa para saltarse la pertenencia.
+
+**Restauración de copias antiguas.** Antes, `--permitir-esquema-anterior` sustituía la base activa por una copia de esquema 0004 o 0008 sin tablas nuevas. La verificación comprobaba solo las tablas de la revisión del archivo, así que la restauración pasaba y la aplicación quedaba incompatible. Ahora: la copia de origen se verifica y se copia a un temporal; si es de esquema anterior, **solo el temporal** se migra a la revisión actual; el temporal debe quedar en la revisión actual y conservar los conteos de sus tablas originales; la base activa se sustituye solo entonces, y la base final debe estar en la revisión actual o se revierte a la copia preventiva. Si la migración del temporal falla, la restauración se rechaza sin tocar la base activa y el mensaje da el procedimiento manual. La copia de origen no se modifica nunca. Esto supera la regla de D-047 solo para copias anteriores, y no cambia la política de retención ni borra nada.
+
+**Límites.** Las revisiones y el análisis de un manuscrito sin proyecto siguen en rutas heredadas, que son las únicas para ese caso. Una restauración que falle a mitad de la sustitución depende de la copia preventiva: si también falla, el mensaje lo indica.
 
 ---
 

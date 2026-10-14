@@ -31,8 +31,8 @@ def test_dos_proyectos_son_independientes(client: TestClient) -> None:
     assert b_titles == ["Manuscrito B"]
 
     # Ningún dato de A aparece en B, ni en sus versiones.
-    a_version = client.get(f"/manuscripts/{a_text['id']}/versions").json()[0]
-    b_versions = client.get(f"/manuscripts/{b_text['id']}/versions").json()
+    a_version = client.get(f"/projects/{first['id']}/manuscripts/{a_text['id']}/versions").json()[0]
+    b_versions = client.get(f"/projects/{second['id']}/manuscripts/{b_text['id']}/versions").json()
     assert all(v["id"] != a_version["id"] for v in b_versions)
     assert "Texto exclusivo de A." not in str(client.get(f"/projects/{second['id']}").json())
     assert a_text["project_id"] == first["id"]
@@ -104,7 +104,7 @@ def test_detalle_muestra_recuento_y_ultima_actividad(client: TestClient) -> None
     assert empty["last_activity_at"] is None
 
     manuscript = _manuscript(client, project["id"], "Con actividad", "Texto.")
-    client.post(f"/manuscripts/{manuscript['id']}/versions", json={"content": "Otra versión."})
+    client.post(f"/projects/{project['id']}/manuscripts/{manuscript['id']}/versions", json={"content": "Otra versión."})
     detail = client.get(f"/projects/{project['id']}").json()
     assert detail["manuscript_count"] == 1
     assert detail["last_activity_at"] is not None

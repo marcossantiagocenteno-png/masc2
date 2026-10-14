@@ -126,10 +126,11 @@ def test_guardar_con_una_revision_antigua_responde_409_y_conserva_el_texto_recha
     assert stale.status_code == 409
     assert stale.json()["current_content"] == "Versión de la ventana A"
     assert _read(api, project, scene["id"])["draft"]["content"] == "Versión de la ventana A"
-    points = api.get(f"/manuscripts/{manuscript_id}/recovery-points").json()
+    base = f"/projects/{project}/manuscripts/{manuscript_id}"
+    points = api.get(base + "/recovery-points").json()
     conflict = [point for point in points if point["reason"] == "conflicto"]
     assert len(conflict) == 1
-    assert api.get(f"/manuscripts/{manuscript_id}/recovery-points/{conflict[0]['id']}").json()["content"] == "Versión de la ventana B"
+    assert api.get(base + f"/recovery-points/{conflict[0]['id']}").json()["content"] == "Versión de la ventana B"
 
 
 def test_guardar_sin_haber_iniciado_la_escritura_se_rechaza(api: TestClient) -> None:
@@ -203,14 +204,14 @@ def test_las_versiones_y_los_puntos_de_recuperacion_del_manuscrito_de_escena_sig
         json={"content": "Segunda idea", "note": "Versión formal", "based_on_version_id": None},
     )
     assert version.status_code == 201, version.text
-    versions = api.get(f"/manuscripts/{manuscript_id}/versions").json()
+    versions = api.get(f"/projects/{project}/manuscripts/{manuscript_id}/versions").json()
     assert [item["number"] for item in versions] == [1, 2]
     assert versions[0]["char_count"] == 0  # la versión 1 vacía no cambia
 
     # El borrador no se convierte en versión: la versión formal no cambia el borrador.
     assert _read(api, project, scene["id"])["draft"]["content"] == "Segunda idea"
 
-    points = api.get(f"/manuscripts/{manuscript_id}/recovery-points").json()
+    points = api.get(f"/projects/{project}/manuscripts/{manuscript_id}/recovery-points").json()
     assert points, "debe haber puntos de recuperación tras los guardados"
     first_point = points[-1]
     legacy_restore = api.post(
@@ -223,7 +224,7 @@ def test_las_versiones_y_los_puntos_de_recuperacion_del_manuscrito_de_escena_sig
         json={"base_revision": _read(api, project, scene["id"])["draft"]["revision"]},
     )
     assert restored.status_code == 200, restored.text
-    point_content = api.get(f"/manuscripts/{manuscript_id}/recovery-points/{first_point['id']}").json()["content"]
+    point_content = api.get(f"/projects/{project}/manuscripts/{manuscript_id}/recovery-points/{first_point['id']}").json()["content"]
     assert _read(api, project, scene["id"])["draft"]["content"] == point_content
 
 

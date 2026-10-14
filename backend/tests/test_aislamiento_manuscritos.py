@@ -37,16 +37,22 @@ def _scene(api: TestClient, project: int, title: str) -> dict:
     return response.json()
 
 
+def _at(api: TestClient, manuscript_id: int) -> str:
+    """Ruta acotada del manuscrito, con el proyecto que indica su metadato. Las pruebas la usan para preparar datos."""
+    project = api.get(f"/manuscripts/{manuscript_id}").json()["project_id"]
+    return f"/projects/{project}/manuscripts/{manuscript_id}"
+
+
 def _draft(api: TestClient, manuscript_id: int) -> dict:
     """Borrador del manuscrito, creándolo si no existe (es lo que hace la interfaz al abrirlo)."""
-    return api.post(f"/manuscripts/{manuscript_id}/draft").json()["draft"]
+    return api.post(_at(api, manuscript_id) + "/draft").json()["draft"]
 
 
 def _snapshot(api: TestClient, manuscript_id: int) -> dict:
     """Estado observable de un manuscrito: borrador, versiones y puntos. Para comprobar que nada cambia."""
     draft = _draft(api, manuscript_id)
-    versions = api.get(f"/manuscripts/{manuscript_id}/versions").json()
-    points = api.get(f"/manuscripts/{manuscript_id}/recovery-points").json()
+    versions = api.get(_at(api, manuscript_id) + "/versions").json()
+    points = api.get(_at(api, manuscript_id) + "/recovery-points").json()
     return {
         "draft": (draft["content"], draft["revision"]),
         "versions": [(item["number"], item["sha256"]) for item in versions],
@@ -66,7 +72,7 @@ def two_novels(api: TestClient) -> dict:
     manuscript_a = _manuscript(api, project_a, "Manuscrito A")
     # Un punto de recuperación real en A: un guardado que cambia el texto.
     base = _draft(api, manuscript_a["id"])["revision"]
-    api.put(f"/manuscripts/{manuscript_a['id']}/draft", json={"content": "Cambio en A", "base_revision": base, "keep_previous": False})
+    api.put(_at(api, manuscript_a["id"]) + "/draft", json={"content": "Cambio en A", "base_revision": base, "keep_previous": False})
     return {"a": project_a, "b": project_b, "manuscript_a": manuscript_a["id"]}
 
 
@@ -78,7 +84,7 @@ def test_leer_un_manuscrito_de_otro_proyecto_por_ruta_acotada_responde_404(api: 
 
 def test_las_versiones_de_otro_proyecto_no_se_leen_ni_se_crean_por_ruta_acotada(api: TestClient, two_novels: dict) -> None:
     m = two_novels["manuscript_a"]
-    version_id = api.get(f"/manuscripts/{m}/versions").json()[0]["id"]
+    version_id = api.get(_at(api, m) + "/versions").json()[0]["id"]
     before = _snapshot(api, m)
     assert api.get(f"/projects/{two_novels['b']}/manuscripts/{m}/versions").status_code == 404
     assert api.get(f"/projects/{two_novels['b']}/manuscripts/{m}/versions/{version_id}").status_code == 404
@@ -106,7 +112,7 @@ def test_el_borrador_de_otro_proyecto_no_se_lee_ni_se_guarda_por_ruta_acotada(ap
 
 def test_los_puntos_de_otro_proyecto_no_se_leen_ni_se_restauran_por_ruta_acotada(api: TestClient, two_novels: dict) -> None:
     m = two_novels["manuscript_a"]
-    point_id = api.get(f"/manuscripts/{m}/recovery-points").json()[0]["id"]
+    point_id = api.get(_at(api, m) + "/recovery-points").json()[0]["id"]
     before = _snapshot(api, m)
     assert api.get(f"/projects/{two_novels['b']}/manuscripts/{m}/recovery-points").status_code == 404
     assert api.get(f"/projects/{two_novels['b']}/manuscripts/{m}/recovery-points/{point_id}").status_code == 404
@@ -124,8 +130,8 @@ def test_un_punto_de_otro_manuscrito_del_mismo_proyecto_no_se_restaura(api: Test
     second = _manuscript(api, project, "Segundo")
     # Un guardado real en el primero crea un punto de recuperación.
     base_first = _draft(api, first["id"])["revision"]
-    api.put(f"/manuscripts/{first['id']}/draft", json={"content": "Cambio del primero", "base_revision": base_first, "keep_previous": False})
-    point_of_first = api.get(f"/manuscripts/{first['id']}/recovery-points").json()[0]["id"]
+    api.put(_at(api, first["id"]) + "/draft", json={"content": "Cambio del primero", "base_revision": base_first, "keep_previous": False})
+    point_of_first = api.get(_at(api, first["id"]) + "/recovery-points").json()[0]["id"]
     before = _snapshot(api, second["id"])
 
     response = api.post(
@@ -140,7 +146,7 @@ def test_una_version_de_otro_manuscrito_del_mismo_proyecto_no_se_lee_por_su_ruta
     project = _project(api, "Versiones cruzadas")
     first = _manuscript(api, project, "Uno")
     second = _manuscript(api, project, "Dos")
-    version_of_first = api.get(f"/manuscripts/{first['id']}/versions").json()[0]["id"]
+    version_of_first = api.get(_at(api, first["id"]) + "/versions").json()[0]["id"]
     assert api.get(f"/projects/{project}/manuscripts/{second['id']}/versions/{version_of_first}").status_code == 404
 
 
@@ -161,13 +167,16 @@ def test_proyecto_inexistente_responde_404_sin_tocar_nada(api: TestClient, two_n
     assert api.post(f"/projects/999999/manuscripts/{m}/versions", json={"content": "x", "note": None, "based_on_version_id": None}).status_code == 404
 
 
-def test_la_ruta_acotada_no_cambia_la_convivencia_con_las_rutas_heredadas(api: TestClient, two_novels: dict) -> None:
-    """Compatibilidad: un manuscrito de proyecto sigue leyéndose y escribiéndose por la ruta heredada, como antes."""
+def test_las_rutas_heredadas_no_atienden_manuscritos_de_proyecto(api: TestClient, two_novels: dict) -> None:
+    """Un manuscrito con proyecto no se lee ni se escribe por la ruta heredada: 404 en lectura, 422 en escritura."""
     m = two_novels["manuscript_a"]
-    base = api.get(f"/manuscripts/{m}/draft").json()["revision"]
-    response = api.put(f"/manuscripts/{m}/draft", json={"content": "Por la ruta heredada", "base_revision": base, "keep_previous": False})
-    assert response.status_code == 200
-    assert api.get(f"/projects/{two_novels['a']}/manuscripts/{m}/draft").json()["content"] == "Por la ruta heredada"
+    before = _snapshot(api, m)
+    assert api.get(f"/manuscripts/{m}/draft").status_code == 404
+    assert api.get(f"/manuscripts/{m}/versions").status_code == 404
+    assert api.get(f"/manuscripts/{m}/recovery-points").status_code == 404
+    write = api.put(f"/manuscripts/{m}/draft", json={"content": "Por la ruta heredada", "base_revision": before["draft"][1], "keep_previous": False})
+    assert write.status_code == 422
+    assert _snapshot(api, m) == before
 
 
 # ----------------------------------------------------------------------
@@ -277,7 +286,7 @@ def test_archivar_y_restaurar_una_escena_o_un_proyecto_conserva_la_union_y_el_te
     scene = _scene(api, project, "Conservada")
     api.post(f"/projects/{project}/planificacion/estructura/{scene['id']}/escritura")
     manuscript_id = api.get(f"/projects/{project}/planificacion/estructura/{scene['id']}/escritura").json()["manuscript_id"]
-    base = api.get(f"/manuscripts/{manuscript_id}/draft").json()["revision"]
+    base = _draft(api, manuscript_id)["revision"]
     api.put(f"/projects/{project}/planificacion/estructura/{scene['id']}/escritura/borrador", json={"content": "Texto", "base_revision": base, "keep_previous": False})
     before = _snapshot(api, manuscript_id)
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DraftStatus from "@/components/DraftStatus";
 import { api, ApiError, type DraftOut, type SceneWriting as Writing } from "@/lib/api";
 import { DraftSaver, type SaveStatus } from "@/lib/draft-saver";
@@ -24,7 +24,9 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
   const saverRef = useRef<DraftSaver | null>(null);
 
   // Cualquier cambio que aún no ha confirmado el servidor se avisa como en el resto de la planificación.
-  useDirty(`escritura:${nodeId}`, status !== null && status.kind !== "saved");
+  // Al salir de la página, el texto pendiente se envía primero (ver UnsavedChanges).
+  const flushPending = useCallback(async () => (saverRef.current ? saverRef.current.flush() : true), []);
+  useDirty(`escritura:${nodeId}`, status !== null && status.kind !== "saved", flushPending);
 
   /** Crea el guardado sobre un borrador ya cargado. Sustituye al anterior sin perder nada del servidor. */
   function attach(draft: DraftOut) {

@@ -75,7 +75,10 @@ export function ElementCollection({ projectId, config }: Props) {
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await api.createElement<Item>(projectId, config.route, { [config.titleField]: value });
+      const created = await api.createElement<Item>(projectId, config.route, {
+        ...config.createDefaults,
+        [config.titleField]: value,
+      });
       setCreateValue("");
       setNotice(`${capitalize(config.singular)} creado. Puedes completar el resto cuando quieras.`);
       setSelectedId(created.id);

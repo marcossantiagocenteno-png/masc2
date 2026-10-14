@@ -20,6 +20,8 @@ export type CollectionConfig = {
   plural: string;
   /** Campo que actúa de nombre visible y es el único obligatorio para crear. */
   titleField: string;
+  /** Valores que la API exige al crear y que la lista fija por defecto: el autor los cambia después en la ficha. */
+  createDefaults?: Record<string, string>;
   titleLabel: string;
   /** Campos del formulario de edición, en orden. */
   fields: FieldDef[];
@@ -74,6 +76,8 @@ export const COLLECTIONS: Record<"personajes" | "lugares" | "trama" | "cronologi
     plural: "trama y misterios",
     titleField: "title",
     titleLabel: "Título",
+    // La API exige un tipo de elemento de trama; sin él, crear con solo un título daba 422.
+    createDefaults: { kind: "acontecimiento" },
     emptyText: "Todavía no hay elementos de trama. Un título basta para empezar.",
     fields: [
       { name: "kind", label: "Tipo", options: PLOT_OPTIONS },

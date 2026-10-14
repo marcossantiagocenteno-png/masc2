@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "caso-003-voz-y-ritmo-de-repartidor",
+  "title": "Repartidor de diecisiete años en su ruta nocturna (ejemplo ficticio)",
+  "provenance": "ejemplo_ficticio",
+  "language": "es",
+  "assignment": "Escribe un pasaje de unas 600 palabras en primera persona de Dani, de 17 años, que reparte pedidos de comida en moto por una ciudad de provincias durante la noche. Debe contar un único trayecto, con tres paradas, y terminar en la última parada.",
+  "narrative_context": "Ejemplo ficticio, sin relación con personas reales. Dani abandonó el instituto en primero de bachillerato y paga la moto a plazos. Habla con frases cortas y sin filtros, pero es observador: nota los detalles que los adultos ignoran. En la tercera parada hay una mujer que no pide nada y le da un paquete sin decir para quién es.",
+  "constraints": [
+    "Primera persona de Dani, con su vocabulario y su registro. Sin vocabulario de narrador adulto.",
+    "No más de dos comparaciones en todo el pasaje.",
+    "Sin personificaciones de la ciudad, la lluvia o la moto.",
+    "Las tres paradas deben tener nombre de calle y hora coherentes con el orden del trayecto."
+  ],
+  "expected_properties": [
+    "La voz se reconoce en la sintaxis, en la selección de palabras y en lo que Dani considera importante.",
+    "El ritmo acelera y frena con el trayecto, sin depender de adjetivos para indicar urgencia.",
+    "El paquete de la tercera parada queda como una pregunta abierta, sin explicación.",
+    "Las horas y las calles se mantienen consistentes con el orden de las paradas."
+  ],
+  "dimensions_under_test": ["prosa_y_voz", "continuidad"],
+  "evaluation_criteria": [
+    {
+      "dimension": "prosa_y_voz",
+      "question": "¿Cada frase suena a Dani, y no a un narrador o a un escritor que imita a un adolescente?",
+      "critical_defect_if": [
+        "Aparece vocabulario o construcción claramente ajena a un chico de 17 años de ese contexto, de forma sistemática.",
+        "Frases que no transmiten lo que pasa en el trayecto por exceso de ornamento."
+      ],
+      "preference_only_if": [
+        "Frases cortas o largas, si la voz se mantiene.",
+        "Preferencia por un tipo de comparación, si cumple el límite de dos."
+      ]
+    },
+    {
+      "dimension": "continuidad",
+      "question": "¿Las calles, las horas y el orden de las paradas son coherentes entre sí?",
+      "critical_defect_if": [
+        "Una parada aparece antes de la hora que el texto le asigna, o el orden de las calles se contradice.",
+        "El pasaje no termina en la última parada, aunque se indicó que debía terminar allí."
+      ],
+      "preference_only_if": [
+        "Precisión horaria explícita o implícita, si no hay contradicciones."
+      ]
+    }
+  ]
+}

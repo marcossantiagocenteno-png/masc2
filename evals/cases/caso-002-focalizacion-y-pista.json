@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "caso-002-focalizacion-y-pista",
+  "title": "Enfermera nocturna y un cuaderno cerrado (ejemplo ficticio)",
+  "provenance": "ejemplo_ficticio",
+  "language": "es",
+  "assignment": "Escribe un capítulo de unas 1.200 palabras narrado en primera persona por Elena, enfermera nocturna de un hospital pequeño. Durante su turno encuentra en el armario de la sala de descanso un cuaderno con el nombre de un paciente fallecido esa misma tarde. No debe leerlo entero en este capítulo.",
+  "narrative_context": "Ejemplo ficticio, sin relación con personas reales. Elena trabaja de noche desde hace seis años. El paciente, Adolfo Rey, murió de madrugada tras una caída en la que nadie vio nada. El cuaderno contiene anotaciones de medicación que no coinciden con el registro oficial. Elena no sabe nada de esto, pero sí sabe que el turno de la tarde cambió la pauta de Adolfo dos días antes.",
+  "constraints": [
+    "Primera persona de Elena. Ninguna información que ella no pueda haber observado, escuchado o deducido.",
+    "No revelar qué significan las anotaciones del cuaderno.",
+    "El cuaderno no puede aparecer dos veces con el mismo dato sin que Elena lo note.",
+    "No usar el sueño, la pesadilla ni el recuerdo como recurso para introducir información."
+  ],
+  "expected_properties": [
+    "El lector percibe que Elena sabe menos de lo que sospecha, y el texto lo muestra sin decirlo.",
+    "La pista del cambio de pauta aparece en el registro de turnos, de forma verificable para el lector.",
+    "Los datos de tiempo (hora de la caída, hora de la muerte, cambio de pauta) son coherentes entre sí a lo largo del capítulo.",
+    "El capítulo termina con una decisión de Elena, aunque sea no hacer nada."
+  ],
+  "dimensions_under_test": ["focalizacion", "continuidad"],
+  "evaluation_criteria": [
+    {
+      "dimension": "focalizacion",
+      "question": "¿Todo lo que el narrador muestra pudo haber sido observado, oído o deducido por Elena en ese momento?",
+      "critical_defect_if": [
+        "El narrador revela el significado de las anotaciones o la causa real de la muerte.",
+        "El capítulo cambia a otro punto de vista sin marca clara para el lector."
+      ],
+      "preference_only_if": [
+        "El grado de distancia narrativa, si la información nunca se adelanta a Elena."
+      ]
+    },
+    {
+      "dimension": "continuidad",
+      "question": "¿Las horas, la pauta de medicación y la cronología de la caída son coherentes en todo el capítulo?",
+      "critical_defect_if": [
+        "La hora de la muerte o de la caída se contradice entre dos pasajes.",
+        "La pauta de medicación cambia sin que el texto lo señale ni Elena lo registre."
+      ],
+      "preference_only_if": [
+        "La precisión horaria explícita o implícita, si no hay contradicciones."
+      ]
+    }
+  ]
+}

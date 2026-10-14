@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "caso-001-dialogo-con-subtexto",
+  "title": "Dos hermanos en la cocina tras el entierro (ejemplo ficticio)",
+  "provenance": "ejemplo_ficticio",
+  "language": "es",
+  "assignment": "Escribe una escena de unas 900 palabras en la que dos hermanos hablan en la cocina de la casa familiar la noche del entierro de su padre. Uno de ellos quiere la llave del cobertizo. Ninguno puede mencionar el testamento ni la deuda con el banco.",
+  "narrative_context": "Ejemplo ficticio, sin relación con personas reales. Marta, de 41 años, lleva once años fuera del pueblo y ha vuelto solo para el entierro. Su hermano Iván, de 38, cuidó al padre durante la enfermedad y cree que tiene derecho a quedarse con la casa. El cobertizo guarda las herramientas del padre y un archivo de cuadernos que Marta no sabe que existe. La escena ocurre antes de que el notario haya leído el testamento.",
+  "constraints": [
+    "No mencionar el testamento ni la deuda de forma explícita en el diálogo.",
+    "Un solo punto de vista: el de Marta, en tercera persona limitada.",
+    "No resolver en la escena quién tiene derecho a la casa.",
+    "Sin escenas de recuerdo: el pasado solo aparece a través de objetos y frases."
+  ],
+  "expected_properties": [
+    "Cada hermano tiene un objetivo concreto que intenta conseguir con la conversación.",
+    "El conflicto se sostiene con evasiones, interrupciones o silencios, no con explicaciones.",
+    "La escena termina con un cambio observable en la relación o en la información disponible para Marta.",
+    "El lector entiende por qué la llave del cobertizo importa sin que nadie lo explique."
+  ],
+  "dimensions_under_test": ["personajes_y_dialogo", "dramaturgia"],
+  "evaluation_criteria": [
+    {
+      "dimension": "personajes_y_dialogo",
+      "question": "¿Los hermanos revelan su deseo en lo que dicen y en lo que evitan decir, o explican sus intenciones directamente?",
+      "critical_defect_if": [
+        "Un personaje explica el contenido del testamento o de la deuda en voz alta.",
+        "Los dos hermanos hablan como si ambos conocieran el mismo dato y solo lo explican para el lector."
+      ],
+      "preference_only_if": [
+        "El registro coloquial o formal del diálogo, si es coherente con su relación."
+      ]
+    },
+    {
+      "dimension": "dramaturgia",
+      "question": "¿La escena cambia algo entre el inicio y el final, y ese cambio obliga a la historia a continuar?",
+      "critical_defect_if": [
+        "La escena termina exactamente igual que empezó y no hay información ni decisión nueva.",
+        "La llave o el cobertizo aparecen sin ninguna consecuencia en lo que sigue."
+      ],
+      "preference_only_if": [
+        "Un final abierto o cerrado, si el cambio es visible."
+      ]
+    }
+  ]
+}

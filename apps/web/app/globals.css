@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --color-paper: #f7f4ee;
+  --color-ink: #1d1b18;
+  --color-muted: #6b655c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-paper: #1b1a17;
+    --color-ink: #ece8df;
+    --color-muted: #a39d92;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-paper: #1b1a17;
+  --color-ink: #ece8df;
+  --color-muted: #a39d92;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}

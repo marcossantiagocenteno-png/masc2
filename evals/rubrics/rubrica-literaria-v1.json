@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "name": "Rúbrica literaria v1 (propuesta inicial, sin calibrar)",
+  "scale": "1-5",
+  "dimensions": [
+    {
+      "dimension": "prosa_y_voz",
+      "label": "Prosa y voz",
+      "purpose": "Evalúa si cada frase dice lo que debe decir y si suena al narrador o personaje que la sostiene.",
+      "levels": [
+        {"level": 1, "descriptor": "La prosa es confusa o inconsistente. Varias frases no se entienden, o la voz cambia sin motivo y rompe la narración."},
+        {"level": 2, "descriptor": "Hay frases correctas, pero la voz es genérica o se impone una voz literaria ajena al narrador. Abundan los clichés."},
+        {"level": 3, "descriptor": "La prosa es clara y tiene una voz reconocible, aunque con repeticiones, adjetivación innecesaria o metáforas que no se sostienen."},
+        {"level": 4, "descriptor": "La voz es coherente y las frases son precisas. Las metáforas nacen de la percepción del personaje. Hay pocas concesiones al estilo."},
+        {"level": 5, "descriptor": "Cada frase parece inevitable para ese narrador. La precisión y el ritmo sostienen el sentido sin ornamento innecesario."}
+      ],
+      "critical_defects": [
+        "Frases que no transmiten lo que la escena necesita, por ambigüedad o error.",
+        "Voz narrativa incoherente dentro de un mismo pasaje sin justificación.",
+        "Uso sistemático de un registro ajeno al narrador o al personaje."
+      ],
+      "stylistic_preferences": [
+        "Preferir frases cortas o largas cuando ambas cumplen su función.",
+        "Gusto por un tipo de metáfora o de imagen, si no afecta a la precisión.",
+        "Nivel de formalidad elegido por el autor, si es coherente con la voz."
+      ]
+    },
+    {
+      "dimension": "dramaturgia",
+      "label": "Dramaturgia",
+      "purpose": "Evalúa si cada escena tiene deseo, obstáculo, decisión y cambio, y si la progresión es causal.",
+      "levels": [
+        {"level": 1, "descriptor": "Las escenas no cambian nada. Los acontecimientos ocurren sin causa y sin consecuencia."},
+        {"level": 2, "descriptor": "Algunas escenas tienen cambio, pero la mayoría son relleno, o las decisiones no tienen efecto sobre lo que sigue."},
+        {"level": 3, "descriptor": "La progresión es comprensible y cada escena tiene un propósito, aunque algunos giros dependen de coincidencias."},
+        {"level": 4, "descriptor": "Las escenas se encadenan por causalidad. El conflicto se renueva y las consecuencias obligan a continuar."},
+        {"level": 5, "descriptor": "Cada escena cambia la trayectoria del relato. El subtexto y la estructura refuerzan la tensión sin forzar la trama."}
+      ],
+      "critical_defects": [
+        "Una escena elimina toda su tensión sin que el personaje tome una decisión.",
+        "Un giro principal se resuelve con una coincidencia sin preparación.",
+        "El desenlace contradice reglas que el propio texto ha establecido."
+      ],
+      "stylistic_preferences": [
+        "Preferir una estructura lineal o fragmentada.",
+        "Preferir ritmo lento o rápido, si la tensión se mantiene.",
+        "Preferir un final abierto o cerrado, si es coherente con el relato."
+      ]
+    },
+    {
+      "dimension": "personajes_y_dialogo",
+      "label": "Personajes y diálogo",
+      "purpose": "Evalúa si los personajes se revelan por decisiones y si el diálogo tiene intención, evasión o subtexto.",
+      "levels": [
+        {"level": 1, "descriptor": "Los personajes son etiquetas sin deseo. El diálogo sirve para explicar al lector lo que los personajes ya saben."},
+        {"level": 2, "descriptor": "Los personajes tienen rasgos declarados, pero sus acciones no los confirman. Los diálogos son intercambios de información."},
+        {"level": 3, "descriptor": "Hay deseo y contradicción en algunos personajes. El diálogo tiene intención, aunque a veces se explica demasiado."},
+        {"level": 4, "descriptor": "Los personajes toman decisiones bajo presión que revelan su contradicción. El diálogo evita, interrumpe o calla con intención."},
+        {"level": 5, "descriptor": "Cada personaje se entiende por lo que hace y lo que evita. El diálogo tiene subtexto que el lector descifra por sí mismo."}
+      ],
+      "critical_defects": [
+        "Dos personajes que conocen un dato lo explican en diálogo solo para el lector.",
+        "Un personaje actúa en contra de su propio deseo sin motivo narrativo.",
+        "Un villano explica su plan completo en lugar de ejecutarlo o revelarlo."
+      ],
+      "stylistic_preferences": [
+        "Preferir diálogo elíptico o explícito, si cumple su función.",
+        "Preferir acotaciones mínimas o detalladas.",
+        "Gusto por un registro coloquial o formal."
+      ]
+    },
+    {
+      "dimension": "focalizacion",
+      "label": "Focalización",
+      "purpose": "Evalúa si el narrador sabe solo lo que el punto de vista puede saber y si la percepción está filtrada por el personaje.",
+      "levels": [
+        {"level": 1, "descriptor": "El punto de vista cambia sin aviso o el narrador conoce pensamientos ajenos sin justificación."},
+        {"level": 2, "descriptor": "El punto de vista se mantiene en general, pero aparecen saltos de información que el personaje no puede tener."},
+        {"level": 3, "descriptor": "La focalización es estable y la percepción es coherente, aunque con algunos momentos de distancia narrativa no justificada."},
+        {"level": 4, "descriptor": "La información llega filtrada por el personaje. Sus sesgos y su vocabulario se reflejan en la narración."},
+        {"level": 5, "descriptor": "La distancia narrativa es una decisión deliberada que aumenta la tensión o la ironía. La información se reparte con precisión."}
+      ],
+      "critical_defects": [
+        "El narrador revela información que el punto de vista no puede conocer, y eso destruye un misterio central.",
+        "El punto de vista cambia dentro de una escena sin marca que el lector pueda seguir."
+      ],
+      "stylistic_preferences": [
+        "Preferir tercera persona omnisciente o limitada.",
+        "Preferir primera o tercera persona, si la elección es coherente.",
+        "Gusto por narradores distantes o cercanos."
+      ]
+    },
+    {
+      "dimension": "continuidad",
+      "label": "Continuidad",
+      "purpose": "Evalúa si edades, fechas, lugares, objetos, relaciones y conocimientos de los personajes se mantienen coherentes.",
+      "levels": [
+        {"level": 1, "descriptor": "Hay contradicciones graves en hechos básicos como edad, lugar, relación o estado de un objeto clave."},
+        {"level": 2, "descriptor": "Hay contradicciones que afectan a una pista o a una motivación, aunque el resto del relato es estable."},
+        {"level": 3, "descriptor": "Hay pequeñas inconsistencias de detalle que no alteran la comprensión del relato."},
+        {"level": 4, "descriptor": "El relato es coherente. Las consecuencias de los acontecimientos anteriores se respetan."},
+        {"level": 5, "descriptor": "La coherencia es total y las pistas se distribuyen con control, de modo que el lector puede verificarlas."}
+      ],
+      "critical_defects": [
+        "Una pista o un objeto clave cambia de estado sin explicación.",
+        "Un personaje sabe algo en una escena que no pudo conocer en la anterior.",
+        "Una fecha o una edad contradice otra del mismo texto de forma que altera la trama."
+      ],
+      "stylistic_preferences": [
+        "Preferir precisión temporal explícita o implícita.",
+        "Preferir distribuir la información con lentitud o con rapidez."
+      ]
+    }
+  ]
+}

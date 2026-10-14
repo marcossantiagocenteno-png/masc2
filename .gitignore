@@ -1,0 +1,63 @@
+# --- Credenciales y configuración local ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+credentials*.json
+*-credentials.json
+
+# --- Datos privados y manuscritos ---
+# Los manuscritos del autor nunca se versionan. Solo se versionan casos ficticios en evals/cases.
+manuscritos/
+manuscripts/
+data/
+*.manuscrito.*
+*.manuscript.*
+*.docx
+*.odt
+*.epub
+evals/reports/*
+!evals/reports/.gitkeep
+
+# --- Bases de datos y artefactos locales ---
+*.sqlite
+*.sqlite3
+*.db
+local/
+*.local.json
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+
+# --- Node / Next.js / Playwright ---
+node_modules/
+.next/
+out/
+next-env.d.ts.bak
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+*.tsbuildinfo
+
+# --- Editor y sistema ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.log

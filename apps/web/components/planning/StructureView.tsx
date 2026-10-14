@@ -219,58 +219,63 @@ export function StructureView({ projectId }: { projectId: number }) {
     const addChild: StructureKind[] = node.kind === "acto" ? ["capitulo", "escena"] : node.kind === "capitulo" ? ["escena"] : [];
     return (
       <li key={node.id} data-node-id={node.id} data-level={depth + 1} className="flex flex-col">
-        <div className="flex flex-wrap items-center gap-2 py-1.5" style={{ paddingLeft: `${depth * 1.25}rem` }}>
-          {children.length > 0 ? (
+        <div className="ne-tree__row">
+          <div className="ne-tree__identity">
+            {children.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => toggle(node.id)}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? "Contraer" : "Expandir"} ${label}`}
+                className="ne-button ne-button--ghost ne-button--small ne-tree__toggle"
+              >
+                <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+              </button>
+            ) : (
+              <span className="ne-tree__toggle-space" aria-hidden="true" />
+            )}
             <button
               type="button"
-              onClick={() => toggle(node.id)}
-              aria-expanded={expanded}
-              aria-label={`${expanded ? "Contraer" : "Expandir"} ${label}`}
-              className="w-6 rounded border border-[var(--color-muted)] text-xs"
+              onClick={() => select(node.id)}
+              aria-current={node.id === selectedId ? "true" : undefined}
+              className={`ne-tree__name ne-tree__name--${node.kind} ${node.archived_at ? "ne-tree__name--archived" : ""}`}
             >
-              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+              {label}
             </button>
-          ) : (
-            <span className="inline-block w-6" aria-hidden="true" />
-          )}
-          <button
-            type="button"
-            onClick={() => select(node.id)}
-            aria-current={node.id === selectedId ? "true" : undefined}
-            className={`min-w-0 break-words text-left ${node.archived_at ? "text-[var(--color-muted)] line-through" : ""} ${node.id === selectedId ? "font-medium underline" : ""}`}
-          >
-            {label}
-          </button>
-          <span className="rounded bg-[var(--color-muted)]/20 px-1.5 text-xs">Nivel {depth + 1}</span>
-          <CanonBadge state={node.estado} origin={node.origen} />
-          {node.archived_at ? <span className="text-xs text-[var(--color-muted)]">Archivado</span> : null}
-          <button type="button" disabled={!canUp || busy} onClick={() => requestReorder(node, -1)} aria-label={`Subir ${label}`} className="rounded border border-[var(--color-muted)] px-2 py-0.5 text-xs disabled:opacity-40">
-            Subir
-          </button>
-          <button type="button" disabled={!canDown || busy} onClick={() => requestReorder(node, 1)} aria-label={`Bajar ${label}`} className="rounded border border-[var(--color-muted)] px-2 py-0.5 text-xs disabled:opacity-40">
-            Bajar
-          </button>
-          {addChild.map((child) => (
-            <button
-              key={child}
-              type="button"
-              onClick={() => prepareAdd(child, node.id)}
-              aria-label={`Añadir ${childLabel(child)} dentro de ${label}`}
-              className="rounded border border-[var(--color-muted)] px-2 py-0.5 text-xs"
-            >
-              Añadir {childLabel(child)}
+            <CanonBadge state={node.estado} origin={node.origen} />
+            {node.archived_at ? <span className="ne-badge">Archivado</span> : null}
+            {node.kind === "escena" ? (
+              <span className={`ne-badge ${node.escritura === "con_texto" ? "ne-badge--ok" : ""}`}>
+                {WRITING_LABELS[node.escritura ?? "sin_escritura"]}
+              </span>
+            ) : null}
+          </div>
+          <div className="ne-tree__actions">
+            <button type="button" disabled={!canUp || busy} onClick={() => requestReorder(node, -1)} aria-label={`Subir ${label}`} className="ne-button ne-button--ghost ne-button--small">
+              Subir
             </button>
-          ))}
-          {node.kind === "escena" ? (
-            <>
-              <span className="text-xs text-[var(--color-muted)]">{WRITING_LABELS[node.escritura ?? "sin_escritura"]}</span>
-              <Link href={`/proyectos/${projectId}/estructura/${node.id}`} aria-label={`Abrir ${label}`} className="text-xs underline">
+            <button type="button" disabled={!canDown || busy} onClick={() => requestReorder(node, 1)} aria-label={`Bajar ${label}`} className="ne-button ne-button--ghost ne-button--small">
+              Bajar
+            </button>
+            {addChild.map((child) => (
+              <button
+                key={child}
+                type="button"
+                onClick={() => prepareAdd(child, node.id)}
+                aria-label={`Añadir ${childLabel(child)} dentro de ${label}`}
+                className="ne-button ne-button--ghost ne-button--small"
+              >
+                Añadir {childLabel(child)}
+              </button>
+            ))}
+            {node.kind === "escena" ? (
+              <Link href={`/proyectos/${projectId}/estructura/${node.id}`} aria-label={`Abrir ${label}`} className="ne-button ne-button--small">
                 Escribir
               </Link>
-            </>
-          ) : null}
+            ) : null}
+          </div>
         </div>
-        {children.length > 0 && expanded ? <ul className="flex flex-col">{children.map(renderNode)}</ul> : null}
+        {children.length > 0 && expanded ? <ul className="ne-tree__children">{children.map(renderNode)}</ul> : null}
       </li>
     );
   }
@@ -278,11 +283,11 @@ export function StructureView({ projectId }: { projectId: number }) {
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
       <div className="flex min-w-0 flex-col gap-6">
-        <form onSubmit={add} aria-label="Añadir a la estructura" className="flex flex-col gap-3 rounded border border-[var(--color-muted)]/60 p-4">
+        <form onSubmit={add} aria-label="Añadir a la estructura" className="ne-panel flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1 text-sm">
               <label htmlFor="estructura-tipo" className="font-medium">Tipo</label>
-              <select id="estructura-tipo" value={kind} onChange={(event) => chooseKind(event.target.value as StructureKind)} className="rounded border border-[var(--color-muted)] bg-transparent px-2 py-1.5">
+              <select id="estructura-tipo" value={kind} onChange={(event) => chooseKind(event.target.value as StructureKind)} >
                 {KIND_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {STRUCTURE_LABELS[option]}
@@ -297,7 +302,7 @@ export function StructureView({ projectId }: { projectId: number }) {
                 value={parentValue}
                 disabled={!rootAllowed && parentOptions.length === 0}
                 onChange={(event) => setParentValue(event.target.value)}
-                className="min-w-0 rounded border border-[var(--color-muted)] bg-transparent px-2 py-1.5"
+                className="min-w-0"
               >
                 {rootAllowed ? <option value="root">Raíz de la novela</option> : null}
                 {!rootAllowed && parentOptions.length === 0 ? <option value="">No hay dónde colocarlo</option> : null}
@@ -311,15 +316,15 @@ export function StructureView({ projectId }: { projectId: number }) {
           </div>
           <div className="flex flex-col gap-1 text-sm">
             <label htmlFor="estructura-titulo" className="font-medium">Título (opcional)</label>
-            <input id="estructura-titulo" ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} className="rounded border border-[var(--color-muted)] bg-transparent px-2 py-1.5" />
+            <input id="estructura-titulo" ref={titleRef} value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200}  />
           </div>
           <div>
-            <button type="submit" disabled={adding || (!rootAllowed && parentOptions.length === 0)} className="rounded bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-paper)] disabled:opacity-50">
+            <button type="submit" disabled={adding || (!rootAllowed && parentOptions.length === 0)} className="ne-button ne-button--primary ne-button--small">
               {adding ? "Añadiendo…" : `Añadir ${STRUCTURE_LABELS[kind].toLowerCase()}`}
             </button>
           </div>
           {addError ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="ne-notice ne-notice--danger">
               {addError}
             </p>
           ) : null}
@@ -327,7 +332,7 @@ export function StructureView({ projectId }: { projectId: number }) {
 
         {nodes === null && !loadError ? <p className="text-[var(--color-muted)]">Cargando estructura…</p> : null}
         {loadError ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {loadError}
           </p>
         ) : null}
@@ -335,10 +340,10 @@ export function StructureView({ projectId }: { projectId: number }) {
           <div className="flex flex-col gap-3 text-[var(--color-muted)]">
             <p>Todavía no hay actos, capítulos ni escenas. Empieza con un acto o, si prefieres, con una escena suelta.</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => prepareAdd("acto", null)} className="rounded border border-[var(--color-muted)] px-3 py-1.5 text-sm text-[var(--color-ink)]">
+              <button type="button" onClick={() => prepareAdd("acto", null)} className="ne-button ne-button--small">
                 Añadir un acto
               </button>
-              <button type="button" onClick={() => prepareAdd("escena", null)} className="rounded border border-[var(--color-muted)] px-3 py-1.5 text-sm text-[var(--color-ink)]">
+              <button type="button" onClick={() => prepareAdd("escena", null)} className="ne-button ne-button--small">
                 Añadir una escena suelta
               </button>
             </div>
@@ -362,17 +367,17 @@ export function StructureView({ projectId }: { projectId: number }) {
         {operationError ? (
           <div role="alert" className="flex flex-col items-start gap-2 text-sm text-red-700">
             <p>{operationError}</p>
-            <button type="button" onClick={() => void load()} className="rounded border border-red-700 px-2 py-0.5 text-xs">
+            <button type="button" onClick={() => void load()} className="ne-button ne-button--small ne-button--danger">
               Actualizar la estructura
             </button>
           </div>
         ) : null}
         {notice ? (
-          <p role="status" className="text-sm text-green-800">
+          <p role="status" className="ne-notice ne-notice--ok">
             {notice}
           </p>
         ) : null}
-        <p className="text-xs text-[var(--color-muted)]">
+        <p className="ne-hint">
           Las escenas no tienen texto propio: no se convierten en capítulos del manuscrito ni duplican el editor.
         </p>
       </div>
@@ -381,7 +386,7 @@ export function StructureView({ projectId }: { projectId: number }) {
         {selected ? (
           <div className="flex flex-col gap-8">
             <section aria-labelledby="estructura-mover" className="flex flex-col gap-3">
-              <h2 id="estructura-mover" className="text-lg font-medium">
+              <h2 id="estructura-mover" className="ne-subtitle">
                 Mover «{selected.title?.trim() || STRUCTURE_LABELS[selected.kind]}»
               </h2>
               {nodes ? (

@@ -25,23 +25,23 @@ export default function RecoveryPoints({ points, error, onRestore, onRefresh }: 
   return (
     <section aria-labelledby="recuperacion-titulo" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="recuperacion-titulo" className="text-xl font-medium">
+        <h2 id="recuperacion-titulo" className="ne-section-title">
           Puntos de recuperación
         </h2>
         <button
           type="button"
           onClick={onRefresh}
-          className="rounded border border-[var(--color-muted)] px-3 py-1 text-sm hover:bg-[var(--color-muted)]/20"
+          className="ne-button ne-button--small"
         >
           Actualizar lista
         </button>
       </div>
-      <p className="text-sm text-[var(--color-muted)]">
+      <p className="ne-meta">
         Copias del borrador hechas automáticamente o en un momento delicado. No son versiones: no se publican ni
         cambian las versiones guardadas. Restaurar guarda antes el texto actual como punto nuevo.
       </p>
       {error ? (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {error}
         </p>
       ) : null}
@@ -52,7 +52,7 @@ export default function RecoveryPoints({ points, error, onRestore, onRefresh }: 
           <li key={point.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
             <div className="flex flex-col gap-1">
               <span className="font-medium">{REASON_LABELS[point.reason]}</span>
-              <span className="text-sm text-[var(--color-muted)]">
+              <span className="ne-meta">
                 {formatDate(point.created_at)} · {point.char_count} caracteres
               </span>
             </div>
@@ -60,7 +60,7 @@ export default function RecoveryPoints({ points, error, onRestore, onRefresh }: 
               type="button"
               aria-label={`Restaurar punto de ${formatDate(point.created_at)}`}
               onClick={() => onRestore(point)}
-              className="rounded border border-[var(--color-muted)] px-3 py-1 text-sm hover:bg-[var(--color-muted)]/20"
+              className="ne-button ne-button--small"
             >
               Restaurar
             </button>

@@ -136,10 +136,10 @@ export default function VersionPage() {
   if (loadError) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {loadError}
         </p>
-        <Link href={`/manuscritos/${manuscriptId}`} className="underline">
+        <Link href={`/manuscritos/${manuscriptId}`} className="ne-link">
           Volver al manuscrito
         </Link>
       </main>
@@ -152,29 +152,35 @@ export default function VersionPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6">
       <header className="flex flex-col gap-2">
-        <Link href={`/manuscritos/${manuscriptId}`} className="text-sm text-[var(--color-muted)] underline">
+        <Link href={`/manuscritos/${manuscriptId}`} className="ne-meta ne-link">
           Versiones de «{manuscript?.title ?? "…"}»
         </Link>
-        <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">
+        <p className="ne-kicker">
           Manuscrito: {manuscript?.title ?? "…"}
         </p>
-        <h1 className="text-3xl font-semibold">
+        <h1 className="ne-page-title">
           Versión {version?.number ?? "…"}
-          {total ? <span className="text-xl font-normal text-[var(--color-muted)]"> de {total}</span> : null}
+          {total ? <span className="ne-title-suffix"> de {total}</span> : null}
         </h1>
         {version ? (
-          <p className="text-sm text-[var(--color-muted)]">
-            Creada {formatDate(version.created_at)} · {version.char_count} caracteres · SHA-256 {version.sha256}
+          <p className="ne-meta">
+            Creada {formatDate(version.created_at)} · {version.char_count} caracteres
             {version.note ? ` · nota: ${version.note}` : ""}
+          </p>
+        ) : null}
+        {version ? (
+          <p className="ne-hash">
+            <span className="ne-meta">SHA-256 </span>
+            <code>{version.sha256}</code>
           </p>
         ) : null}
       </header>
 
       <section aria-labelledby="contenido-titulo" className="flex flex-col gap-3">
-        <h2 id="contenido-titulo" className="text-xl font-medium">
+        <h2 id="contenido-titulo" className="ne-section-title">
           Contenido de esta versión
         </h2>
-        <p className="text-sm text-[var(--color-muted)]">Solo lectura. Este texto no cambia al añadir comentarios.</p>
+        <p className="ne-meta">Solo lectura. Este texto no cambia al añadir comentarios.</p>
         <textarea
           ref={contentRef}
           id="contenido-version"
@@ -182,7 +188,7 @@ export default function VersionPage() {
           readOnly
           rows={14}
           value={version?.content ?? ""}
-          className="rounded border border-[var(--color-muted)]/60 bg-transparent px-3 py-2 font-serif leading-relaxed"
+          className="ne-prose-field"
         />
       </section>
 
@@ -195,29 +201,29 @@ export default function VersionPage() {
       ) : null}
 
       <section aria-labelledby="comentarios-titulo" className="flex flex-col gap-4">
-        <h2 id="comentarios-titulo" className="text-xl font-medium">
+        <h2 id="comentarios-titulo" className="ne-section-title">
           Comentarios vinculados a la versión {version?.number ?? "…"}{" "}
-          <span className="text-base font-normal text-[var(--color-muted)]">({commentCount})</span>
+          <span className="ne-meta">({commentCount})</span>
         </h2>
         {reviews?.length === 0 ? (
-          <p className="text-[var(--color-muted)]">Esta versión no tiene comentarios.</p>
+          <p className="ne-empty">Esta versión no tiene comentarios.</p>
         ) : null}
         {reviews?.map((review) => (
-          <article key={review.id} className="flex flex-col gap-4 border-l-2 border-[var(--color-muted)]/50 pl-4">
-            <p className="text-sm text-[var(--color-muted)]">
+          <article key={review.id} className="flex flex-col gap-4 border-l-2 border-[var(--color-line)] pl-4">
+            <p className="ne-meta">
               {review.reviewer} · {formatDate(review.created_at)}
             </p>
             {review.items.map((item) => (
               <div key={item.id} className="flex flex-col gap-2">
                 <p className="flex flex-wrap gap-2 text-sm">
-                  <span className="rounded bg-[var(--color-muted)]/20 px-2 py-0.5 font-medium">
+                  <span className="ne-badge">
                     {item.kind === "inferencia" ? "Inferencia" : "Observación"}
                   </span>
-                  <span className="text-[var(--color-muted)]">
+                  <span className="ne-meta">
                     Línea {item.line_number} · posiciones {item.start_offset}–{item.end_offset}
                   </span>
                 </p>
-                <blockquote className="whitespace-pre-wrap border-l-4 border-[var(--color-muted)]/60 pl-3 font-serif italic">
+                <blockquote className="whitespace-pre-wrap border-l-4 border-[var(--color-accent)] pl-3 font-serif italic">
                   {item.quote}
                 </blockquote>
                 <p className="whitespace-pre-wrap">{item.comment}</p>
@@ -233,7 +239,7 @@ export default function VersionPage() {
                     {item.suggestion}
                   </p>
                 ) : null}
-                <p className="text-xs text-[var(--color-muted)]">
+                <p className="ne-hint">
                   Intención del autor: no declarada. Este comentario no atribuye intenciones.
                 </p>
               </div>
@@ -243,14 +249,14 @@ export default function VersionPage() {
       </section>
 
       <section aria-labelledby="nuevo-titulo" className="flex flex-col gap-4">
-        <h2 id="nuevo-titulo" className="text-xl font-medium">
+        <h2 id="nuevo-titulo" className="ne-section-title">
           Añadir comentario a la versión {version?.number ?? "…"}
         </h2>
         <div className="flex flex-col gap-2">
           <button
             type="button"
             onClick={captureSelection}
-            className="self-start rounded border border-[var(--color-ink)] px-4 py-2"
+            className="self-start ne-button"
           >
             Usar la selección del contenido
           </button>
@@ -260,10 +266,10 @@ export default function VersionPage() {
               <span className="whitespace-pre-wrap font-serif italic">«{selection.quote}»</span>
             </p>
           ) : (
-            <p className="text-sm text-[var(--color-muted)]">Todavía no hay ninguna cita seleccionada.</p>
+            <p className="ne-meta">Todavía no hay ninguna cita seleccionada.</p>
           )}
           {selectionError ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="ne-notice ne-notice--danger">
               {selectionError}
             </p>
           ) : null}
@@ -271,76 +277,76 @@ export default function VersionPage() {
 
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Nombre de quien revisa</span>
+            <span className="ne-label">Nombre de quien revisa</span>
             <input
               required
               maxLength={80}
               value={reviewer}
               onChange={(event) => setReviewer(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Tipo de comentario</span>
+            <span className="ne-label">Tipo de comentario</span>
             <select
               value={kind}
               onChange={(event) => setKind(event.target.value as "observacion" | "inferencia")}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             >
               <option value="observacion">Observación: lo que dice el texto</option>
               <option value="inferencia">Inferencia: una conclusión con su cadena</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Comentario</span>
+            <span className="ne-label">Comentario</span>
             <textarea
               required
               maxLength={4000}
               rows={3}
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           {kind === "inferencia" ? (
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Cadena de inferencia (obligatoria)</span>
+              <span className="ne-label">Cadena de inferencia (obligatoria)</span>
               <textarea
                 required
                 maxLength={4000}
                 rows={3}
                 value={inferenceBasis}
                 onChange={(event) => setInferenceBasis(event.target.value)}
-                className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+                
               />
             </label>
           ) : null}
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Sugerencia de revisión (opcional, no se aplica)</span>
+            <span className="ne-label">Sugerencia de revisión (opcional, no se aplica)</span>
             <textarea
               maxLength={4000}
               rows={2}
               value={suggestion}
               onChange={(event) => setSuggestion(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           <div>
             <button
               type="submit"
               disabled={saving || !selection}
-              className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50"
+              className="ne-button ne-button--primary"
             >
               {saving ? "Guardando…" : "Guardar comentario"}
             </button>
           </div>
         </form>
         {saveError ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {saveError}
           </p>
         ) : null}
-        {savedMessage ? <p role="status" className="text-green-800">{savedMessage}</p> : null}
+        {savedMessage ? <p role="status" className="ne-notice ne-notice--ok">{savedMessage}</p> : null}
       </section>
     </main>
   );

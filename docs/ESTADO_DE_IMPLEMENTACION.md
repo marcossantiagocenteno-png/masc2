@@ -30,6 +30,7 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Retención de puntos**: métricas y vista previa de candidatos. No borra nada (D-048).
 - **Migraciones 0001 a 0006** aplicadas y comprobadas con `alembic check`. La 0005 crea solo tablas nuevas (borradores y puntos). La 0006 añade columnas nulables a `projects` y crea tablas de planificación; no modifica datos existentes.
 - **Borrador persistente con autoguardado** (fase 1b): escritura condicional por revisión, 409 con texto preservado, indicador de estado que nunca muestra «guardado» sin confirmación del servidor, reintento, recuperación al abrir, puntos de recuperación con política documentada, restauración transaccional y aviso al salir con cambios pendientes. Pruebas: 18 de backend en `test_drafts.py` (incluida una de concurrencia con lectura obsoleta forzada), 4 de migración en `test_migraciones_borradores.py`, 12 unitarias del guardado (`tests/unit`) y 7 E2E (`tests/e2e/borrador.spec.ts`). Comprobado también que la prueba de concurrencia falla si se quita la condición de revisión.
+- **Sistema visual compartido (fase 3a)**: tokens, escala tipográfica y componentes en `globals.css`; estados de guardado con icono y texto. Sin cambios de API, datos, migraciones ni lógica. Pruebas E2E (60), TypeScript y compilación de producción pasan.
 
 ## Implementado, pero no verificado con servicios reales
 
@@ -38,6 +39,7 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 ## Parcialmente implementado
 
 - **Proyectos**: falta duplicar (con operación explícita y segura), vincular proyectos, preferencias por proyecto, hitos y actividad reciente completos, y el panel con pendientes.
+- **Interfaz visual (fase 3a)**: revisadas las pantallas de proyectos, planificación, editor, versiones y comentarios. Pendiente: separar visualmente fragmento, hallazgos y justificaciones en el panel de análisis (solo cambió de clases); modo oscuro sin inspeccionar; revisión de teclado de extremo a extremo; no se consultó la documentación de Next en `node_modules/next/dist/docs` que pide AGENTS.md (los cambios no usan APIs nuevas de Next).
 - **Editor**: área de texto. Funciona para versiones, pero no tiene capítulos, escenas ni formato.
 - **Análisis**: el simulador produce datos de longitud y tres comprobaciones mecánicas. No es un análisis literario.
 

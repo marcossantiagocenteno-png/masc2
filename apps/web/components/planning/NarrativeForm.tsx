@@ -78,7 +78,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
 
   if (loadError) {
     return (
-      <p role="alert" className="text-red-700">
+      <p role="alert" className="ne-notice ne-notice--danger">
         {loadError}
       </p>
     );
@@ -87,7 +87,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
 
   const field = (name: keyof Values, label: string, multiline = false, hint?: string) => (
     <div className="flex flex-col gap-1">
-      <label htmlFor={`narrativa-${name}`} className="text-sm font-medium">
+      <label htmlFor={`narrativa-${name}`} className="ne-label">
         {label}
       </label>
       {multiline ? (
@@ -97,7 +97,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
           value={values[name]}
           disabled={busy}
           onChange={(event) => setValues({ ...values, [name]: event.target.value })}
-          className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+          
         />
       ) : (
         <input
@@ -105,16 +105,16 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
           value={values[name]}
           disabled={busy}
           onChange={(event) => setValues({ ...values, [name]: event.target.value })}
-          className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+          
         />
       )}
-      {hint ? <span className="text-xs text-[var(--color-muted)]">{hint}</span> : null}
+      {hint ? <span className="ne-hint">{hint}</span> : null}
     </div>
   );
 
   return (
     <form onSubmit={save} aria-label="Visión general de la novela" className="flex flex-col gap-5">
-      <p className="rounded border border-[var(--color-muted)]/60 p-3 text-sm text-[var(--color-muted)]">
+      <p className="ne-notice ne-notice--info">
         Estos datos se pueden cambiar en cualquier momento, sin confirmación. Todavía no tienen las protecciones de canon
         ni el historial de decisiones que tienen personajes, lugares, trama, cronología y estructura.
       </p>
@@ -124,7 +124,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
       {field("theme", "Tema", true)}
       {field("tone", "Tono")}
       <div className="flex flex-col gap-1">
-        <label htmlFor="narrativa-development_status" className="text-sm font-medium">
+        <label htmlFor="narrativa-development_status" className="ne-label">
           Estado de desarrollo
         </label>
         <select
@@ -132,7 +132,7 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
           value={values.development_status}
           disabled={busy}
           onChange={(event) => setValues({ ...values, development_status: event.target.value })}
-          className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+          
         >
           <option value="">Sin definir</option>
           {(Object.keys(DEVELOPMENT_STATUS_LABELS) as DevelopmentStatus[]).map((status) => (
@@ -143,18 +143,18 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
         </select>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={!dirty || busy} className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50">
+        <button type="submit" disabled={!dirty || busy} className="ne-button ne-button--primary">
           {busy ? "Guardando…" : "Guardar visión general"}
         </button>
-        {dirty ? <span className="text-sm text-[var(--color-muted)]">Hay cambios sin guardar.</span> : null}
+        {dirty ? <span className="ne-meta">Hay cambios sin guardar.</span> : null}
       </div>
       {saveError ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {saveError}
         </p>
       ) : null}
       {notice ? (
-        <p role="status" className="text-sm text-green-800">
+        <p role="status" className="ne-notice ne-notice--ok">
           {notice}
         </p>
       ) : null}

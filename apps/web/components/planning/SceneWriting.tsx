@@ -112,7 +112,7 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
 
   if (loadError) {
     return (
-      <p role="alert" className="text-red-700">
+      <p role="alert" className="ne-notice ne-notice--danger">
         {loadError}
       </p>
     );
@@ -130,13 +130,13 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
             type="button"
             onClick={() => void start()}
             disabled={starting}
-            className="rounded bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-paper)] disabled:opacity-50"
+            className="ne-button ne-button--primary ne-button--small"
           >
             {starting ? "Empezando…" : "Empezar a escribir esta escena"}
           </button>
         </div>
         {startError ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {startError}
           </p>
         ) : null}
@@ -154,14 +154,14 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
         <span className="text-[var(--color-muted)]"> · el texto se guarda como borrador mientras escribes.</span>
       </p>
       <label htmlFor="escena-texto" className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Texto de «{sceneTitle}»</span>
+        <span className="ne-label">Texto de «{sceneTitle}»</span>
         <textarea
           id="escena-texto"
           rows={12}
           disabled={!ready}
           value={content}
           onChange={(event) => edit(event.target.value)}
-          className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2 font-serif"
+          className="ne-prose-field"
         />
       </label>
       <DraftStatus
@@ -174,8 +174,8 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
         onKeepMine={() => void saverRef.current?.keepMine()}
         onDownload={downloadCopy}
       />
-      <p className="text-sm text-[var(--color-muted)]">
-        <Link href={`/manuscritos/${writing.manuscript_id}`} className="underline">
+      <p className="ne-meta">
+        <Link href={`/manuscritos/${writing.manuscript_id}`} className="ne-link">
           Versiones y puntos de recuperación
         </Link>{" "}
         · crear una versión formal es una acción aparte, en esa página.

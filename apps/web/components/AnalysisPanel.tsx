@@ -146,10 +146,10 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
 
   return (
     <section aria-labelledby="analisis-titulo" className="flex flex-col gap-5">
-      <h2 id="analisis-titulo" className="text-xl font-medium">
+      <h2 id="analisis-titulo" className="ne-section-title">
         Análisis editorial de un fragmento
       </h2>
-      <p className="text-sm text-[var(--color-muted)]">
+      <p className="ne-meta">
         El análisis examina el fragmento seleccionado y no modifica el texto. Sus resultados quedan guardados con esta versión.
       </p>
 
@@ -161,7 +161,7 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
             type="button"
             onClick={handleAnalyzeClick}
             disabled={busy || provider === null || pendingExternal !== null}
-            className="self-start rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50"
+            className="self-start ne-button ne-button--primary"
           >
             {busy
               ? "Analizando…"
@@ -185,7 +185,7 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
       ) : null}
 
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {error}
         </p>
       ) : null}
@@ -197,11 +197,11 @@ export function AnalysisPanel({ versionId, ops, readSelection }: Props) {
 
       {runs && runs.length > 0 ? (
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Análisis guardado</span>
+          <span className="ne-label">Análisis guardado</span>
           <select
             value={selectedId ?? ""}
             onChange={(event) => setSelectedId(Number(event.target.value))}
-            className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+            
           >
             {runs.map((run) => (
               <option key={run.id} value={run.id}>
@@ -236,7 +236,7 @@ function ProviderNotice({ provider }: { provider: AnalysisProviderStatus | null 
     );
   }
   return (
-    <div role="note" className="rounded border border-[var(--color-muted)] p-3 text-sm">
+    <div role="note" className="ne-panel">
       Proveedor activo: analizador simulado. No envía nada fuera de este equipo y no es una IA.
     </div>
   );
@@ -320,7 +320,7 @@ function RunView({ run }: { run: AnalysisRun }) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium">Fragmento analizado (caracteres {run.fragment_start}–{run.fragment_end})</p>
+        <p className="ne-label">Fragmento analizado (caracteres {run.fragment_start}–{run.fragment_end})</p>
         <blockquote className="whitespace-pre-wrap border-l-4 border-[var(--color-muted)]/60 pl-3 font-serif italic">
           {run.fragment_text}
         </blockquote>
@@ -330,11 +330,11 @@ function RunView({ run }: { run: AnalysisRun }) {
         const items = run.findings.filter((finding) => finding.category === section.category);
         return (
           <section key={section.category} aria-labelledby={`seccion-${run.id}-${section.category}`} className="flex flex-col gap-3">
-            <h3 id={`seccion-${run.id}-${section.category}`} className="text-lg font-medium">
+            <h3 id={`seccion-${run.id}-${section.category}`} className="ne-subtitle">
               {section.title} <span className="text-sm font-normal text-[var(--color-muted)]">({items.length})</span>
             </h3>
-            <p className="text-sm text-[var(--color-muted)]">{section.note}</p>
-            {items.length === 0 ? <p className="text-sm text-[var(--color-muted)]">Ninguno en este fragmento.</p> : null}
+            <p className="ne-meta">{section.note}</p>
+            {items.length === 0 ? <p className="ne-meta">Ninguno en este fragmento.</p> : null}
             {items.map((finding) => (
               <FindingView key={finding.id} finding={finding} />
             ))}

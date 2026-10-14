@@ -227,6 +227,20 @@ El proveedor `anthropic` (`app/analysis/anthropic_provider.py`) es el único que
 
 El estado del proveedor (`GET /analysis/provider`) no llama a ningún servicio.
 
+## Sistema visual
+
+El estilo vive en `apps/web/app/globals.css`, que es la única fuente de tokens y componentes. No hay biblioteca de componentes: Tailwind v4 para disposición y ajustes puntuales, y clases `.ne-*` para lo que se repite.
+
+- **Tokens** en `:root`: papel, superficie, tinta, texto secundario, línea, un solo acento, foco, y estados ok, aviso y peligro con su fondo. El modo oscuro se aplica por `prefers-color-scheme` (salvo `data-theme="light"`) o por `data-theme="dark"`.
+- **Capas**: `@layer base` para elementos (cuerpo, encabezados, campos, foco visible) y `@layer components` para las clases `.ne-*`. Las utilidades de Tailwind prevalecen sobre ambas capas, así que un caso concreto puede ajustarse sin pelear con la especificidad.
+- **Tipografía**: serif para títulos y texto narrativo (`--font-serif`), sans para la interfaz (`--font-sans`). No se cargan fuentes externas: son pilas del sistema, así que el aspecto del serif depende del sistema operativo.
+- **Escala**: `.ne-page-title` (con `--hero` en la portada), `.ne-section-title`, `.ne-subtitle`, `.ne-kicker`, `.ne-lede`, `.ne-meta`, `.ne-hint`, `.ne-label`.
+- **Componentes**: `.ne-button` (`--primary`, `--ghost`, `--small`, `--danger`), `.ne-link`, `.ne-tab`, `.ne-segment`, `.ne-panel`, `.ne-list`, `.ne-empty`, `.ne-badge`, `.ne-notice` (`--ok`, `--warn`, `--danger`, `--info`), `.ne-status` para el guardado, `.ne-prose-field` para el texto narrativo (serif, interlineado 1,75, columna de 68 caracteres) y `.ne-tree__*` para la estructura.
+- **Estados**: cada estado lleva icono o texto además del color («✓ Borrador guardado», «Conflicto: …»). Los `role="status"` y `role="alert"` se mantienen donde estaban.
+- **Reglas**: sin sombras ni degradados decorativos. El acento se reserva al foco, a la selección actual y a la cita. Las pantallas nuevas usan la escala y los componentes antes que utilidades sueltas.
+
+Comprobaciones: sin desbordamiento horizontal medido en 1440, 1280, 768, 390 y 360 px en las páginas revisadas; capturas inspeccionadas en 1440 y 390 px. El modo oscuro no se ha inspeccionado visualmente.
+
 ## Pendiente
 
 - Primera llamada real a Anthropic. Requiere clave, modelo y la decisión del usuario (D-028, D-029).

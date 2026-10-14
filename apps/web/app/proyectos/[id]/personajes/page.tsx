@@ -11,8 +11,8 @@ export default function Page() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Personajes</h1>
-        <p className="text-sm text-[var(--color-muted)]">Basta con un nombre para crear un personaje. El resto puedes completarlo más adelante.</p>
+        <h1 className="ne-page-title">Personajes</h1>
+        <p className="ne-meta">Basta con un nombre para crear un personaje. El resto puedes completarlo más adelante.</p>
       </header>
       <ElementCollection projectId={projectId} config={COLLECTIONS.personajes} />
     </main>

@@ -103,7 +103,7 @@ export function ElementCollection({ projectId, config }: Props) {
     <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
       <div className="flex flex-col gap-5">
         <form onSubmit={create} className="flex flex-col gap-2" aria-label={`Crear ${config.singular}`}>
-          <label htmlFor={`nuevo-${config.route}`} className="text-sm font-medium">
+          <label htmlFor={`nuevo-${config.route}`} className="ne-label">
             {config.titleLabel} del nuevo {config.singular}
           </label>
           <div className="flex gap-2">
@@ -112,14 +112,14 @@ export function ElementCollection({ projectId, config }: Props) {
               value={createValue}
               onChange={(event) => setCreateValue(event.target.value)}
               maxLength={200}
-              className="min-w-0 flex-1 rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              className="min-w-0 flex-1"
             />
-            <button type="submit" disabled={creating} className="rounded bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-paper)] disabled:opacity-50">
+            <button type="submit" disabled={creating} className="ne-button ne-button--primary ne-button--small">
               {creating ? "Creando…" : `Crear ${config.singular}`}
             </button>
           </div>
           {createError ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="ne-notice ne-notice--danger">
               {createError}
             </p>
           ) : null}
@@ -130,15 +130,15 @@ export function ElementCollection({ projectId, config }: Props) {
           Mostrar archivados
         </label>
 
-        {items === null && !listError ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
+        {items === null && !listError ? <p className="ne-meta">Cargando…</p> : null}
         {listError ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {listError}
           </p>
         ) : null}
-        {items?.length === 0 ? <p className="text-[var(--color-muted)]">{config.emptyText}</p> : null}
+        {items?.length === 0 ? <p className="ne-empty">{config.emptyText}</p> : null}
 
-        <ul className="flex flex-col divide-y divide-[var(--color-muted)]/40">
+        <ul className="ne-list">
           {items?.map((item) => (
             <li key={item.id}>
               <button
@@ -153,7 +153,7 @@ export function ElementCollection({ projectId, config }: Props) {
                   {labelOf(item, config.titleField)}
                 </span>
                 <span className="flex items-center gap-2">
-                  {item.archived_at ? <span className="text-xs text-[var(--color-muted)]">Archivado</span> : null}
+                  {item.archived_at ? <span className="ne-hint">Archivado</span> : null}
                   <CanonBadge state={item.estado} origin={item.origen} />
                 </span>
               </button>
@@ -161,7 +161,7 @@ export function ElementCollection({ projectId, config }: Props) {
           ))}
         </ul>
         {notice ? (
-          <p role="status" className="text-sm text-green-800">
+          <p role="status" className="ne-notice ne-notice--ok">
             {notice}
           </p>
         ) : null}
@@ -182,7 +182,7 @@ export function ElementCollection({ projectId, config }: Props) {
             <RelatedScenes projectId={projectId} route={config.route} elementId={selected.id} includeArchived={showArchived} />
           </div>
         ) : (
-          <p className="text-[var(--color-muted)]">Selecciona un elemento de la lista para verlo y editarlo.</p>
+          <p className="ne-empty">Selecciona un elemento de la lista para verlo y editarlo.</p>
         )}
       </div>
     </div>

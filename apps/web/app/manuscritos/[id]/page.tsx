@@ -272,10 +272,10 @@ export default function ManuscriptPage() {
   if (error && !manuscript) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {error}
         </p>
-        <Link href="/manuscritos" className="underline">
+        <Link href="/manuscritos" className="ne-link">
           Volver a manuscritos
         </Link>
       </main>
@@ -288,15 +288,15 @@ export default function ManuscriptPage() {
       className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6"
     >
       <header className="flex flex-col gap-2">
-        <Link href="/manuscritos" className="text-sm text-[var(--color-muted)] underline">
+        <Link href="/manuscritos" className="ne-meta ne-link">
           Manuscritos
         </Link>
         <p className="text-sm uppercase tracking-widest text-[var(--color-muted)]">Manuscrito</p>
-        <h1 className="text-3xl font-semibold">{manuscript?.title ?? "Cargando…"}</h1>
+        <h1 className="ne-page-title">{manuscript?.title ?? "Cargando…"}</h1>
         {manuscript?.scene_node_id ? (
-          <p className="text-sm text-[var(--color-muted)]">
+          <p className="ne-meta">
             Es el texto de una escena. Su título es el de la escena y se cambia allí:{" "}
-            <Link href={`/proyectos/${manuscript.project_id}/estructura/${manuscript.scene_node_id}`} className="underline">
+            <Link href={`/proyectos/${manuscript.project_id}/estructura/${manuscript.scene_node_id}`} className="ne-link">
               editar la escena
             </Link>
             .
@@ -305,7 +305,7 @@ export default function ManuscriptPage() {
       </header>
 
       <section aria-labelledby="versiones-titulo" className="flex flex-col gap-3">
-        <h2 id="versiones-titulo" className="text-xl font-medium">
+        <h2 id="versiones-titulo" className="ne-section-title">
           Versiones
         </h2>
         {versions === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
@@ -317,13 +317,13 @@ export default function ManuscriptPage() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <Link
                     href={`/manuscritos/${manuscriptId}/versiones/${version.id}`}
-                    className="font-medium underline"
+                    className="ne-link font-medium"
                   >
                     Versión {version.number}
                   </Link>
-                  <span className="text-sm text-[var(--color-muted)]">{formatDate(version.created_at)}</span>
+                  <span className="ne-meta">{formatDate(version.created_at)}</span>
                 </div>
-                <p className="text-sm text-[var(--color-muted)]">
+                <p className="ne-meta">
                   {version.char_count} caracteres · hash {version.sha256.slice(0, 12)}…
                   {parent ? ` · creada a partir de la versión ${parent.number}` : ""}
                   {version.note ? ` · nota: ${version.note}` : ""}
@@ -335,20 +335,20 @@ export default function ManuscriptPage() {
       </section>
 
       <section aria-labelledby="nueva-titulo" className="flex flex-col gap-4">
-        <h2 id="nueva-titulo" className="text-xl font-medium">
+        <h2 id="nueva-titulo" className="ne-section-title">
           Nueva versión
         </h2>
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="ne-meta">
           El texto se guarda como borrador mientras escribes. Guardar como nueva versión crea una versión formal; las
           anteriores no cambian.
         </p>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Partir de</span>
+            <span className="ne-label">Partir de</span>
             <select
               value={baseId ?? ""}
               onChange={(event) => void handleBaseChange(Number(event.target.value))}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             >
               {versions?.map((version) => (
                 <option key={version.id} value={version.id}>
@@ -358,14 +358,14 @@ export default function ManuscriptPage() {
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Contenido de la nueva versión</span>
+            <span className="ne-label">Contenido de la nueva versión</span>
             <textarea
               required
               rows={12}
               disabled={!ready}
               value={content}
               onChange={(event) => handleEdit(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2 font-serif"
+              className="ne-prose-field"
             />
           </label>
           <DraftStatus
@@ -376,26 +376,26 @@ export default function ManuscriptPage() {
             onDownload={downloadCopy}
           />
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Nota (opcional)</span>
+            <span className="ne-label">Nota (opcional)</span>
             <input
               maxLength={200}
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           <div>
             <button
               type="submit"
               disabled={saving || baseId === null || !ready}
-              className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50"
+              className="ne-button ne-button--primary"
             >
               {saving ? "Guardando…" : "Guardar como nueva versión"}
             </button>
           </div>
         </form>
         {formError ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {formError}
           </p>
         ) : null}
@@ -403,7 +403,7 @@ export default function ManuscriptPage() {
 
       <RecoveryPoints points={points} error={pointsError} onRestore={(point) => void handleRestore(point)} onRefresh={refreshPoints} />
       {restoreError ? (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {restoreError}
         </p>
       ) : null}

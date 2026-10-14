@@ -1,26 +1,581 @@
 @import "tailwindcss";
 
+/*
+ * Sistema visual de Novel Engine. Tokens en :root; el modo oscuro los redefine.
+ * Las reglas de elementos van en la capa base y los componentes en components, para que las
+ * utilidades de Tailwind sigan teniendo prioridad donde una pantalla lo necesite.
+ */
+
 :root {
-  --color-paper: #f7f4ee;
-  --color-ink: #1d1b18;
-  --color-muted: #6b655c;
+  --color-paper: #f6f2ea;
+  --color-surface: #fbf9f4;
+  --color-ink: #1f1b16;
+  --color-muted: #6e675c;
+  --color-line: #ddd5c6;
+  --color-accent: #7b3a2c;
+  --color-accent-ink: #fbf9f4;
+  --color-focus: #2f5f8a;
+  --color-ok: #2e5b43;
+  --color-warn: #7a5a14;
+  --color-danger: #8a2b1f;
+  --color-danger-wash: #f5e7e3;
+  --color-ok-wash: #e4eee8;
+  --color-warn-wash: #f5eddb;
+
+  --font-serif: "Charter", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --radius: 4px;
+  --line-width: 1px;
+  --measure: 68ch;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-paper: #1b1a17;
-    --color-ink: #ece8df;
-    --color-muted: #a39d92;
+    --color-paper: #181713;
+    --color-surface: #1f1d18;
+    --color-ink: #ece7dc;
+    --color-muted: #a29b8c;
+    --color-line: #3a372f;
+    --color-accent: #d6937f;
+    --color-accent-ink: #181713;
+    --color-focus: #8fb6da;
+    --color-ok: #9fd0b3;
+    --color-warn: #e0bd6a;
+    --color-danger: #efa595;
+    --color-danger-wash: #35221e;
+    --color-ok-wash: #1f2e26;
+    --color-warn-wash: #33291a;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-paper: #1b1a17;
-  --color-ink: #ece8df;
-  --color-muted: #a39d92;
+  --color-paper: #181713;
+  --color-surface: #1f1d18;
+  --color-ink: #ece7dc;
+  --color-muted: #a29b8c;
+  --color-line: #3a372f;
+  --color-accent: #d6937f;
+  --color-accent-ink: #181713;
+  --color-focus: #8fb6da;
+  --color-ok: #9fd0b3;
+  --color-warn: #e0bd6a;
+  --color-danger: #efa595;
+  --color-danger-wash: #35221e;
+  --color-ok-wash: #1f2e26;
+  --color-warn-wash: #33291a;
 }
 
-body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    border: var(--line-width) solid var(--color-line);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    min-width: 0;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):hover,
+  select:hover,
+  textarea:hover {
+    border-color: var(--color-muted);
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    color: var(--color-muted);
+    background: transparent;
+  }
+
+  input[type="checkbox"] {
+    accent-color: var(--color-accent);
+  }
+}
+
+@layer components {
+  /* Títulos de página: una cabecera con metadatos y una línea inferior. */
+  .ne-page-title {
+    font-size: 2.125rem;
+    line-height: 1.15;
+  }
+
+  .ne-section-title {
+    font-size: 1.375rem;
+    line-height: 1.25;
+  }
+
+  .ne-page-title--hero {
+    font-size: 2.75rem;
+    line-height: 1.1;
+  }
+
+  .ne-subtitle {
+    font-family: var(--font-serif);
+    font-size: 1.1875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .ne-kicker {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .ne-meta {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+
+  .ne-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .ne-hint {
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+  }
+
+  /* Botones: primario (acción principal), secundario (acción normal), fantasma (acción de bajo peso). */
+  .ne-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    border: var(--line-width) solid var(--color-line);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .ne-button:hover:not(:disabled) {
+    border-color: var(--color-muted);
+  }
+
+  .ne-button:disabled {
+    cursor: not-allowed;
+    color: var(--color-muted);
+    opacity: 0.6;
+  }
+
+  .ne-button--primary {
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .ne-button--primary:hover:not(:disabled) {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  .ne-button--ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-muted);
+    padding-inline: 0.5rem;
+  }
+
+  .ne-button--ghost:hover:not(:disabled) {
+    color: var(--color-ink);
+    background: var(--color-line);
+    border-color: transparent;
+  }
+
+  .ne-button--small {
+    min-height: 2rem;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .ne-button--danger {
+    color: var(--color-danger);
+  }
+
+  /* Enlace de navegación interna, con subrayado discreto. */
+  .ne-link {
+    text-decoration: underline;
+    text-decoration-color: var(--color-line);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  .ne-link:hover {
+    text-decoration-color: currentColor;
+  }
+
+  /* Avisos. Cada estado usa icono y texto además del color. */
+  .ne-notice {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--radius);
+    border-left: 3px solid currentColor;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .ne-notice__icon {
+    flex: none;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .ne-notice--ok {
+    color: var(--color-ok);
+    background: var(--color-ok-wash);
+  }
+
+  .ne-notice--warn {
+    color: var(--color-warn);
+    background: var(--color-warn-wash);
+  }
+
+  .ne-notice--danger {
+    color: var(--color-danger);
+    background: var(--color-danger-wash);
+  }
+
+  .ne-notice--info {
+    color: var(--color-muted);
+    background: var(--color-surface);
+  }
+
+  /* Estados de un elemento (canon, escritura). Texto siempre visible. */
+  .ne-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border: var(--line-width) solid var(--color-line);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted);
+    white-space: nowrap;
+  }
+
+  .ne-badge--ok {
+    color: var(--color-ok);
+    border-color: currentColor;
+  }
+
+  .ne-badge--warn {
+    color: var(--color-warn);
+    border-color: currentColor;
+  }
+
+  .ne-badge--danger {
+    color: var(--color-danger);
+    border-color: currentColor;
+  }
+
+  /* Cabecera de la aplicación y marca. */
+  .ne-app-header {
+    border-bottom: var(--line-width) solid var(--color-line);
+    background: var(--color-paper);
+  }
+
+  .ne-brand {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  /* Línea de estado discreta (guardado, cambios pendientes): visible sin competir con la escritura. */
+  .ne-status {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+
+  .ne-status--ok {
+    color: var(--color-ok);
+  }
+
+  .ne-status__icon {
+    width: 1rem;
+    text-align: center;
+    flex: none;
+  }
+
+  /* Árbol de estructura: una fila por nodo, identidad a la izquierda y acciones discretas a la derecha. */
+  .ne-tree__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    padding: 0.5rem 0;
+    border-bottom: var(--line-width) solid color-mix(in srgb, var(--color-line) 60%, transparent);
+  }
+
+  .ne-tree__identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .ne-tree__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.125rem;
+    margin-left: auto;
+  }
+
+  .ne-tree__toggle,
+  .ne-tree__toggle-space {
+    width: 1.75rem;
+    padding-inline: 0;
+    justify-content: center;
+    flex: none;
+  }
+
+  .ne-tree__toggle-space {
+    display: inline-block;
+  }
+
+  .ne-tree__name {
+    flex: 1 1 8rem;
+    min-width: 0;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: var(--color-ink);
+    text-align: left;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 4px;
+  }
+
+  .ne-tree__name:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .ne-tree__name[aria-current="true"] {
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 2px;
+    font-weight: 600;
+  }
+
+  .ne-tree__name--acto {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .ne-tree__name--capitulo {
+    font-weight: 600;
+  }
+
+  .ne-tree__name--escena {
+    color: var(--color-ink);
+  }
+
+  .ne-tree__name--archived {
+    color: var(--color-muted);
+    text-decoration: line-through;
+  }
+
+  /* Hijos: una guía vertical fina marca la jerarquía sin cajas ni sombras. */
+  .ne-tree__children {
+    margin-left: 0.875rem;
+    padding-left: 1rem;
+    border-left: var(--line-width) solid var(--color-line);
+  }
+
+  /* Estado vacío: explica qué falta y ofrece la acción siguiente. */
+  .ne-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1.5rem 0;
+    color: var(--color-muted);
+  }
+
+  /* Superficie de formulario: agrupa campos con un borde fino, sin sombra. */
+  .ne-panel {
+    border: var(--line-width) solid var(--color-line);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    padding: 1.25rem;
+  }
+
+  /* Lista con separadores finos, para tablas y listados. */
+  .ne-list > li + li {
+    border-top: var(--line-width) solid var(--color-line);
+  }
+
+  /* Selector segmentado para filtros de una lista: un solo grupo, estado pulsado visible. */
+  .ne-segment {
+    display: inline-flex;
+    border: var(--line-width) solid var(--color-line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .ne-segment > button {
+    padding: 0.375rem 0.875rem;
+    background: var(--color-surface);
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border: 0;
+  }
+
+  .ne-segment > button + button {
+    border-left: var(--line-width) solid var(--color-line);
+  }
+
+  .ne-segment > button[aria-pressed="true"] {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .ne-segment > button:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* Filas de proyecto: el nombre manda; la fecha va alineada a la derecha. */
+  .ne-project-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1.5rem;
+    padding: 0.875rem 0;
+  }
+
+  .ne-project-name {
+    font-family: var(--font-serif);
+    font-size: 1.1875rem;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+
+  .ne-project-name:hover {
+    border-bottom-color: var(--color-muted);
+  }
+
+  /* Pestañas: un subrayado en la activa. */
+  .ne-tab {
+    padding: 0.5rem 0;
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+  }
+
+  .ne-tab[aria-current="page"],
+  .ne-tab[aria-selected="true"] {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-accent);
+  }
+
+  /* Texto narrativo: serif, columna de lectura, interlineado generoso. */
+  .ne-prose {
+    font-family: var(--font-serif);
+    font-size: 1.1875rem;
+    line-height: 1.75;
+    color: var(--color-ink);
+    max-width: var(--measure);
+  }
+
+  .ne-prose-field {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    line-height: 1.75;
+    padding: 1.25rem 1.5rem;
+    min-height: 28rem;
+    max-width: var(--measure);
+    resize: vertical;
+    background: var(--color-surface);
+  }
+
+  /* Sufijo de un título («de 3»): menor peso, sin romper la línea. */
+  .ne-title-suffix {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--color-muted);
+  }
+
+  /* Huella de contenido: se parte donde haga falta para no desbordar en ventanas estrechas. */
+  .ne-hash {
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .ne-hash code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+  }
+
+  /* Entradilla bajo el título de página. */
+  .ne-lede {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--color-muted);
+    max-width: 62ch;
+  }
 }

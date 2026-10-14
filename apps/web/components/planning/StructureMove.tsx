@@ -22,10 +22,10 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
   const [parentValue, setParentValue] = useState(currentParent);
 
   if (node.archived_at) {
-    return <p className="text-sm text-[var(--color-muted)]">Un elemento archivado no se puede mover.</p>;
+    return <p className="ne-meta">Un elemento archivado no se puede mover.</p>;
   }
   if (!targets.root && targets.parents.length === 0) {
-    return <p className="text-sm text-[var(--color-muted)]">No hay ningún lugar compatible al que mover este elemento.</p>;
+    return <p className="ne-meta">No hay ningún lugar compatible al que mover este elemento.</p>;
   }
 
   const parentId = parentValue === "root" ? null : Number(parentValue);
@@ -41,7 +41,7 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
   }
 
   return (
-    <form onSubmit={submit} aria-label="Mover a otro lugar de la estructura" className="flex flex-col gap-3 rounded border border-[var(--color-muted)]/60 p-4">
+    <form onSubmit={submit} aria-label="Mover a otro lugar de la estructura" className="ne-panel flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1 text-sm">
           <label htmlFor="mover-destino" className="font-medium">Nuevo lugar</label>
@@ -50,7 +50,7 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
             value={parentValue}
             onChange={(event) => setParentValue(event.target.value)}
             disabled={busy}
-            className="min-w-0 rounded border border-[var(--color-muted)] bg-transparent px-2 py-1.5"
+            className="min-w-0"
           >
             {targets.root ? <option value="root">Raíz de la novela</option> : null}
             {targets.parents.map((item) => (
@@ -68,7 +68,7 @@ export function StructureMove({ node, nodes, busy, onMove }: Props) {
         <button
           type="submit"
           disabled={busy || unchanged}
-          className="rounded bg-[var(--color-ink)] px-3 py-2 text-sm text-[var(--color-paper)] disabled:opacity-50"
+          className="ne-button ne-button--primary ne-button--small"
         >
           {busy ? "Moviendo…" : "Mover aquí"}
         </button>

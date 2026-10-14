@@ -38,67 +38,67 @@ export default function ManuscriptsPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6">
       <header className="flex flex-col gap-2">
-        <Link href="/" className="text-sm text-[var(--color-muted)] underline">
+        <Link href="/" className="ne-meta ne-link">
           Inicio
         </Link>
-        <h1 className="text-3xl font-semibold">Manuscritos</h1>
+        <h1 className="ne-page-title">Manuscritos</h1>
         <p className="text-[var(--color-muted)]">
           Cada manuscrito tiene versiones numeradas. Una versión guardada no se modifica: los cambios crean una versión nueva.
         </p>
       </header>
 
       <section aria-labelledby="crear-titulo" className="flex flex-col gap-4">
-        <h2 id="crear-titulo" className="text-xl font-medium">
+        <h2 id="crear-titulo" className="ne-section-title">
           Crear manuscrito
         </h2>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Título del manuscrito</span>
+            <span className="ne-label">Título del manuscrito</span>
             <input
               required
               maxLength={200}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Contenido de la versión 1</span>
+            <span className="ne-label">Contenido de la versión 1</span>
             <textarea
               rows={8}
               value={content}
               onChange={(event) => setContent(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2 font-serif"
+              className="ne-prose-field"
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Nota de la versión (opcional)</span>
+            <span className="ne-label">Nota de la versión (opcional)</span>
             <input
               maxLength={200}
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="rounded border border-[var(--color-muted)] bg-transparent px-3 py-2"
+              
             />
           </label>
           <div>
             <button
               type="submit"
               disabled={saving}
-              className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50"
+              className="ne-button ne-button--primary"
             >
               {saving ? "Guardando…" : "Crear manuscrito"}
             </button>
           </div>
         </form>
         {error ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {error}
           </p>
         ) : null}
       </section>
 
       <section aria-labelledby="lista-titulo" className="flex flex-col gap-3">
-        <h2 id="lista-titulo" className="text-xl font-medium">
+        <h2 id="lista-titulo" className="ne-section-title">
           Manuscritos guardados
         </h2>
         {items === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
@@ -106,10 +106,10 @@ export default function ManuscriptsPage() {
         <ul className="divide-y divide-[var(--color-muted)]/40">
           {items?.map((item) => (
             <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={`/manuscritos/${item.id}`} className="font-medium underline">
+              <Link href={`/manuscritos/${item.id}`} className="ne-link font-medium">
                 {item.title}
               </Link>
-              <span className="text-sm text-[var(--color-muted)]">
+              <span className="ne-meta">
                 {item.version_count} {item.version_count === 1 ? "versión" : "versiones"} · creado {formatDate(item.created_at)}
               </span>
             </li>

@@ -29,8 +29,8 @@ export default function ProjectWorkspaceLayout({ children }: { children: ReactNo
   return (
     <UnsavedChangesProvider>
       <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
-        <p className="text-xs uppercase tracking-widest text-[var(--color-muted)]">Espacio de trabajo de la novela</p>
-        <nav aria-label="Secciones de la novela" className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-b border-[var(--color-muted)]/40 pb-3 text-sm">
+        <p className="ne-kicker">Espacio de trabajo de la novela</p>
+        <nav aria-label="Secciones de la novela" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--color-line)] text-[0.9375rem]">
           {SECTIONS.map((section) => {
             const href = section.segment ? `${base}/${section.segment}` : base;
             const active = isActive(section.segment);
@@ -39,7 +39,7 @@ export default function ProjectWorkspaceLayout({ children }: { children: ReactNo
                 key={section.label}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={active ? "font-medium underline underline-offset-4" : "text-[var(--color-muted)] hover:underline"}
+                className={`ne-tab hover:text-[var(--color-ink)] ${active ? "font-medium" : ""}`}
               >
                 {section.label}
               </Link>

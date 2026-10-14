@@ -31,7 +31,7 @@ export function ConfirmPanel({ message, confirmLabel, checkboxLabel, busy = fals
   }, []);
 
   return (
-    <div ref={panelRef} role="group" aria-label="Confirmación" className="flex flex-col gap-3 rounded border border-[var(--color-ink)] p-4">
+    <div ref={panelRef} role="group" aria-label="Confirmación" className="ne-panel flex flex-col gap-3">
       <div className="text-sm">{message}</div>
       {checkboxLabel ? (
         <label className="flex items-start gap-2 text-sm">
@@ -44,11 +44,11 @@ export function ConfirmPanel({ message, confirmLabel, checkboxLabel, busy = fals
           type="button"
           onClick={onConfirm}
           disabled={blocked}
-          className="rounded bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-paper)] disabled:opacity-50"
+          className="ne-button ne-button--primary ne-button--small"
         >
           {busy ? "Guardando…" : confirmLabel}
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="rounded border border-[var(--color-muted)] px-3 py-1.5 text-sm">
+        <button type="button" onClick={onCancel} disabled={busy} className="ne-button ne-button--small">
           Cancelar
         </button>
       </div>

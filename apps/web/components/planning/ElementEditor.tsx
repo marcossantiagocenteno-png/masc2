@@ -153,11 +153,11 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
       <div className="flex flex-wrap items-center gap-2">
         <CanonBadge state={item.estado} origin={item.origen} />
         {archived ? <span className="rounded bg-[var(--color-muted)]/20 px-2 py-0.5 text-xs">Archivado</span> : null}
-        <span className="text-sm text-[var(--color-muted)]">{CANON_HELP[item.estado]}</span>
+        <span className="ne-meta">{CANON_HELP[item.estado]}</span>
       </div>
 
       {archived ? (
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="ne-meta">
           Archivado el {formatDate(item.archived_at as string)}. No se puede editar; no se ha borrado nada.
         </p>
       ) : null}
@@ -188,7 +188,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
           };
           return (
             <div key={field.name} className="flex flex-col gap-1">
-              <label htmlFor={id} className="text-sm font-medium">
+              <label htmlFor={id} className="ne-label">
                 {field.label}
               </label>
               {field.options ? (
@@ -204,25 +204,25 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
               ) : (
                 <input {...common} type={field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} />
               )}
-              {field.hint ? <span className="text-xs text-[var(--color-muted)]">{field.hint}</span> : null}
+              {field.hint ? <span className="ne-hint">{field.hint}</span> : null}
             </div>
           );
         })}
         {!archived ? (
           <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={!canSave} className="rounded bg-[var(--color-ink)] px-4 py-2 text-[var(--color-paper)] disabled:opacity-50">
+            <button type="submit" disabled={!canSave} className="ne-button ne-button--primary">
               {busy ? "Guardando…" : "Guardar cambios"}
             </button>
-            {dirty ? <span className="text-sm text-[var(--color-muted)]">Hay cambios sin guardar.</span> : null}
+            {dirty ? <span className="ne-meta">Hay cambios sin guardar.</span> : null}
             {isCanon && !canonConfirmed && dirty ? (
-              <span className="text-sm text-[var(--color-muted)]">Confirma el cambio al canon para poder guardar.</span>
+              <span className="ne-meta">Confirma el cambio al canon para poder guardar.</span>
             ) : null}
           </div>
         ) : null}
       </form>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {error}
         </p>
       ) : null}
@@ -231,7 +231,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             {canApprove ? (
-              <button type="button" onClick={() => setPanel("approve")} disabled={busy} className="rounded border border-emerald-800 px-3 py-1.5 text-sm text-emerald-900 disabled:opacity-50">
+              <button type="button" onClick={() => setPanel("approve")} disabled={busy} className="ne-button ne-button--small">
                 Aprobar como canon
               </button>
             ) : null}
@@ -240,7 +240,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
                 Aceptar propuesta
               </button>
             ) : null}
-            <button type="button" onClick={() => setPanel("archive")} disabled={busy} className="rounded border border-[var(--color-muted)] px-3 py-1.5 text-sm disabled:opacity-50">
+            <button type="button" onClick={() => setPanel("archive")} disabled={busy} className="ne-button ne-button--small">
               Archivar
             </button>
           </div>
@@ -295,7 +295,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
         <h3 className="font-medium">Historial de canon</h3>
         {decisions === null ? <p className="text-[var(--color-muted)]">Cargando…</p> : null}
         {decisionsError ? (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="ne-notice ne-notice--danger">
             {decisionsError}
           </p>
         ) : null}
@@ -313,7 +313,7 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
             </li>
           ))}
         </ol>
-        <p className="text-xs text-[var(--color-muted)]">
+        <p className="ne-hint">
           El historial solo muestra qué ocurrió. Restaurar versiones anteriores no está disponible todavía.
         </p>
       </div>

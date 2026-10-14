@@ -11,8 +11,8 @@ export default function Page() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Cronología</h1>
-        <p className="text-sm text-[var(--color-muted)]">Acontecimientos con su orden en el relato y, si lo conoces, su momento en la historia.</p>
+        <h1 className="ne-page-title">Cronología</h1>
+        <p className="ne-meta">Acontecimientos con su orden en el relato y, si lo conoces, su momento en la historia.</p>
       </header>
       <ElementCollection projectId={projectId} config={COLLECTIONS.cronologia} />
     </main>

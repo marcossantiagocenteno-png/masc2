@@ -13,7 +13,7 @@ export default function ScenePage() {
       {Number.isInteger(nodeId) && nodeId > 0 ? (
         <SceneDetail projectId={projectId} nodeId={nodeId} />
       ) : (
-        <p role="alert" className="text-red-700">La dirección de la escena no es válida.</p>
+        <p role="alert" className="ne-notice ne-notice--danger">La dirección de la escena no es válida.</p>
       )}
     </main>
   );

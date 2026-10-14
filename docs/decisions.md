@@ -457,6 +457,19 @@ Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `labe
 
 ---
 
+## D-065 · Sistema visual compartido: tokens y componentes en CSS, sin biblioteca
+**Estado:** aceptada (fase 3a)
+
+**Decisión.** El estilo vive en `globals.css`: tokens en `:root`, clases `.ne-*` en `@layer components` y elementos base en `@layer base`. No se añade biblioteca de componentes.
+
+**Motivo.** Las mismas cadenas de utilidades se repetían cientos de veces (campos, botones con padding distinto en cada sitio, avisos con rojo y verde fijos). Un componente compartido evita que cada pantalla invente su variante y permite cambiar el tono en un solo lugar. Una biblioteca nueva añadiría dependencias sin resolver nada que el CSS no resuelva.
+
+**Consecuencias.** Sin cambios de API, datos, migraciones ni lógica. Los textos y las etiquetas ARIA se conservan, así que las pruebas E2E no cambian. Los estados mantienen icono y texto, no solo color. Las fuentes son pilas del sistema, sin dependencia de red.
+
+**Límites.** El modo oscuro está definido pero no revisado visualmente. El panel de análisis aún no separa visualmente fragmento, hallazgos y justificaciones.
+
+---
+
 ## Pendientes
 
 | Decisión | Motivo | Cuándo |

@@ -45,17 +45,17 @@ export function RelatedScenes({ projectId, route, elementId, includeArchived }: 
 
   return (
     <section aria-labelledby="escenas-relacionadas" className="flex flex-col gap-3">
-      <h3 id="escenas-relacionadas" className="text-lg font-medium">
+      <h3 id="escenas-relacionadas" className="ne-subtitle">
         Escenas relacionadas
       </h3>
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="ne-notice ne-notice--danger">
           {error}
         </p>
       ) : null}
-      {links === null && !error ? <p className="text-sm text-[var(--color-muted)]">Cargando escenas…</p> : null}
+      {links === null && !error ? <p className="ne-meta">Cargando escenas…</p> : null}
       {links?.length === 0 ? (
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="ne-meta">
           Todavía no aparece en ninguna escena. Los vínculos se crean desde cada escena.
         </p>
       ) : null}
@@ -69,14 +69,14 @@ export function RelatedScenes({ projectId, route, elementId, includeArchived }: 
               <span className="min-w-0 break-words text-sm">
                 {RELATION_LABELS[link.relation] ?? link.relation}{" "}
                 {scene ? (
-                  <Link href={`/proyectos/${projectId}/estructura/${sceneId}`} className="font-medium underline">
+                  <Link href={`/proyectos/${projectId}/estructura/${sceneId}`} className="ne-link font-medium">
                     {title}
                   </Link>
                 ) : (
                   <span>Escena no disponible</span>
                 )}
                 {scene?.archived_at || link.archived_at ? (
-                  <span className="text-xs text-[var(--color-muted)]"> · {scene?.archived_at ? "escena archivada" : "vínculo archivado"}</span>
+                  <span className="ne-hint"> · {scene?.archived_at ? "escena archivada" : "vínculo archivado"}</span>
                 ) : null}
               </span>
               <CanonBadge state={link.estado} origin={link.origen} />

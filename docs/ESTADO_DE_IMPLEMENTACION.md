@@ -16,6 +16,8 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Marcador con latido** (fase 1d): el backend renueva el marcador cada 30 s. Un marcador caducado solo se considera abandonado si el sistema confirma que el proceso terminó; si no puede confirmarlo, la restauración se niega. Nunca se borra automáticamente. Pruebas: 11 de marcador (incluida una con un proceso real terminado).
 - **Simulacro de restauración** (fase 1d): `python -m app.backups simulacro`, reproducible en cualquier sistema. Ejecutado en Linux; pendiente en Windows.
 - **Advertencias de crecimiento** (fase 1d): `retencion` avisa al superar 200 MB o 100 MB al año estimados.
+- **Interfaz de planificación** (fase 2b). En el espacio de trabajo de cada novela: visión general (premisa, sinopsis, género, tema, tono, estado de desarrollo, con la advertencia de que no tienen protección de canon); personajes, lugares, trama y misterios, y cronología, con creación desde un nombre, edición, archivado con confirmación, aprobación como canon con casilla de confirmación, historial de decisiones de solo lectura; estructura de actos, capítulos y escenas con alta, edición y reordenación entre hermanos (botones), y una pantalla por escena con sus vínculos (personajes, lugares y elementos de trama), creados y retirados con las operaciones de la API. Pruebas: 8 E2E en `tests/e2e/planificacion.spec.ts` (recorridos principales, identidad al reordenar, canon, errores sin pérdida de texto, aislamiento entre novelas, avisos de cambios sin guardar). Sin IA y sin llamadas externas.
+- **Corrección de CORS**: el backend no permitía `PATCH`, así que el navegador bloqueaba la edición del nombre del proyecto y de los elementos de planificación. Corregido y probado con una prueba de preflight.
 - **Auditoría de integridad de la planificación** (fase 2a.1): vínculos validados también en la base (triggers, migración 0007); decisiones de canon con actor y estado resultante; cambios atómicos (un fallo al confirmar ya no deja cambios pendientes en la sesión); la carrera de duplicados responde 409 y no 500. Pruebas: 18 de integridad y 2 de migración 0007. Cuatro mutaciones de estas garantías se detectan.
 - **Núcleo de planificación narrativa** (fase 2a): personajes, lugares, elementos de trama, acontecimientos, estructura (actos, capítulos y escenas) y vínculos tipados, con estado de canon (provisional, propuesta de IA, canónico) y decisiones de canon registradas. Pruebas: 30 de planificación, 3 de migración y 2 de verificación de copias con tablas nuevas. Siete mutaciones de reglas de canon, aislamiento y atomicidad se detectan. Aislado por proyecto (probado). Sin interfaz de planificación.
 - **Copias de seguridad automáticas** (fase 1c): API de backup de SQLite en una lectura consistente; verificación de integridad y esquema antes de nombrar la copia; rotación por cantidad y antigüedad que nunca borra antes de crear y verificar la nueva; nombres que nunca se sobrescriben; registro operativo sin texto. Pruebas: 17 de copias, 9 de restauración, 9 de retención y 4 de línea de comandos (39 en la fase; 335 en total). Siete mutaciones deliberadas de las reglas de seguridad (verificación previa, rotación, bloqueos, instantánea, copia preventiva, retención de conflictos) hacen fallar al menos una prueba.
@@ -66,9 +68,17 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Fallo de disparador en carrera.** Un disparador que rechaza un vínculo durante una carrera responde 422, no 500. **Probado en servicio.**
 - **Archivo `/m.sqlite` en la raíz del sistema.** Lo creó un comando defectuoso de la fase 2a (una variable de shell vacía dejó la ruta en la raíz). Su contenido es solo la tabla `alembic_version` vacía; no es la base del repositorio. **Pendiente de retirada por una persona.**
 
-## Pendiente de la planificación (fase 2a no lo incluye)
+## Limitaciones de la interfaz de planificación (fase 2b)
 
-- Interfaz de planificación (fase 2b). Hoy solo hay API.
+- **Sin movimiento de escenas entre padres.** La API no permite cambiar el padre de un nodo. La interfaz solo reordena entre hermanos, con botones (no hay arrastre).
+- **Sin historial navegable ni restauración.** Cada elemento muestra sus decisiones de canon en solo lectura. No hay forma de restaurar un estado anterior.
+- **Campos generales de la novela sin canon.** La interfaz lo indica, pero no hay protección ni historial para ellos (D-059).
+- **Sin propuestas de IA.** La interfaz muestra y gestiona el estado «propuesta de IA» y permite aceptarla, pero no se generan propuestas.
+- **Accesibilidad y móvil sin auditoría.** Las pruebas E2E se ejecutan en escritorio. La distribución en pantallas pequeñas está prevista pero no se ha comprobado con un dispositivo real.
+- **Edición de elementos provisionales sin historial.** Solo las decisiones de canon se registran.
+
+## Pendiente de la planificación
+
 - Historial y restauración de decisiones desde la interfaz. El registro existe; la vista no.
 - Mover un nodo de estructura a otro padre. Hoy solo se reordena entre hermanos.
 - Restaurar elementos archivados (la operación inversa de archivar).

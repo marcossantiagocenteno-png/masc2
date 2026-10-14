@@ -383,6 +383,17 @@ Limitación deliberada: solo se registran decisiones de canon. Editar un element
 
 Premisa, sinopsis, género, tema y tono (y el estado de desarrollo) son columnas de `projects`. Hoy se pueden cambiar en cualquier momento sin confirmación, no tienen estado de canon, no registran decisiones y no dejan historial. Es una decisión consciente: son la definición de la novela que escribe el autor, y ninguna IA las propone todavía. Antes de integrarlas en el sistema de canon hace falta: estado y origen por campo (o un registro de versiones de la premisa), decisiones de canon con su instantánea, y una confirmación en la interfaz. La interfaz debe mostrar esta diferencia, para que el autor no crea que estos campos están protegidos.
 
+## D-060 · Interfaz de planificación: confirmaciones en línea, reordenación con botones, sin movimiento entre padres
+**Estado:** aceptada (fase 2b)
+
+Las acciones sobre canon (aprobar, modificar un canónico, archivar) muestran en la propia ficha una confirmación con la casilla explícita y el texto de lo que cambia. Se prefiere a un diálogo del navegador porque el texto y la casilla se leen antes de confirmar y el mensaje de la API se muestra donde corresponde. Si la API rechaza la acción (409 por falta de confirmación), la interfaz no reintenta con la confirmación marcada: el cambio se queda sin aplicar.
+
+Reordenar escenas usa botones «Subir» y «Bajar», no arrastre. La API solo reordena entre hermanos y no mueve un nodo a otro padre: no se presenta como disponible. Una escena se identifica por su id en la URL, así que reordenar no cambia su dirección ni sus vínculos.
+
+Los vínculos de una escena se crean y se retiran con las operaciones de la API. Retirar un vínculo lo archiva (no se borra), en línea con el resto del sistema.
+
+Las etiquetas de los formularios se asocian a su control con `htmlFor`. Un `label` que envuelve un `select` incluye el texto de todas sus opciones, y eso rompía el nombre accesible del campo.
+
 ---
 
 ## Pendientes

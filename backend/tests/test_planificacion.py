@@ -464,3 +464,17 @@ def test_una_copia_tras_planificar_se_verifica_con_las_tablas_nuevas(api: TestCl
     verification = verify_sqlite(outcome.path, schema_order())  # type: ignore[arg-type]
     assert verification.ok
     assert verification.counts["characters"] == 1
+
+
+def test_el_navegador_puede_enviar_patch_desde_el_frontend(client: TestClient) -> None:
+    """Regresión: la interfaz edita con PATCH. Sin PATCH en CORS, el navegador bloquea la petición."""
+    response = client.options(
+        "/projects/1/planificacion/personajes/1",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert "PATCH" in response.headers.get("access-control-allow-methods", "")

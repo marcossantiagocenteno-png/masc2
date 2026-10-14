@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { NarrativeForm } from "@/components/planning/NarrativeForm";
 import {
   api,
   ApiError,
@@ -122,7 +123,7 @@ export default function ProjectPanelPage() {
   const latest = manuscripts?.[0] ?? null;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-12 sm:px-6">
+    <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-8 sm:px-6">
       <header className="flex flex-col gap-2">
         <Link href="/proyectos" className="text-sm text-[var(--color-muted)] underline">
           Proyectos
@@ -136,6 +137,13 @@ export default function ProjectPanelPage() {
           </p>
         ) : null}
       </header>
+
+      <section aria-labelledby="vision" className="flex flex-col gap-4">
+        <h2 id="vision" className="text-xl font-medium">
+          Visión general de la novela
+        </h2>
+        <NarrativeForm projectId={projectId} />
+      </section>
 
       {error ? (
         <p role="alert" className="text-red-700">

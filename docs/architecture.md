@@ -163,6 +163,21 @@ Todas las entidades llevan `project_id`, `estado` (`provisional`, `propuesta_ia`
 - **Atomicidad:** cada operación valida antes de escribir y confirma una vez.
 - **Archivado de proyecto:** las escrituras de planificación se rechazan, como ya ocurre con los manuscritos.
 
+## Interfaz de planificación
+
+Rutas bajo `apps/web/app/proyectos/[id]/`. Un diseño común (`layout.tsx`) identifica el espacio de trabajo de la novela y organiza las secciones: visión general (`page.tsx`), `personajes`, `lugares`, `trama`, `cronologia`, `estructura` y `estructura/[nodeId]` (escena).
+
+| Pieza | Responsabilidad |
+|---|---|
+| `lib/planning.ts` | Campos de cada tipo, etiquetas de canon, árbol y reordenación. Sin React. |
+| `components/planning/ElementEditor.tsx` | Edición de un elemento y sus acciones de canon. Compartido por todos los tipos. |
+| `components/planning/ElementCollection.tsx` | Lista, creación con solo un nombre, archivados y selección protegida. |
+| `components/planning/StructureView.tsx` | Árbol de actos, capítulos y escenas, alta y reordenación entre hermanos. |
+| `components/planning/SceneDetail.tsx` | Escena por su id, planificación y vínculos. |
+| `components/planning/UnsavedChanges.tsx` | Registro de cambios sin guardar: aviso al salir por un enlace o al cerrar la pestaña. |
+
+Reglas de la interfaz: el éxito solo se muestra tras una respuesta del servidor; un error conserva el texto escrito; una acción sobre canon exige la casilla de confirmación y, si la API la rechaza, se muestra el mensaje sin reintentar con la confirmación.
+
 ## Copias de seguridad y restauración
 
 Módulo `backend/app/backups/`. Detalle operativo en `RESPALDO_Y_RESTAURACION.md`; decisiones en D-045 a D-048.

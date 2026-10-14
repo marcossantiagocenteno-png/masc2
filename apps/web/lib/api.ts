@@ -201,6 +201,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       payload = body;
       if (typeof body.detail === "string") {
         message = body.detail;
+      } else if (Array.isArray(body.detail)) {
+        // Errores de validación de FastAPI: lista de { loc, msg }.
+        const messages = (body.detail as Array<{ msg?: unknown }>)
+          .map((item) => (typeof item.msg === "string" ? item.msg : null))
+          .filter((item): item is string => item !== null);
+        if (messages.length > 0) message = messages.join(" ");
       }
     } catch {
       // El cuerpo no es JSON: se usa el mensaje genérico.
@@ -303,6 +309,193 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  /* ---- Planificación ---- */
+
+  getNarrative: (projectId: number) => request<NarrativeData>(`/projects/${projectId}/planificacion/narrativa`),
+
+  updateNarrative: (projectId: number, body: Partial<Omit<NarrativeData, "id" | "name">>) =>
+    request<NarrativeData>(`/projects/${projectId}/planificacion/narrativa`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  /** Lista de un tipo de elemento. Los archivados solo aparecen si se piden. */
+  listElements: <T,>(projectId: number, route: string, includeArchived = false) =>
+    request<T[]>(`/projects/${projectId}/planificacion/${route}?include_archived=${includeArchived}`),
+
+  createElement: <T,>(projectId: number, route: string, body: Record<string, unknown>) =>
+    request<T>(`/projects/${projectId}/planificacion/${route}`, { method: "POST", body: JSON.stringify(body) }),
+
+  /** Edición. Si el elemento es canónico, la API exige ``confirmar`` (409 si falta). */
+  updateElement: <T,>(projectId: number, route: string, id: number, body: Record<string, unknown>, confirmCanon = false) =>
+    request<T>(
+      `/projects/${projectId}/planificacion/${route}/${id}${confirmCanon ? "?confirmar_cambio_canon=true" : ""}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+
+  archiveElement: <T,>(projectId: number, route: string, id: number, confirmCanon = false) =>
+    request<T>(
+      `/projects/${projectId}/planificacion/${route}/${id}/archivar${confirmCanon ? "?confirmar_canon=true" : ""}`,
+      { method: "POST" },
+    ),
+
+  approveElement: <T,>(projectId: number, route: string, id: number, nota?: string) =>
+    request<T>(`/projects/${projectId}/planificacion/${route}/${id}/aprobar`, {
+      method: "POST",
+      body: JSON.stringify({ confirmar: true, nota: nota || null }),
+    }),
+
+  /** Acepta una propuesta como material provisional. No la convierte en canon. Solo tipos con esta ruta en la API. */
+  acceptElement: <T,>(projectId: number, route: string, id: number) =>
+    request<T>(`/projects/${projectId}/planificacion/${route}/${id}/aceptar-propuesta`, { method: "POST" }),
+
+  listDecisions: (projectId: number, route: string, id: number) =>
+    request<NarrativeDecision[]>(`/projects/${projectId}/planificacion/${route}/${id}/decisiones`),
+
+  listStructure: (projectId: number, includeArchived = true) =>
+    request<StructureNode[]>(`/projects/${projectId}/planificacion/estructura?include_archived=${includeArchived}`),
+
+  createStructureNode: (projectId: number, body: { kind: StructureKind; parent_id: number | null; title?: string }) =>
+    request<StructureNode>(`/projects/${projectId}/planificacion/estructura`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  /** Reordena los hermanos de ``parentId``. ``orden`` debe incluir a todos, archivados incluidos. */
+  reorderStructure: (projectId: number, parentId: number | null, orden: number[]) =>
+    request<StructureNode[]>(`/projects/${projectId}/planificacion/estructura/reordenar`, {
+      method: "POST",
+      body: JSON.stringify({ parent_id: parentId, orden }),
+    }),
+
+  listNodeLinks: (projectId: number, nodeId: number, includeArchived = false) =>
+    request<NarrativeLink[]>(
+      `/projects/${projectId}/planificacion/estructura/${nodeId}/vinculos?include_archived=${includeArchived}`,
+    ),
+
+  createLink: (
+    projectId: number,
+    body: { origen: { tipo: string; id: number }; destino: { tipo: string; id: number }; relacion: string },
+  ) =>
+    request<NarrativeLink>(`/projects/${projectId}/planificacion/vinculos`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  archiveLink: (projectId: number, linkId: number, confirmCanon = false) =>
+    request<NarrativeLink>(
+      `/projects/${projectId}/planificacion/vinculos/${linkId}/archivar${confirmCanon ? "?confirmar_canon=true" : ""}`,
+      { method: "POST" },
+    ),
+};
+
+/* ------------------------------------------------------------------
+ * Planificación narrativa (fase 2a/2b). Los campos siguen la respuesta
+ * de la API: cada elemento lleva su estado de canon y su origen.
+ * ------------------------------------------------------------------ */
+
+export type CanonState = "provisional" | "propuesta_ia" | "canonico";
+export type ElementOrigin = "autor" | "ia";
+export type PlotKind = "acontecimiento" | "conflicto" | "subtrama" | "misterio" | "pregunta_abierta";
+export type StructureKind = "acto" | "capitulo" | "escena";
+export type DevelopmentStatus = "idea" | "planificacion" | "escritura" | "revision" | "terminada";
+
+export type CanonFields = {
+  id: number;
+  project_id: number;
+  estado: CanonState;
+  origen: ElementOrigin;
+  approved_decision_id: number | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+};
+
+export type Character = CanonFields & {
+  name: string | null;
+  description: string | null;
+  goals: string | null;
+  motivations: string | null;
+  conflicts: string | null;
+  evolution: string | null;
+  notes: string | null;
+};
+
+export type Place = CanonFields & {
+  name: string | null;
+  description: string | null;
+  features: string | null;
+  notes: string | null;
+};
+
+export type PlotElement = CanonFields & {
+  kind: PlotKind;
+  title: string | null;
+  description: string | null;
+  notes: string | null;
+};
+
+export type TimelineEvent = CanonFields & {
+  title: string | null;
+  description: string | null;
+  narrative_order: number | null;
+  story_time: string | null;
+  notes: string | null;
+};
+
+export type StructureNode = CanonFields & {
+  parent_id: number | null;
+  kind: StructureKind;
+  position: number;
+  title: string | null;
+  summary: string | null;
+  notes: string | null;
+};
+
+export type NarrativeLink = CanonFields & {
+  source_kind: string;
+  source_id: number;
+  target_kind: string;
+  target_id: number;
+  relation: string;
+};
+
+export type NarrativeDecision = {
+  id: number;
+  project_id: number;
+  element_kind: string;
+  element_id: number;
+  accion: string;
+  actor: ElementOrigin;
+  estado_previo: CanonState | null;
+  estado_nuevo: CanonState | null;
+  snapshot: string | null;
+  resultado: string | null;
+  nota: string | null;
+  created_at: string;
+};
+
+export type NarrativeData = {
+  id: number;
+  name: string;
+  premise: string | null;
+  synopsis: string | null;
+  genre: string | null;
+  theme: string | null;
+  tone: string | null;
+  development_status: DevelopmentStatus | null;
+};
+
+/** Rutas de los tipos de elemento que comparten el mismo contrato CRUD y de canon. */
+export type ElementRoute = "personajes" | "lugares" | "elementos-trama" | "acontecimientos";
+
+export const DEVELOPMENT_STATUS_LABELS: Record<DevelopmentStatus, string> = {
+  idea: "Idea",
+  planificacion: "Planificación",
+  escritura: "Escritura",
+  revision: "Revisión",
+  terminada: "Terminada",
 };
 
 /** Fecha legible en español, a partir del texto ISO que devuelve la API (UTC). */

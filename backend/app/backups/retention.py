@@ -31,6 +31,12 @@ from app.backups.verify import read_only_connection
 from app.db.models import DraftRecoveryPoint, ManuscriptDraft, ManuscriptVersion
 
 REMOVABLE_REASONS = frozenset({"periodico", "significativo"})
+
+# Umbrales de advertencia. Son orientativos: el objetivo es que el crecimiento se vea a tiempo.
+WARN_DATABASE_BYTES = 200 * 1024 * 1024
+WARN_YEARLY_GROWTH_BYTES = 100 * 1024 * 1024
+# Estimación conservadora: UTF-8 usa hasta 4 bytes por carácter; 2 es un término medio para texto en español.
+BYTES_PER_CHAR_ESTIMATE = 2
 GROWTH_WINDOW = timedelta(days=30)
 
 
@@ -57,6 +63,7 @@ class RetentionPreview:
     kept_because: dict[str, int] = field(default_factory=dict)
     versions_total: int = 0
     drafts_total: int = 0
+    points_chars_total: int = 0
 
 
 def points_in_backup(path: Path) -> dict[int, str]:
@@ -93,7 +100,9 @@ def preview(
     recent_cutoff = now - GROWTH_WINDOW
     recent_count = 0
 
+    chars_total = 0
     for point in points:
+        chars_total += point.char_count
         by_reason[point.reason] = by_reason.get(point.reason, 0) + 1
         if point.created_at >= recent_cutoff:
             recent_count += 1
@@ -116,7 +125,28 @@ def preview(
         kept_because=kept,
         versions_total=versions_total,
         drafts_total=drafts_total,
+        points_chars_total=chars_total,
     )
+
+
+def growth_warnings(result: RetentionPreview, database_bytes: int) -> list[str]:
+    """Advertencias visibles sobre el crecimiento. No cambian nada: solo informan."""
+    warnings: list[str] = []
+    if database_bytes > WARN_DATABASE_BYTES:
+        warnings.append(
+            f"La base ocupa {database_bytes / 1048576:.0f} MB. Por encima de "
+            f"{WARN_DATABASE_BYTES // 1048576} MB las copias tardan más y ocupan más espacio."
+        )
+    if result.points_total and result.growth_per_day > 0:
+        average_chars = result.points_chars_total / result.points_total
+        yearly = result.growth_per_day * 365 * average_chars * BYTES_PER_CHAR_ESTIMATE
+        if yearly > WARN_YEARLY_GROWTH_BYTES:
+            warnings.append(
+                f"Crecimiento estimado de puntos de recuperación: unos {yearly / 1048576:.0f} MB al año "
+                f"(a {result.growth_per_day:.2f} puntos/día). Los puntos no se borran automáticamente: "
+                "esta cifra solo crecerá."
+            )
+    return warnings
 
 
 def _kept_reason(

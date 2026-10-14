@@ -5,7 +5,7 @@
 - **Base de datos local**: `data/novel_engine.sqlite` dentro del repositorio. La carpeta `data/` está en `.gitignore`. Contiene manuscritos, versiones, comentarios y análisis.
 - **Pruebas**: usan bases temporales (`pytest`) y `data/e2e.sqlite` (Playwright). Tampoco se versionan.
 - **Borradores y puntos de recuperación**: el texto en edición y sus copias viven en la misma base local (`data/`). No salen del equipo.
-- **Copias de seguridad**: `data/backups/` por defecto, o la carpeta de `NOVEL_ENGINE_BACKUP_DIR`. Cada copia contiene **todo tu texto, sin cifrar**. Los manifiestos y el registro operativo no contienen texto ni claves. No salen del equipo: si copias la carpeta a otro sitio, ese sitio también contiene tus manuscritos.
+- **Copias de seguridad**: `data/backups/` por defecto, o la carpeta de `NOVEL_ENGINE_BACKUP_DIR`. Cada copia contiene **todo tu texto legible, sin cifrar**: cualquiera que pueda leer el archivo puede leer tus manuscritos. Ver `RESPALDO_Y_RESTAURACION.md`. Los manifiestos y el registro operativo no contienen texto ni claves. No salen del equipo: si copias la carpeta a otro sitio, ese sitio también contiene tus manuscritos.
 - **Nada se sube al repositorio** salvo código, documentación y casos ficticios de `evals/cases`.
 
 ## Qué sale del equipo
@@ -31,7 +31,7 @@ El backend registra metadatos de las llamadas al proveedor: modelo, tamaño del 
 
 ## Lo que no está resuelto
 
-- **Cifrado de las copias de seguridad**: no existe. Protege la carpeta con los permisos del sistema y el cifrado del disco.
+- **Cifrado de las copias de seguridad**: no existe, y no se implementa todavía (D-050). Protege la carpeta con el cifrado del disco del sistema y con permisos de usuario.
 - **Retención en Anthropic**: depende de sus condiciones y de la configuración de tu cuenta. No verificado aquí.
 - **Autenticación**: no existe. Cualquiera con acceso a la red local a los puertos puede leer los datos.
 - **Cifrado en reposo**: la base de datos no está cifrada.

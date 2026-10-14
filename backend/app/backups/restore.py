@@ -69,6 +69,7 @@ def restore_backup(
     ignore_running_marker: bool = False,
     after_replace: Callable[[Path], None] | None = None,
     order: SchemaOrder | None = None,
+    alive: Callable[[int], bool | None] = files.process_alive,
 ) -> RestoreOutcome:
     """Restaura ``backup`` sobre ``active``. Nunca lanza excepción: devuelve el resultado.
 
@@ -80,8 +81,15 @@ def restore_backup(
         record(directory, clock, "restauracion_rechazada", level=30, motivo=reason)
         return RestoreOutcome("rechazada", reason)
 
-    if not ignore_running_marker and files.marker_present(directory):
-        return refuse("el backend parece estar en marcha (marcador .app-running). Deténlo antes de restaurar.")
+    marker, explanation = files.classify_marker(directory, clock, alive)
+    if marker in (files.ACTIVE, files.UNKNOWN) and not ignore_running_marker:
+        return refuse(
+            f"no se puede restaurar: el marcador .app-running indica que el backend puede estar en marcha "
+            f"({explanation}). Deténlo; si estás seguro de que no corre, usa --ignorar-marcador. "
+            "El marcador no se borra automáticamente."
+        )
+    if marker == files.ABANDONED:
+        record(directory, clock, "marcador_obsoleto_detectado", motivo=explanation)
 
     lock = BackupLock(directory, clock)
     if not lock.acquire():

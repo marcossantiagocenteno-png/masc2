@@ -189,7 +189,7 @@ El backend y el frontend escuchan solo en `localhost` cuando se arrancan con los
 
 El texto en edición se guarda como **borrador** en la base de datos y se recupera al volver a abrir la página. Las versiones solo se crean con «Guardar como nueva versión».
 
-Mientras el backend corre, se crea una **copia de seguridad verificada cada 60 minutos** en `data/backups/` (variables `NOVEL_ENGINE_BACKUP_*`). Las copias contienen todo el texto, sin cifrar. Para crear una ahora, verificar una o restaurar, usa `python -m app.backups` desde `backend/`. Los pasos exactos, para Windows y Linux, están en [`docs/RESPALDO_Y_RESTAURACION.md`](docs/RESPALDO_Y_RESTAURACION.md).
+Mientras el backend corre, se crea una **copia de seguridad verificada cada 60 minutos** en `data/backups/` (variables `NOVEL_ENGINE_BACKUP_*`). **Las copias contienen tu texto legible, sin cifrar**: protege esa carpeta con el cifrado del disco del sistema. No hay cifrado propio (D-050). Para crear una ahora, verificar una o restaurar, usa `python -m app.backups` desde `backend/`. Los pasos exactos, para Windows y Linux, están en [`docs/RESPALDO_Y_RESTAURACION.md`](docs/RESPALDO_Y_RESTAURACION.md).
 
 ## Migraciones
 
@@ -221,6 +221,6 @@ Las migraciones `0004` (proyectos) y `0005` (borradores y puntos de recuperació
 - El juicio literario de Claude no está evaluado. El backend comprueba forma, citas, posiciones, procedencia y ausencia de atribuciones de intención, pero no si el diagnóstico es acertado.
 - No se registra el uso de tokens ni el coste por análisis.
 - Sin editor enriquecido (Tiptap): el texto se edita en áreas de texto simples.
-- Sin exportación. Las copias automáticas son locales y sin cifrar; la restauración no se ha probado en Windows.
+- Sin exportación. Las copias automáticas son locales y sin cifrar (texto legible); la restauración no se ha probado en Windows (`python -m app.backups simulacro` lo prepara).
 - El autoguardado necesita el backend en marcha. Si cae o no hay conexión, el texto sigue en el editor, el indicador lo dice y no se confirma como guardado hasta que el servidor responda. Un cierre de la pestaña con cambios sin confirmar muestra un aviso del navegador, pero el envío de último recurso no tiene garantía.
 - El benchmark de `evals/` (tarea 001) no está conectado a los textos del usuario.

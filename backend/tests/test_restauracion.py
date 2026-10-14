@@ -213,8 +213,8 @@ def test_el_backend_marca_su_ejecucion_mientras_corre(tmp_path: Path, settings: 
     marked = Settings(**{**settings.__dict__, "backup_dir": str(directory), "backup_interval_minutes": 0})
 
     with TestClient(create_app(marked)):
-        assert files.marker_present(directory)
-    assert not files.marker_present(directory)
+        assert files.read_marker(directory) is not None
+    assert files.read_marker(directory) is None
 
 
 # Utilidades ----------------------------------------------------------------

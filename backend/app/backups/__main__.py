@@ -9,6 +9,7 @@ Uso (desde ``backend/``, con el entorno virtual activo):
                                                  restaura (la aplicación debe estar detenida)
     python -m app.backups retencion              métricas y vista previa de limpieza; no borra
     python -m app.backups registro               últimas líneas del registro operativo
+    python -m app.backups simulacro [CARPETA]    copia y restauración en una base temporal (cualquier sistema)
 
 Códigos de salida: 0 correcto, 1 fallo o rechazo, 2 uso incorrecto, 3 omitido por otra operación.
 """
@@ -26,7 +27,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.backups import files
 from app.backups.restore import restore_backup
-from app.backups.retention import RetentionPolicy, newest_backup_points, preview
+from app.backups.retention import RetentionPolicy, growth_warnings, newest_backup_points, preview
 from app.backups.service import BackupService
 from app.backups.verify import schema_order, sqlite_path, verify_sqlite
 from app.config import Settings, load_settings
@@ -124,7 +125,10 @@ def cmd_retencion(args: argparse.Namespace) -> int:
             )
     finally:
         engine.dispose()
+    database_bytes = source.stat().st_size if source.exists() else 0
     print("NO SE BORRA NADA. Vista previa de la política de retención.")
+    for warning in growth_warnings(result, database_bytes):
+        print("ADVERTENCIA:", warning)
     print(f"Puntos de recuperación: {result.points_total} {json.dumps(result.points_by_reason, ensure_ascii=False)}")
     print(f"Versiones formales: {result.versions_total} · borradores: {result.drafts_total}")
     print(f"Crecimiento reciente: {result.growth_per_day:.2f} puntos por día (últimos 30 días)")
@@ -133,6 +137,21 @@ def cmd_retencion(args: argparse.Namespace) -> int:
     for candidate in result.candidates[:20]:
         print(f"  punto {candidate.point_id} · manuscrito {candidate.manuscript_id} · {candidate.reason}")
     return EXIT_OK
+
+
+def cmd_simulacro(args: argparse.Namespace) -> int:
+    import tempfile
+
+    from app.backups.drill import run_drill
+
+    folder = Path(args.carpeta) if args.carpeta else Path(tempfile.mkdtemp(prefix="novel-engine-simulacro-"))
+    steps = run_drill(folder)
+    for step in steps:
+        print(f"[{'OK' if step.ok else 'FALLO'}] {step.name}" + (f" — {step.detail}" if step.detail and not step.ok else ""))
+    print(f"Carpeta del simulacro: {folder}")
+    passed = bool(steps) and all(step.ok for step in steps)
+    print("SIMULACRO CORRECTO" if passed else "SIMULACRO CON FALLOS")
+    return EXIT_OK if passed else EXIT_FAILED
 
 
 def cmd_registro(args: argparse.Namespace) -> int:
@@ -171,6 +190,10 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("retencion", help="métricas y vista previa de limpieza (no borra)").set_defaults(
         func=cmd_retencion
     )
+
+    drill = commands.add_parser("simulacro", help="copia y restauración en una base temporal")
+    drill.add_argument("carpeta", nargs="?", help="carpeta de trabajo; por defecto, una temporal")
+    drill.set_defaults(func=cmd_simulacro)
 
     log = commands.add_parser("registro", help="últimas líneas del registro operativo")
     log.add_argument("--lineas", type=int, default=30)

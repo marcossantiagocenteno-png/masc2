@@ -50,11 +50,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_application: FastAPI) -> AsyncIterator[None]:
         # Marcador de ejecución y copias automáticas. Ver app/backups/runtime.py.
-        scheduler = start_background(settings, application.state.clock)
+        background = start_background(settings, application.state.clock)
         try:
             yield
         finally:
-            stop_background(settings, scheduler)
+            stop_background(settings, background)
 
     application = FastAPI(title="Novel Engine", version=__version__, lifespan=lifespan)
     application.state.settings = settings

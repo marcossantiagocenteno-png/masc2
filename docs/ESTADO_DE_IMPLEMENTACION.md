@@ -13,6 +13,9 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - **Migración de datos a proyectos**: los manuscritos existentes pasan a «Proyecto inicial» sin tocar sus textos. Prueba de migración con datos.
 - **Edición segura de la versión de partida**: confirmación antes de sustituir texto sin guardar, y protección frente a la carga asíncrona. Pruebas E2E (tres casos).
 - **Recuperación por copia de la base de datos**: restaurar una copia devuelve el estado anterior, y la copia conserva los triggers. Pruebas de backend.
+- **Marcador con latido** (fase 1d): el backend renueva el marcador cada 30 s. Un marcador caducado solo se considera abandonado si el sistema confirma que el proceso terminó; si no puede confirmarlo, la restauración se niega. Nunca se borra automáticamente. Pruebas: 11 de marcador (incluida una con un proceso real terminado).
+- **Simulacro de restauración** (fase 1d): `python -m app.backups simulacro`, reproducible en cualquier sistema. Ejecutado en Linux; pendiente en Windows.
+- **Advertencias de crecimiento** (fase 1d): `retencion` avisa al superar 200 MB o 100 MB al año estimados.
 - **Copias de seguridad automáticas** (fase 1c): API de backup de SQLite en una lectura consistente; verificación de integridad y esquema antes de nombrar la copia; rotación por cantidad y antigüedad que nunca borra antes de crear y verificar la nueva; nombres que nunca se sobrescriben; registro operativo sin texto. Pruebas: 17 de copias, 9 de restauración, 9 de retención y 4 de línea de comandos (39 en la fase; 335 en total). Siete mutaciones deliberadas de las reglas de seguridad (verificación previa, rotación, bloqueos, instantánea, copia preventiva, retención de conflictos) hacen fallar al menos una prueba.
 - **Restauración administrativa** (fase 1c): rechaza sin tocar la base si la copia es inválida, si el hash no coincide, si la base está en uso o si el backend parece en marcha; copia preventiva antes de reemplazar; reversión automática si la verificación posterior falla. Probado en Linux. **No probado en Windows.**
 - **Retención de puntos**: métricas y vista previa de candidatos. No borra nada (D-048).
@@ -49,9 +52,23 @@ Fecha de corte: esta entrega. Cada afirmación indica cómo se ha comprobado.
 - Llamada real a Anthropic: requiere clave de API y un identificador de modelo que tu cuenta admita. No se inventa ninguno.
 - Exportación a EPUB: no se ha evaluado todavía si puede integrarse con garantías; se documentará si queda fuera.
 
-## Riesgos abiertos (ver AUDITORIA_TECNICA.md)
+## Riesgos abiertos (verificados al cierre de la fase 1d)
 
-- Texto escrito sin guardar se pierde al recargar o cerrar: **mitigado** en fase 1b con el borrador en servidor. Sigue existiendo si el servidor cae antes de guardar; el indicador lo muestra.
-- Único archivo de base de datos sin copias automáticas: **mitigado** en fase 1c (copias cada hora, rotación y verificación). Sigue siendo local y sin cifrar (D-045).
-- Restauración no probada en Windows (media).
-- Ejecución de pruebas en Linux; no verificado en Windows.
+Cada riesgo indica si se ha comprobado o es una afirmación sin verificar.
+
+- **Texto legible en las copias.** Las copias automáticas son bases SQLite sin cifrar. Cualquiera con acceso a la carpeta lee los manuscritos. Mitigación: cifrado del disco del sistema (BitLocker, FileVault o LUKS) y permisos de usuario. No hay cifrado propio: su recuperación de claves no está resuelta (D-050). **Abierto.**
+- **Restauración no probada en Windows.** Todo lo verificado es de Linux. El simulacro existe (`python -m app.backups simulacro`), pero no se ha ejecutado en Windows porque el entorno de desarrollo no lo permite. **Abierto; no verificado.**
+- **Comprobación de procesos en Windows.** La detección de procesos que han terminado usa la API de Windows vía `ctypes`. No se ha ejecutado allí. Si falla, la restauración se niega o, en el peor caso, depende del bloqueo de la base y del latido (ver RESPALDO). **Abierto; no verificado.**
+- **Marcador de un backend en marcha en otra máquina.** La comprobación de procesos solo es válida en el mismo equipo. El latido es la señal principal, y un latido reciente siempre bloquea la restauración. **Mitigado; probado en el mismo equipo.**
+- **Crecimiento de la base por puntos de recuperación.** Los puntos no se borran automáticamente (D-048). `retencion` avisa al superar 200 MB o 100 MB al año estimados. **Abierto; sin límite duro.**
+- **Copias y disco en el mismo equipo.** Por defecto, `data/backups/` está en el mismo disco que la base. Un fallo de disco puede afectar a ambas. **Abierto: depende de la configuración del autor.**
+- **Copias fuera del equipo.** No hay copias externas automáticas. **Abierto.**
+- **Texto no guardado si el servidor cae antes de confirmar.** El indicador lo muestra y el texto sigue en pantalla, pero no está en ninguna copia. **Abierto; mitigado por la visibilidad del estado.**
+- **Ejecución de pruebas en Linux.** Ninguna prueba de restauración se ha ejecutado en Windows ni en macOS. **Abierto.**
+- **Autenticación.** No existe. Cualquiera con acceso a la red local a los puertos puede leer los datos. **Abierto; imprescindible antes de cualquier despliegue en red.**
+
+Riesgos que se han cerrado en las fases 1b y 1c, con su evidencia:
+
+- Texto escrito sin guardar se pierde al cerrar o recargar: mitigado con el borrador en servidor (1b, pruebas E2E).
+- Único archivo de base de datos sin copias automáticas: mitigado con copias verificadas cada hora, rotación y restauración con copia preventiva (1c, pruebas y mutaciones).
+- Marcador de backend obsoleto que bloquea la restauración: resuelto con latido y comprobación de proceso (1d, pruebas con reloj y con un proceso real).

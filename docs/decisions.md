@@ -277,7 +277,7 @@ No se han implementado copias automáticas en esta fase. Copiar un archivo SQLit
 La copia usa la API de backup de SQLite, dentro de una lectura abierta: todo el contenido corresponde a una única instantánea, y las escrituras concurrentes esperan lo que dura la copia. No se copia por pasos ni con una copia de archivo, porque el módulo `sqlite3` reintenta indefinidamente los errores `BUSY` de la API: un escritor que retuviera el bloqueo dejaría la copia colgada. Se observó colgarse en una ejecución real de la línea de comandos. Una copia se verifica en un temporal (se abre en solo lectura, `PRAGMA integrity_check` = `ok`, tablas requeridas, versión de esquema conocida) y solo después se renombra. Nunca se sobrescribe una copia: dos copias en el mismo instante reciben nombres distintos. La rotación se hace después de crear y verificar la copia nueva. Una copia fallida no borra nada.
 
 ## D-046 · Programación dentro del backend, bloqueo de carpeta y marcador de ejecución
-**Estado:** aceptada
+**Estado:** aceptada. El criterio del marcador se ha sustituido por D-049.
 
 Las copias automáticas corren en un hilo del backend, cada 60 minutos por defecto (`NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES`). La lógica está en `tick`, sin hilos, para que las pruebas la controlen con un reloj. Un bloqueo por creación exclusiva de archivo (`.backup.lock`) impide dos copias a la vez, y también una copia y una restauración; funciona igual en Linux y Windows. Un bloqueo de más de dos horas se considera abandonado y se retira. Mientras el backend corre, existe el marcador `.app-running`: la restauración se niega mientras exista. Un cierre brusco deja el marcador; entonces hay que usar `--ignorar-marcador` tras comprobar que no hay ningún proceso.
 
@@ -290,6 +290,32 @@ La restauración es un comando (`python -m app.backups restaurar --confirmar`), 
 **Estado:** aceptada
 
 Los triggers de `draft_recovery_points` impiden `DELETE`, y la inmutabilidad debe mantenerse. Por tanto, esta fase no borra puntos. Se implementan métricas (`retencion`) y una vista previa de candidatos. Un punto solo sería candidato si: es `periodico` o `significativo`; tiene más de 90 días; no está entre los 20 más recientes de su manuscrito; y existe una copia verificada que contiene ese mismo punto (mismo id y hash). Los motivos `conflicto`, `antes_de_sobrescribir` y `antes_de_restaurar` nunca son candidatos. Una prueba comprueba que el módulo no expone ninguna operación de borrado. La eliminación real queda para una fase con migración y pruebas propias.
+
+## D-049 · Marcador con latido: un marcador caducado no basta por sí solo
+**Estado:** aceptada (fase 1d)
+
+Un marcador con PID no distingue un backend vivo de uno abandonado tras un cierre brusco: el PID puede haberse reutilizado, y en otra máquina o contenedor la comprobación no significa nada. Por eso el backend renueva el latido del marcador cada 30 s. La restauración considera el marcador **abandonado** solo si el latido lleva más de 3 minutos caducado **y** el sistema confirma que el proceso ya no existe. Si no puede confirmarlo, el estado es desconocido y la restauración se niega. Nada borra el marcador automáticamente salvo el cierre limpio del backend. Además, la base activa debe poder bloquearse en exclusiva (D-047). Limitación conocida: la comprobación del proceso en Windows (API del sistema con `ctypes`) no se ha ejecutado en Windows.
+
+## D-050 · Cifrado de las copias: evaluado, no implementado
+**Estado:** aceptada (no implementar todavía)
+
+Las copias contienen el texto legible. Se evaluaron tres opciones.
+
+1. **Cifrado de la aplicación** con una biblioteca mantenida (por ejemplo `cryptography`, con AES-GCM y una clave derivada de una frase de paso). Es técnicamente viable, pero hoy no se implementa porque: (a) la clave tendría que gestionarse, y si se pierde las copias son irrecuperables; (b) no hay un procedimiento de recuperación de claves documentado ni probado; (c) el simulacro y la restauración tendrían que descifrar, y eso no se ha probado en Windows. Un error aquí puede borrar de forma irreversible la única copia del trabajo. Por eso no se añade.
+2. **Cifrado del volumen del sistema** (BitLocker, FileVault o LUKS) sobre la carpeta de copias. Es la protección recomendada ahora, porque la gestiona el sistema operativo y su recuperación la controla el propio sistema.
+3. **Herramientas externas** (por ejemplo, `age`). Añaden una dependencia y el mismo problema de gestión de claves.
+
+Criterios para revisar la decisión: un procedimiento de recuperación de claves escrito y probado, una prueba de descifrado con clave incorrecta, y un simulacro de restauración que incluya el descifrado, ejecutado en cada sistema operativo que se soporte.
+
+## D-051 · Simulacro de restauración reproducible en cualquier sistema
+**Estado:** aceptada
+
+`python -m app.backups simulacro` crea una base temporal, hace una copia, cambia el borrador, restaura y comprueba el resultado. No toca los datos del usuario. Sirve para verificar la restauración en una máquina concreta. Se ha ejecutado en Linux. **No se ha ejecutado en Windows**: en el entorno de desarrollo no hay Windows disponible. Un resultado `SIMULACRO CORRECTO` en Windows es la única prueba real de ese sistema.
+
+## D-052 · Crecimiento visible, sin borrado automático
+**Estado:** aceptada
+
+Los puntos de recuperación crecen con el uso. `retencion` muestra el número de puntos, el crecimiento por día, y avisa si la base supera 200 MB o si el crecimiento estimado supera 100 MB al año. La estimación usa 2 bytes por carácter, un término medio para texto en español, y es orientativa. Se mantiene D-048: no hay borrado automático de puntos.
 
 ---
 
@@ -305,9 +331,9 @@ Los triggers de `draft_recovery_points` impiden `DELETE`, y la inmutabilidad deb
 | **Primera llamada real** | Requiere clave y modelo del usuario, y su aprobación de envío (D-028, D-029). No se ha ejecutado. | Cuando el usuario lo decida. |
 | **Registro de uso y coste** | La respuesta trae `usage`, pero no se guarda (evita registrar datos de más). | Si se necesita control de costes. |
 | **Límite de fragmento** | 8.000 caracteres es un valor inicial (D-027). | Tras el uso real. |
-| **Cifrado de las copias** | Las copias contienen todo el texto sin cifrar (D-045). | Antes de guardarlas fuera del equipo. |
+| **Cifrado de las copias** | Las copias contienen el texto legible; no hay cifrado propio (D-050). | Cuando exista procedimiento de recuperación de claves probado. |
 | **Copias fuera del equipo** | Solo hay copias locales; copiar a otro disco es manual. | Decisión del autor sobre dónde guardarlas. |
-| **Prueba de restauración en Windows** | El procedimiento está escrito, pero no se ha ejecutado en Windows (fase 1c). | Antes de confiar en él en ese sistema. |
+| **Prueba de restauración en Windows** | No se ha podido ejecutar: no hay Windows en el entorno de desarrollo (D-051). | Ejecutar `python -m app.backups simulacro` en Windows. |
 | **Eliminación de puntos de recuperación** | Los triggers la impiden; la vista previa no borra nada (D-048). | Fase con migración propia. |
 | **Paquete de proyecto restaurable** | Sin exportación ni importación completa. | Fase 5. |
 | **Autenticación** | Imprescindible antes de exponer la aplicación en red. | Antes de cualquier despliegue. |

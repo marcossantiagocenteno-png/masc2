@@ -145,7 +145,7 @@ Módulo `backend/app/backups/`. Detalle operativo en `RESPALDO_Y_RESTAURACION.md
 
 - **Copia:** API de backup de SQLite dentro de una lectura abierta (instantánea consistente). Verificación del temporal antes de nombrarlo. Rotación solo después de crear y verificar la copia nueva. Nombres que nunca se sobrescriben.
 - **Planificación:** hilo del backend, cada `NOVEL_ENGINE_BACKUP_INTERVAL_MINUTES`. Un bloqueo de carpeta impide dos operaciones a la vez.
-- **Marcador:** `.app-running` mientras corre el backend. La restauración se niega mientras exista.
+- **Marcador:** `.app-running`, con latido renovado cada 30 s mientras corre el backend. La restauración se niega si el latido es reciente o si no puede confirmar que el proceso terminó. Nunca borra el marcador (D-049).
 - **Restauración:** comando administrativo. Rechaza sin tocar la base si la copia no es válida, si el hash no coincide, si la base está en uso o si el backend está en marcha. Copia preventiva antes de reemplazar. Reversión si la verificación posterior falla. No ejecuta migraciones.
 - **Retención:** solo métricas y vista previa. No borra: los triggers de `draft_recovery_points` lo impiden.
 

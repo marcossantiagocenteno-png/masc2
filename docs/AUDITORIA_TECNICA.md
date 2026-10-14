@@ -105,7 +105,7 @@ Lo que las pruebas **no** cubren:
 
 - La llamada real a Anthropic (solo dobles del SDK).
 - Restauración desde la interfaz (deliberadamente no existe, D-047).
-- Restauración en Windows (no probada).
+- Restauración en Windows (no probada: no hay Windows en el entorno de desarrollo; el simulacro está preparado, D-051).
 - Copias bajo corte de energía o fallo de disco reales (solo simuladas en pruebas).
 - El envío de último recurso al cerrar la página (`pagehide`, keepalive) no tiene prueba automática: el navegador no ofrece una forma fiable de comprobarlo en Playwright.
 - Caída real del servidor en mitad de un guardado: se prueba con respuestas simuladas, no con un proceso que se detenga.

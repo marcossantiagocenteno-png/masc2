@@ -32,7 +32,14 @@ export function WorkspaceShell({ sidebar, children }: { sidebar: ReactNode; chil
         >
           {open ? "Ocultar lista de proyectos" : "Mostrar lista de proyectos"}
         </button>
-        <div id={panelId} className={`ne-workspace__panel ${open ? "ne-workspace__panel--open" : ""}`}>
+        <div
+          id={panelId}
+          onClick={(event) => {
+            // Elegir una novela abre su espacio de trabajo: el panel se pliega para no tapar el contenido.
+            if ((event.target as HTMLElement).closest("a")) setOpen(false);
+          }}
+          className={`ne-workspace__panel ${open ? "ne-workspace__panel--open" : ""}`}
+        >
           {sidebar}
         </div>
       </aside>

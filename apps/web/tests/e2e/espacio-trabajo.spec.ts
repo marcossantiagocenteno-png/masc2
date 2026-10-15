@@ -79,3 +79,21 @@ test("cambiar de novela desde la lista o la cabecera con cambios sin guardar pid
   await expect(page).toHaveURL(/\/proyectos\/\d+$/);
   await expect(page.getByRole("heading", { name: otherName })).toBeVisible();
 });
+
+test("en pantalla estrecha, elegir una novela de la lista pliega el panel", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  const otherName = `Elegida ${runId}`;
+  const currentName = `Abierta ${runId}`;
+  await createProject(page, otherName);
+  await createProject(page, currentName);
+
+  // El nombre del botón cambia al abrirse («Ocultar…»): se localiza por la parte común.
+  const toggle = page.getByRole("button", { name: /lista de proyectos/ });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  await novelList(page).getByRole("link", { name: otherName, exact: true }).click();
+  await expect(page).toHaveURL(/\/proyectos\/\d+$/);
+  await expect(page.getByRole("heading", { level: 1, name: otherName })).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+});

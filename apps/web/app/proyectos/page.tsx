@@ -91,31 +91,35 @@ export default function ProjectLibraryPage() {
           </div>
         </div>
 
-        {error ? (
-          <p role="alert" className="ne-notice ne-notice--danger">
-            {error}
-          </p>
-        ) : null}
-        {projects === null && !error ? <p className="ne-meta">Cargando…</p> : null}
-        {projects?.length === 0 ? (
+        {filter === "activo" ? (
+          // Las novelas activas se abren desde la lista lateral: aquí no se repiten.
           <p className="ne-meta">
-            {filter === "activo" ? "Todavía no hay proyectos activos." : "No hay proyectos archivados."}
+            Las novelas activas están en la lista de la izquierda. Selecciona una para abrir su espacio de trabajo. En
+            pantallas estrechas, la lista se abre con «Mostrar lista de proyectos».
           </p>
-        ) : null}
-        <ul className="ne-list ne-project-list">
-          {projects?.map((project) => (
-            <li key={project.id} className="ne-project-row">
-              <Link href={`/proyectos/${project.id}`} className="ne-project-name">
-                {project.name}
-              </Link>
-              <span className="ne-meta">
-                {project.status === "archivado" && project.archived_at
-                  ? `archivado el ${formatDate(project.archived_at)}`
-                  : `actualizado ${formatDate(project.updated_at)}`}
-              </span>
-            </li>
-          ))}
-        </ul>
+        ) : (
+          <>
+            {error ? (
+              <p role="alert" className="ne-notice ne-notice--danger">
+                {error}
+              </p>
+            ) : null}
+            {projects === null && !error ? <p className="ne-meta">Cargando…</p> : null}
+            {projects?.length === 0 ? <p className="ne-meta">No hay proyectos archivados.</p> : null}
+            <ul className="ne-list ne-project-list">
+              {projects?.map((project) => (
+                <li key={project.id} className="ne-project-row">
+                  <Link href={`/proyectos/${project.id}`} className="ne-project-name">
+                    {project.name}
+                  </Link>
+                  <span className="ne-meta">
+                    {project.archived_at ? `archivado el ${formatDate(project.archived_at)}` : `actualizado ${formatDate(project.updated_at)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </main>
   );

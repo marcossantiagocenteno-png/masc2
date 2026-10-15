@@ -32,8 +32,12 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
 
   // La biblioteca lista ambos proyectos.
   await page.goto("/proyectos");
-  await expect(page.getByRole("main").getByRole("link", { name: nameA })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("link", { name: nameB })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const lista = page.getByRole("complementary", { name: "Lista de novelas" });
+  await expect(lista.getByRole("link", { name: nameA, exact: true })).toBeVisible();
+  await expect(lista.getByRole("link", { name: nameB, exact: true })).toBeVisible();
+  // La biblioteca no repite las novelas activas: se abren desde la lista lateral.
+  await expect(page.getByRole("main").getByRole("link", { name: nameA })).toHaveCount(0);
 
   // Archivar A: confirmación, y sus textos siguen legibles.
   await page.goto(projectAUrl);

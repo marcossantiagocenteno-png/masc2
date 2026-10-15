@@ -9,6 +9,7 @@ import {
   formatDate,
   versionOps,
   type AnalysisRun,
+  type CanonFields,
   type Character,
   type PlotElement,
   type ProjectDetail,
@@ -25,6 +26,8 @@ type Guardado = {
   capitulos: number;
   escenas: number;
   escenasConTexto: number;
+  /** Elementos con canon propuesto por la IA y sin decisión del autor. */
+  propuestas: number;
 };
 
 /** Cuenta los elementos de trama por tipo. Solo cuentan los no archivados. */
@@ -38,12 +41,13 @@ async function loadGuardado(projectId: number): Promise<Guardado> {
   const [project, personajes, lugares, trama, acontecimientos, estructura] = await Promise.all([
     api.getProject(projectId),
     api.listElements<Character>(projectId, "personajes"),
-    api.listElements<{ id: number }>(projectId, "lugares"),
+    api.listElements<CanonFields>(projectId, "lugares"),
     api.listElements<PlotElement>(projectId, "elementos-trama"),
     api.listElements<TimelineEvent>(projectId, "acontecimientos"),
     api.listStructure(projectId, false),
   ]);
   const nodes: StructureNode[] = estructura;
+  const todos: CanonFields[] = [...personajes, ...lugares, ...trama, ...acontecimientos, ...nodes];
   const escenas = nodes.filter((node) => node.kind === "escena");
   return {
     project,
@@ -54,6 +58,7 @@ async function loadGuardado(projectId: number): Promise<Guardado> {
     capitulos: nodes.filter((node) => node.kind === "capitulo").length,
     escenas: escenas.length,
     escenasConTexto: escenas.filter((node) => node.escritura === "con_texto").length,
+    propuestas: todos.filter((item) => item.estado === "propuesta_ia").length,
   };
 }
 
@@ -150,6 +155,8 @@ export function ContextPanel() {
         {guardado === null && !error ? <p className="ne-meta">Cargando…</p> : null}
         {guardado ? <GuardadoBloque data={guardado} /> : null}
         {versionKey !== null ? <EjecutadoBloque estado={ejecutadoActual} /> : null}
+        {guardado ? <AdvertenciasBloque data={guardado} /> : null}
+        {guardado ? <NoDisponibleBloque /> : null}
       </div>
     </section>
   );
@@ -222,6 +229,71 @@ function ResumenAnalisis({ runs }: { runs: AnalysisRun[] }) {
       <Fila nombre="Último" valor={`${formatDate(ultimo.created_at)} · ${tipo}`} />
       <Fila nombre="Fragmento" valor={`caracteres ${ultimo.fragment_start}–${ultimo.fragment_end}`} />
     </dl>
+  );
+}
+
+function plural(n: number, uno: string, varios: string): string {
+  return `${n} ${n === 1 ? uno : varios}`;
+}
+
+/**
+ * Avisos que se deducen de los datos guardados. Cada aviso dice qué dato lo origina y no interpreta el texto.
+ * Si no hay avisos, se dice que no los hay con los datos guardados: no que la novela esté bien.
+ */
+function AdvertenciasBloque({ data }: { data: Guardado }) {
+  const sinTexto = data.escenas - data.escenasConTexto;
+  const preguntas = data.trama.pregunta_abierta ?? 0;
+  const avisos: string[] = [];
+  if (data.propuestas > 0) {
+    avisos.push(
+      `${plural(data.propuestas, "elemento tiene", "elementos tienen")} canon propuesto por la IA, sin decisión del autor.`,
+    );
+  }
+  if (sinTexto > 0) avisos.push(`${plural(sinTexto, "escena sin texto", "escenas sin texto")}.`);
+  if (preguntas > 0) {
+    avisos.push(
+      `${plural(preguntas, "pregunta abierta registrada", "preguntas abiertas registradas")}. El modelo no guarda si están resueltas.`,
+    );
+  }
+  return (
+    <section aria-labelledby="contexto-advertencias" className="flex flex-col gap-3">
+      <h3 id="contexto-advertencias" className="ne-subtitle">
+        Advertencias
+      </h3>
+      {avisos.length === 0 ? (
+        <p className="ne-meta">Con los datos guardados, no hay advertencias de este tipo.</p>
+      ) : (
+        <ul className="flex flex-col gap-2 text-sm">
+          {avisos.map((aviso) => (
+            <li key={aviso}>{aviso}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Lo que Novel Engine no comprueba ni guarda. Se nombra para que nadie lo tome por una revisión hecha. */
+const NO_DISPONIBLE = [
+  "Continuidad entre escenas",
+  "Contradicciones entre elementos",
+  "Estructura narrativa utilizada",
+  "Función de cada capítulo",
+];
+
+function NoDisponibleBloque() {
+  return (
+    <section aria-labelledby="contexto-no-disponible" className="flex flex-col gap-3">
+      <h3 id="contexto-no-disponible" className="ne-subtitle">
+        No disponible
+      </h3>
+      <p className="ne-hint">No hay analizador ni campo guardado para esto. No se muestra ninguna cifra inventada.</p>
+      <ul className="ne-meta flex flex-col gap-1">
+        {NO_DISPONIBLE.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

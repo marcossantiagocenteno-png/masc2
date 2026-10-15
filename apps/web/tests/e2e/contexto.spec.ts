@@ -85,3 +85,28 @@ test("en una versión, el bloque Ejecutado cuenta los análisis realmente guarda
   await expect(valorDe(page, "Último")).toContainText("analizador simulado, no es una IA");
   await expect(valorDe(page, "Fragmento")).toHaveText("caracteres 0–17");
 });
+
+async function addNode(page: Page, kind: "Acto" | "Capítulo" | "Escena", title: string, parentLabel?: string) {
+  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
+  if (parentLabel) await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("button", { name: `Añadir ${kind.toLowerCase()}`, exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "añadid" })).toBeVisible();
+}
+
+test("las advertencias salen de lo guardado y lo que no existe aparece como no disponible", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Avisos ${runId}`);
+  await page.goto(`/proyectos/${projectId}/estructura`);
+  await addNode(page, "Acto", `Acto ${runId}`);
+  await addNode(page, "Capítulo", `Cap ${runId}`, `Acto: Acto ${runId}`);
+  await addNode(page, "Escena", `Escena sin texto ${runId}`, `Capítulo: Cap ${runId}`);
+
+  await page.goto(`/proyectos/${projectId}`);
+  await expect(contexto(page).getByText("1 escena sin texto.")).toBeVisible();
+  await expect(valorDe(page, "Escenas con texto")).toHaveText("0 de 1");
+
+  // Lo que el modelo no comprueba se nombra, sin cifras.
+  await expect(contexto(page).getByText("Continuidad entre escenas")).toBeVisible();
+  await expect(contexto(page).getByText("Función de cada capítulo")).toBeVisible();
+});

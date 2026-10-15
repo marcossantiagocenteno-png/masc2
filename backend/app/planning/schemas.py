@@ -130,3 +130,16 @@ class DirectricesIn(_Strict):
     limites: OptText = None
     instrucciones: OptText = None
 
+
+
+class ModeloEstructuraIn(_Strict):
+    model_key: str = Field(min_length=1, max_length=40)
+
+
+class GenerarPropuestasIn(_Strict):
+    model_key: str | None = Field(default=None, min_length=1, max_length=40)
+
+
+class PropuestaEstructuraPatch(_Strict):
+    title: str | None = Field(default=None, max_length=200)
+    summary: str | None = Field(default=None, max_length=4000)

@@ -501,3 +501,49 @@ class NarrativeDirective(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
+
+
+class StructureModelChoice(Base):
+    """Modelo de estructura elegido por el autor, en orden cronológico. Solo de inserción: el actual es el último.
+
+    Elegir otro modelo añade una fila; la anterior se conserva.
+    """
+
+    __tablename__ = "structure_model_choices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    model_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class StructureProposal(Base):
+    """Etapa propuesta para un acto de la estructura. Nunca es canon: al aceptarla se crea un acto provisional.
+
+    Las propuestas de un mismo ``lote`` se generan a la vez y se aceptan en orden de ``position``.
+    ``entradas`` guarda los datos del autor que se usaron para generar la propuesta, para poder inspeccionarlos.
+    """
+
+    __tablename__ = "structure_proposals"
+    __table_args__ = (
+        CheckConstraint("estado IN ('pendiente', 'aceptada', 'rechazada')", name="ck_structure_proposals_estado"),
+        UniqueConstraint("project_id", "lote", "position", name="uq_structure_proposals_position"),
+        CheckConstraint("position >= 0", name="ck_structure_proposals_position"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    lote: Mapped[int] = mapped_column(Integer, nullable=False)
+    model_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    funcion: Mapped[str] = mapped_column(Text, nullable=False)
+    pregunta: Mapped[str] = mapped_column(Text, nullable=False)
+    base_tipo: Mapped[str] = mapped_column(String(30), nullable=False)
+    entradas: Mapped[str] = mapped_column(Text, nullable=False)
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente", server_default="pendiente")
+    node_id: Mapped[int | None] = mapped_column(ForeignKey("structure_nodes.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

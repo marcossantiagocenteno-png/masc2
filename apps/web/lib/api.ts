@@ -409,6 +409,39 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  /* Recomendaciones de estructura (F2) */
+
+  getRecomendacionesEstructura: (projectId: number) =>
+    request<RecomendacionesEstructura>(`/projects/${projectId}/planificacion/estructura-recomendada`),
+
+  elegirModeloEstructura: (projectId: number, modelKey: string) =>
+    request<{ modelo_elegido: string; elegido_en: string }>(`/projects/${projectId}/planificacion/estructura-recomendada/modelo`, {
+      method: "PUT",
+      body: JSON.stringify({ model_key: modelKey }),
+    }),
+
+  generarPropuestasEstructura: (projectId: number, modelKey: string | null) =>
+    request<PropuestaEstructura[]>(`/projects/${projectId}/planificacion/estructura-recomendada/propuestas`, {
+      method: "POST",
+      body: JSON.stringify(modelKey ? { model_key: modelKey } : {}),
+    }),
+
+  editarPropuestaEstructura: (projectId: number, proposalId: number, body: { title?: string; summary?: string | null }) =>
+    request<PropuestaEstructura>(`/projects/${projectId}/planificacion/estructura-recomendada/propuestas/${proposalId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  aceptarPropuestaEstructura: (projectId: number, proposalId: number) =>
+    request<StructureNode>(`/projects/${projectId}/planificacion/estructura-recomendada/propuestas/${proposalId}/aceptar`, {
+      method: "POST",
+    }),
+
+  rechazarPropuestaEstructura: (projectId: number, proposalId: number) =>
+    request<PropuestaEstructura>(`/projects/${projectId}/planificacion/estructura-recomendada/propuestas/${proposalId}/rechazar`, {
+      method: "POST",
+    }),
+
   /** Reordena los hermanos de ``parentId``. ``orden`` debe incluir a todos, archivados incluidos. */
   reorderStructure: (projectId: number, parentId: number | null, orden: number[], confirmCanon = false) =>
     request<StructureNode[]>(`/projects/${projectId}/planificacion/estructura/reordenar`, {
@@ -581,6 +614,59 @@ export type NarrativeDirectives = {
   limites: string | null;
   instrucciones: string | null;
   updated_at: string;
+};
+
+/** Recomendación de estructura (F2). Todo se calcula desde los datos del autor; nada cambia el canon. */
+export type TipoMotivo = "confirmado" | "inferencia" | "convencion" | "pregunta_pendiente";
+
+export type MotivoEstructura = { tipo: TipoMotivo; texto: string; peso: number; regla: string };
+
+export type RankingEstructura = {
+  clave: string;
+  nombre: string;
+  origen: string;
+  ambito: string;
+  pertinencia: string;
+  favorece: string;
+  limitaciones: string;
+  numero_de_etapas: number;
+  posicion: number;
+  puntaje: number;
+  motivo_de_posicion: string;
+  razones: MotivoEstructura[];
+};
+
+export type PropuestaEstructura = {
+  id: number;
+  project_id: number;
+  lote: number;
+  model_key: string;
+  position: number;
+  title: string;
+  summary: string | null;
+  funcion: string;
+  pregunta: string;
+  base_tipo: TipoMotivo;
+  entradas: {
+    premisa: string | null;
+    generos: string[];
+    directrices: Record<string, string | null>;
+    modelo: string;
+    reglas: string[];
+  };
+  estado: "pendiente" | "aceptada" | "rechazada";
+  node_id: number | null;
+  created_at: string;
+  updated_at: string;
+  decided_at: string | null;
+};
+
+export type RecomendacionesEstructura = {
+  modelo_elegido: string | null;
+  ranking: RankingEstructura[];
+  preguntas_pendientes: string[];
+  datos: { premisa: string | null; generos: string[]; directrices: Record<string, string | null> };
+  propuestas: PropuestaEstructura[];
 };
 
 export type NarrativeData = {

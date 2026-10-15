@@ -4,6 +4,7 @@ Sin ``from __future__ import annotations``: las rutas se generan con clausuras y
 necesita los tipos resueltos en tiempo de ejecución.
 """
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
@@ -13,6 +14,9 @@ from app.planning.schemas import (
     AcontecimientoIn,
     AprobacionIn,
     DirectricesIn,
+    GenerarPropuestasIn,
+    ModeloEstructuraIn,
+    PropuestaEstructuraPatch,
     ElementoTramaIn,
     EstructuraCreate,
     EstructuraPatch,
@@ -380,3 +384,56 @@ def approve_link(
     project_id: int, element_id: int, payload: AprobacionIn, service: PlanningService = Depends(get_service)
 ) -> dict[str, Any]:
     return _out(service.approve("vinculo", project_id, element_id, confirmar=payload.confirmar, nota=payload.nota))
+
+
+def _propuesta_out(row: Any) -> dict[str, Any]:
+    """Propuesta con sus entradas decodificadas, para que el autor pueda inspeccionar qué datos se usaron."""
+    return _out(row) | {"entradas": json.loads(row.entradas)}
+
+
+@router.get("/estructura-recomendada")
+def get_recomendaciones(project_id: int, service: PlanningService = Depends(get_service)) -> dict[str, Any]:
+    data = service.recomendaciones_estructura(project_id)
+    data["propuestas"] = [_propuesta_out(row) for row in data["propuestas"]]
+    return data
+
+
+@router.put("/estructura-recomendada/modelo")
+def put_modelo_estructura(
+    project_id: int, payload: ModeloEstructuraIn, service: PlanningService = Depends(get_service)
+) -> dict[str, Any]:
+    row = service.elegir_modelo_estructura(project_id, payload.model_key)
+    return {"modelo_elegido": row.model_key, "elegido_en": row.created_at.isoformat()}
+
+
+@router.post("/estructura-recomendada/propuestas", status_code=status.HTTP_201_CREATED)
+def post_propuestas_estructura(
+    project_id: int, payload: GenerarPropuestasIn, service: PlanningService = Depends(get_service)
+) -> list[dict[str, Any]]:
+    rows = service.generar_propuestas_estructura(project_id, payload.model_key)
+    return [_propuesta_out(row) for row in rows]
+
+
+@router.patch("/estructura-recomendada/propuestas/{proposal_id}")
+def patch_propuesta_estructura(
+    project_id: int,
+    proposal_id: int,
+    payload: PropuestaEstructuraPatch,
+    service: PlanningService = Depends(get_service),
+) -> dict[str, Any]:
+    row = service.editar_propuesta_estructura(project_id, proposal_id, payload.model_dump(exclude_unset=True))
+    return _propuesta_out(row)
+
+
+@router.post("/estructura-recomendada/propuestas/{proposal_id}/aceptar")
+def aceptar_propuesta_estructura(
+    project_id: int, proposal_id: int, service: PlanningService = Depends(get_service)
+) -> dict[str, Any]:
+    return _out(service.aceptar_propuesta_estructura(project_id, proposal_id))
+
+
+@router.post("/estructura-recomendada/propuestas/{proposal_id}/rechazar")
+def rechazar_propuesta_estructura(
+    project_id: int, proposal_id: int, service: PlanningService = Depends(get_service)
+) -> dict[str, Any]:
+    return _propuesta_out(service.rechazar_propuesta_estructura(project_id, proposal_id))

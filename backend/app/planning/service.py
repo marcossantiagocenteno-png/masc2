@@ -10,6 +10,8 @@ Reglas que este módulo impone (y que prueban ``tests/test_planificacion.py``):
 - Cada cambio de canon queda en ``narrative_decisions`` con la instantánea anterior.
 - Validar antes de escribir: un fallo no deja cambios parciales. Cada método confirma una sola vez.
 - Las escrituras en un proyecto archivado se rechazan, como ya ocurre con los manuscritos.
+- Las recomendaciones de estructura (F2) nunca cambian canon: una propuesta de acto se crea como provisional con origen ia,
+  y solo ``aprobar`` la convierte en canon. Elegir modelo y aceptar propuestas exige autor. Las propuestas no se borran.
 """
 
 from __future__ import annotations
@@ -25,10 +27,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
-from app.db.models import NarrativeDecision, NarrativeDirective, NarrativeLink, Project, ProjectGenre, StructureNode
+from app.db.models import (
+    NarrativeDecision,
+    NarrativeDirective,
+    NarrativeLink,
+    Project,
+    ProjectGenre,
+    StructureModelChoice,
+    StructureNode,
+    StructureProposal,
+)
 from app.planning import directrices as DIR
 from app.planning import generos as GENEROS
 from app.planning import kinds as K
+from app.planning import recomendaciones as RC
 from app.planning.escritura import sync_title
 from app.texts.errors import ConflictError, NotFoundError, ValidationFailed
 
@@ -648,6 +660,222 @@ class PlanningService:
         project.updated_at = now
         self._session.commit()
         return row
+
+    # ------------------------------------------------------------------
+    # Recomendaciones de estructura (F2): ranking, modelo elegido y propuestas de actos
+    # ------------------------------------------------------------------
+
+    def recomendaciones_estructura(self, project_id: int) -> dict[str, Any]:
+        """Ranking de modelos con sus motivos, los datos usados y las propuestas. Solo lectura."""
+        entradas = self._entradas(project_id)
+        return {
+            "modelo_elegido": self.modelo_estructura_actual(project_id),
+            "ranking": RC.rankear(entradas),
+            "preguntas_pendientes": RC.preguntas_pendientes(entradas),
+            "datos": self._datos_usados(project_id),
+            "propuestas": self.propuestas_estructura(project_id),
+        }
+
+    def modelo_estructura_actual(self, project_id: int) -> str | None:
+        self._project(project_id)
+        return self._session.scalar(
+            select(StructureModelChoice.model_key)
+            .where(StructureModelChoice.project_id == project_id)
+            .order_by(StructureModelChoice.id.desc())
+            .limit(1)
+        )
+
+    @_atomic
+    def elegir_modelo_estructura(self, project_id: int, model_key: str) -> StructureModelChoice:
+        """Registra el modelo elegido por el autor. Añade al historial; no cambia la estructura ni las propuestas."""
+        self._active_project(project_id)
+        if model_key not in RC.CLAVES:
+            raise ValidationFailed(f"modelo de estructura no válido: '{model_key}'")
+        row = StructureModelChoice(project_id=project_id, model_key=model_key, created_at=self._clock())
+        self._session.add(row)
+        self._session.commit()
+        return row
+
+    @_atomic
+    def generar_propuestas_estructura(self, project_id: int, model_key: str | None = None) -> list[StructureProposal]:
+        """Genera un lote de etapas propuestas para el modelo indicado o el elegido. No crea actos."""
+        self._active_project(project_id)
+        modelo = model_key if model_key is not None else self.modelo_estructura_actual(project_id)
+        if modelo is None:
+            raise ValidationFailed("elige primero un modelo de estructura")
+        if modelo not in RC.CLAVES:
+            raise ValidationFailed(f"modelo de estructura no válido: '{modelo}'")
+        pendientes = self._session.scalar(
+            select(StructureProposal.id).where(
+                StructureProposal.project_id == project_id,
+                StructureProposal.model_key == modelo,
+                StructureProposal.estado == "pendiente",
+            ).limit(1)
+        )
+        if pendientes is not None:
+            raise ConflictError(
+                "ya hay propuestas pendientes de este modelo. Acéptalas o recházalas antes de generar otras."
+            )
+        entradas = self._entradas(project_id)
+        base_tipo = RC.TIPO_CONFIRMADO if entradas.premisa else RC.TIPO_PREGUNTA
+        instantanea = json.dumps(self._instantanea(project_id, modelo), ensure_ascii=False, sort_keys=True)
+        lote = (
+            self._session.scalar(
+                select(func.max(StructureProposal.lote)).where(StructureProposal.project_id == project_id)
+            )
+            or 0
+        ) + 1
+        now = self._clock()
+        filas = [
+            StructureProposal(
+                project_id=project_id,
+                lote=lote,
+                model_key=modelo,
+                position=indice,
+                title=etapa.nombre,
+                summary=None,
+                funcion=etapa.funcion,
+                pregunta=etapa.pregunta,
+                base_tipo=base_tipo,
+                entradas=instantanea,
+                estado="pendiente",
+                created_at=now,
+                updated_at=now,
+            )
+            for indice, etapa in enumerate(RC.etapas_de(modelo))
+        ]
+        self._session.add_all(filas)
+        self._session.commit()
+        return filas
+
+    def propuestas_estructura(self, project_id: int) -> list[StructureProposal]:
+        self._project(project_id)
+        return list(
+            self._session.scalars(
+                select(StructureProposal)
+                .where(StructureProposal.project_id == project_id)
+                .order_by(StructureProposal.lote, StructureProposal.position)
+            ).all()
+        )
+
+    @_atomic
+    def editar_propuesta_estructura(self, project_id: int, proposal_id: int, changes: dict[str, Any]) -> StructureProposal:
+        """Edita título y resumen de una propuesta pendiente. Una propuesta decidida ya no se edita."""
+        self._active_project(project_id)
+        row = self._propuesta(project_id, proposal_id)
+        if row.estado != "pendiente":
+            raise ValidationFailed("solo se edita una propuesta pendiente")
+        unknown = set(changes) - {"title", "summary"}
+        if unknown:
+            raise ValidationFailed(f"campos no editables en una propuesta: {', '.join(sorted(unknown))}")
+        if "title" in changes:
+            title = (changes["title"] or "").strip()
+            if not title:
+                raise ValidationFailed("el título de la propuesta no puede estar vacío")
+            row.title = title
+        if "summary" in changes:
+            row.summary = changes["summary"] or None
+        row.updated_at = self._clock()
+        self._session.commit()
+        return row
+
+    @_atomic
+    def aceptar_propuesta_estructura(self, project_id: int, proposal_id: int) -> StructureNode:
+        """Acepta una etapa como acto provisional con origen ia. No es canon: ``aprobar`` lo haría."""
+        self._active_project(project_id)
+        row = self._propuesta(project_id, proposal_id)
+        if row.estado != "pendiente":
+            raise ValidationFailed("solo se acepta una propuesta pendiente")
+        anterior = self._session.scalar(
+            select(StructureProposal.id).where(
+                StructureProposal.project_id == project_id,
+                StructureProposal.lote == row.lote,
+                StructureProposal.position < row.position,
+                StructureProposal.estado == "pendiente",
+            ).limit(1)
+        )
+        if anterior is not None:
+            raise ValidationFailed("acepta o rechaza antes las etapas anteriores de esta propuesta")
+        expected = self._structure_version(project_id)
+        position = self._next_position(project_id, None)
+        self._advance_structure(project_id, expected)
+        now = self._clock()
+        snapshot = self._snapshot(row)
+        node = StructureNode(
+            project_id=project_id,
+            parent_id=None,
+            kind="acto",
+            position=position,
+            estado=K.PROVISIONAL,
+            origen=K.ORIGEN_IA,
+            title=row.title,
+            summary=row.summary,
+            created_at=now,
+            updated_at=now,
+        )
+        self._session.add(node)
+        self._session.flush()
+        row.estado = "aceptada"
+        row.node_id = node.id
+        row.decided_at = now
+        row.updated_at = now
+        self._record("estructura", node, "crear_desde_propuesta", None, K.PROVISIONAL, snapshot, None, now, AUTOR,
+                     resultado=self._snapshot(node))
+        self._session.commit()
+        return node
+
+    @_atomic
+    def rechazar_propuesta_estructura(self, project_id: int, proposal_id: int) -> StructureProposal:
+        """Rechaza una propuesta pendiente. La fila se conserva."""
+        self._active_project(project_id)
+        row = self._propuesta(project_id, proposal_id)
+        if row.estado != "pendiente":
+            raise ValidationFailed("solo se rechaza una propuesta pendiente")
+        now = self._clock()
+        row.estado = "rechazada"
+        row.decided_at = now
+        row.updated_at = now
+        self._session.commit()
+        return row
+
+    def _propuesta(self, project_id: int, proposal_id: int) -> StructureProposal:
+        row = self._session.scalar(
+            select(StructureProposal).where(StructureProposal.id == proposal_id, StructureProposal.project_id == project_id)
+        )
+        if row is None:
+            raise NotFoundError(f"no existe la propuesta {proposal_id} en el proyecto {project_id}")
+        return row
+
+    def _entradas(self, project_id: int) -> RC.Entradas:
+        project = self._project(project_id)
+        directivas = self.get_directives(project_id)
+        return RC.Entradas(
+            premisa=(project.premise or "").strip() or None,
+            generos=tuple(fila.genre_key for fila in self.get_genres(project_id)),
+            directrices={
+                campo: (getattr(directivas, campo) if directivas is not None else None) for campo in DIR.CAMPOS_VALOR
+            },
+        )
+
+    def _datos_usados(self, project_id: int) -> dict[str, Any]:
+        """Datos del autor que alimentan las recomendaciones, con etiquetas legibles. Solo lectura."""
+        project = self._project(project_id)
+        directivas = self.get_directives(project_id)
+        return {
+            "premisa": project.premise,
+            "generos": [
+                RC.etiqueta_genero(fila.genre_key, fila.custom_label) for fila in self.get_genres(project_id)
+            ],
+            "directrices": {
+                campo: (getattr(directivas, campo) if directivas is not None else None) for campo in DIR.CAMPOS_VALOR
+            },
+        }
+
+    def _instantanea(self, project_id: int, modelo: str) -> dict[str, Any]:
+        """Lo que se usó para generar un lote: datos del autor, modelo y reglas que sumaron para ese modelo."""
+        ranking = {item["clave"]: item for item in RC.rankear(self._entradas(project_id))}
+        reglas = [razon["regla"] for razon in ranking[modelo]["razones"] if razon["regla"] != "sin_datos"]
+        return {**self._datos_usados(project_id), "modelo": modelo, "reglas": reglas}
 
     def _project(self, project_id: int) -> Project:
         project = self._session.get(Project, project_id)

@@ -55,7 +55,7 @@ test("la novela da acceso a sus manuscritos y su ruta antigua redirige a la ruta
   // La entrada «Manuscritos» de la navegación de la novela existe y apunta al bloque del resumen.
   await page.goto(`/proyectos/${projectId}`);
   await expect(
-    page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscritos", exact: true }),
+    page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscritos del proyecto", exact: true }),
   ).toHaveAttribute("href", `/proyectos/${projectId}#manuscritos`);
 
   // La ruta antigua no pierde el manuscrito: redirige a su ruta dentro de la novela.

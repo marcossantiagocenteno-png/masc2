@@ -5,9 +5,11 @@ import { useParams, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const SECTIONS: { segment: string; label: string; hash?: string }[] = [
+  // Siempre visible: vuelve al índice del manuscrito desde cualquier apartado.
+  { segment: "libro", label: "Manuscrito" },
   { segment: "", label: "Visión general" },
   // Los manuscritos viven en el resumen de la novela: esta entrada lleva a ese bloque.
-  { segment: "", label: "Manuscritos", hash: "manuscritos" },
+  { segment: "", label: "Manuscritos del proyecto", hash: "manuscritos" },
   { segment: "personajes", label: "Personajes" },
   { segment: "lugares", label: "Lugares" },
   { segment: "trama", label: "Trama y misterios" },

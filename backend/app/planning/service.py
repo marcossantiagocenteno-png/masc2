@@ -667,11 +667,10 @@ class PlanningService:
 
     def recomendaciones_estructura(self, project_id: int) -> dict[str, Any]:
         """Ranking de modelos con sus motivos, los datos usados y las propuestas. Solo lectura."""
-        entradas = self._entradas(project_id)
+        analisis = RC.analizar(self._entradas(project_id))
         return {
             "modelo_elegido": self.modelo_estructura_actual(project_id),
-            "ranking": RC.rankear(entradas),
-            "preguntas_pendientes": RC.preguntas_pendientes(entradas),
+            **analisis,
             "datos": self._datos_usados(project_id),
             "propuestas": self.propuestas_estructura(project_id),
         }
@@ -735,7 +734,7 @@ class PlanningService:
                 title=etapa.nombre,
                 summary=None,
                 funcion=etapa.funcion,
-                pregunta=etapa.pregunta,
+                pregunta=RC.pregunta_anclada(modelo, etapa, entradas.premisa),
                 base_tipo=base_tipo,
                 entradas=instantanea,
                 estado="pendiente",
@@ -873,9 +872,20 @@ class PlanningService:
 
     def _instantanea(self, project_id: int, modelo: str) -> dict[str, Any]:
         """Lo que se usó para generar un lote: datos del autor, modelo y reglas que sumaron para ese modelo."""
-        ranking = {item["clave"]: item for item in RC.rankear(self._entradas(project_id))}
+        analisis = RC.analizar(self._entradas(project_id))
+        ranking = {item["clave"]: item for item in analisis["ranking"]}
         reglas = [razon["regla"] for razon in ranking[modelo]["razones"] if razon["regla"] != "sin_datos"]
-        return {**self._datos_usados(project_id), "modelo": modelo, "reglas": reglas}
+        evaluacion = analisis["evaluacion_premisa"]
+        return {
+            **self._datos_usados(project_id),
+            "modelo": modelo,
+            "reglas": reglas,
+            "evaluacion_premisa": {
+                "suficiencia": evaluacion["suficiencia"],
+                "cubiertas": evaluacion["cubiertas"],
+                "inferencias": [inferencia["texto"] for inferencia in evaluacion["inferencias"]],
+            },
+        }
 
     def _project(self, project_id: int) -> Project:
         project = self._session.get(Project, project_id)

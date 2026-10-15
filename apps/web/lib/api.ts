@@ -634,6 +634,17 @@ export type RankingEstructura = {
   puntaje: number;
   motivo_de_posicion: string;
   razones: MotivoEstructura[];
+  limites_de_la_premisa: string[];
+};
+
+/** Evaluación de la premisa: hechos del autor, inferencias de pistas léxicas (nunca canon) y preguntas. */
+export type EvaluacionPremisa = {
+  hechos: { tipo: "confirmado"; texto: string }[];
+  inferencias: { tipo: "inferencia"; categoria: string; texto: string; fragmento: string; confianza: "baja"; canon: false }[];
+  preguntas: string[];
+  cubiertas: string[];
+  suficiencia: "insuficiente" | "parcial" | "suficiente";
+  presente: boolean;
 };
 
 export type PropuestaEstructura = {
@@ -664,6 +675,9 @@ export type PropuestaEstructura = {
 export type RecomendacionesEstructura = {
   modelo_elegido: string | null;
   ranking: RankingEstructura[];
+  evaluacion_premisa: EvaluacionPremisa;
+  confianza: "insuficiente" | "baja" | "moderada";
+  recomendacion_provisional: boolean;
   preguntas_pendientes: string[];
   datos: { premisa: string | null; generos: string[]; directrices: Record<string, string | null> };
   propuestas: PropuestaEstructura[];

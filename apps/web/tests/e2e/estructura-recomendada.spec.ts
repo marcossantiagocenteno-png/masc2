@@ -56,7 +56,7 @@ test("el ranking muestra motivos, y un punto de vista de un personaje pone Siete
   await expect(modelo(page, "Pirámide de Freytag")).toContainText("Limitaciones.");
   await expect(modelo(page, "Save the Cat!")).toContainText("Está pensado para guion de cine");
   // Los datos usados se ven tal cual se guardaron.
-  await expect(page.getByText(PREMISA)).toBeVisible();
+  await expect(page.getByText(PREMISA, { exact: true })).toBeVisible();
   await expect(page.getByText("Un personaje", { exact: true })).toBeVisible();
 });
 
@@ -127,4 +127,26 @@ test("en 360 px la recomendación se lee sin desbordamiento horizontal", async (
   await expect(page.getByRole("heading", { name: "Modelos, del más al menos pertinente" })).toBeVisible();
   const desbordamiento = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(desbordamiento, "desbordamiento horizontal a 360 px").toBeLessThanOrEqual(0);
+});
+
+test("cambiar la premisa cambia las pistas que se muestran, y la recomendación sigue siendo provisional", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Premisa viva ${runId}`);
+  await prepararDatos(request, projectId);
+  await page.goto(`/proyectos/${projectId}/estructura`);
+  await expect(page.getByText("Lo que escribiste")).toBeVisible();
+  await expect(page.getByText("Pistas que sugiere la premisa")).toBeVisible();
+  await expect(page.getByText("Posible presión de tiempo o plazo")).toHaveCount(0);
+  await expect(page.getByRole("note")).toContainText("Recomendación provisional");
+
+  const cambio = await request.patch(`${API}/projects/${projectId}/planificacion/narrativa`, {
+    data: { premise: "Una ciudad sitiada tiene quince días antes de que el agua se agote, y un traidor oculta las reservas." },
+  });
+  expect(cambio.status()).toBe(200);
+  await page.reload();
+  await expect(page.getByText("Posible presión de tiempo o plazo")).toBeVisible();
+  await expect(page.getByText("Pistas que sugiere la premisa")).toBeVisible();
+  // Las inferencias se muestran como hipótesis con confianza baja, nunca como canon.
+  await expect(page.getByText("Inferencia · confianza baja").first()).toBeVisible();
+  await expect(page.getByRole("note")).toContainText("Recomendación provisional");
 });

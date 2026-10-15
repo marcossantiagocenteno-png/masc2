@@ -37,6 +37,18 @@ const CAMPOS_DIRECTRICES: Record<string, string> = {
   tipo_narrador: "Narrador",
 };
 
+const CONFIANZA: Record<RecomendacionesEstructura["confianza"], string> = {
+  insuficiente: "insuficiente",
+  baja: "baja",
+  moderada: "moderada",
+};
+
+const SUFICIENCIA: Record<"insuficiente" | "parcial" | "suficiente", string> = {
+  insuficiente: "La premisa apenas muestra pistas.",
+  parcial: "La premisa muestra algunas pistas, pero no todas.",
+  suficiente: "La premisa muestra objetivo y obstáculo.",
+};
+
 const ESTADO: Record<PropuestaEstructura["estado"], string> = {
   pendiente: "Pendiente",
   aceptada: "Aceptada",
@@ -142,6 +154,41 @@ export function EstructuraRecomendada({ projectId, onActoCreado }: { projectId: 
       ) : null}
 
       <div className="ne-panel flex flex-col gap-3">
+        <h3 className="ne-label">Evaluación de la premisa</h3>
+        {data.recomendacion_provisional ? (
+          <p role="note" className="ne-notice ne-notice--warn">
+            Recomendación provisional: la confianza es {CONFIANZA[data.confianza]}. El orden sirve de punto de partida, no como
+            certeza.
+          </p>
+        ) : (
+          <p className="ne-notice ne-notice--ok">Confianza moderada: el primer modelo supera al segundo con margen.</p>
+        )}
+        <p className="ne-meta">{SUFICIENCIA[data.evaluacion_premisa.suficiencia]}</p>
+        {data.evaluacion_premisa.hechos.length ? (
+          <div className="flex flex-col gap-1">
+            <p className="ne-label">Lo que escribiste</p>
+            <ul className="ne-list">
+              {data.evaluacion_premisa.hechos.map((hecho) => (
+                <li key={hecho.texto} className="text-[0.9375rem]">
+                  <span className="ne-badge">Dato tuyo</span> {hecho.texto}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {data.evaluacion_premisa.inferencias.length ? (
+          <div className="flex flex-col gap-1">
+            <p className="ne-label">Pistas que sugiere la premisa</p>
+            <p className="ne-meta">Son hipótesis a revisar, con confianza baja. No son canon y no se guardan como tales.</p>
+            <ul className="ne-list">
+              {data.evaluacion_premisa.inferencias.map((inferencia) => (
+                <li key={inferencia.texto} className="text-[0.9375rem]">
+                  <span className="ne-badge">Inferencia · confianza baja</span> {inferencia.texto}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <h3 className="ne-label">Datos que se usan</h3>
         <p className="ne-meta">Esto es todo lo que la recomendación toma de tu novela. Si cambias un dato, las propuestas ya generadas conservan el suyo.</p>
         <dl className="grid gap-x-4 gap-y-2 text-[0.9375rem] sm:grid-cols-[max-content_1fr]">
@@ -213,6 +260,14 @@ export function EstructuraRecomendada({ projectId, onActoCreado }: { projectId: 
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {modelo.limites_de_la_premisa.length ? (
+                  <div className="flex flex-col gap-1 text-[0.9375rem]">
+                    <p className="ne-label">Lo que la premisa no muestra</p>
+                    {modelo.limites_de_la_premisa.map((limite) => (
+                      <p key={limite}>{limite}</p>
+                    ))}
+                  </div>
                 ) : null}
                 <div className="mt-auto">
                   <button

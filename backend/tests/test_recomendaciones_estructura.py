@@ -177,7 +177,7 @@ def test_sin_premisa_y_sin_punto_de_vista_se_piden_las_decisiones_pendientes(api
     assert any("punto de vista" in pregunta for pregunta in preguntas)
 
 
-def test_la_premisa_se_muestra_como_dato_usado_y_no_se_interpreta(api: TestClient) -> None:
+def test_la_premisa_se_muestra_como_dato_usado_y_no_se_copia_en_los_motivos(api: TestClient) -> None:
     project_id = _project(api)
     _premisa(api, project_id)
     datos = _ranking(api, project_id)["datos"]

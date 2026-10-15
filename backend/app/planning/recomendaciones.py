@@ -14,11 +14,12 @@ Un modelo es un método o una forma de referencia, no una exigencia: el texto de
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
 from app.planning import generos as GENEROS
+from app.planning import premisa as PRE
 
 TIPO_CONFIRMADO: Final = "confirmado"
 TIPO_INFERENCIA: Final = "inferencia"
@@ -50,8 +51,9 @@ MODELOS: Final[tuple[Modelo, ...]] = (
         clave="freytag",
         nombre="Pirámide de Freytag (cinco actos)",
         origen=(
-            "Gustav Freytag, «Die Technik des Dramas» (1863). Describe la forma de la acción dramática en el drama "
-            "y la tragedia de su tiempo."
+            "Gustav Freytag, «Die Technik des Dramas» (1863): modelo de cinco partes de la acción dramática, derivado "
+            "del análisis de obras griegas y shakespearianas. Fuente consultada: estudios secundarios (Utrecht "
+            "Dramaturgy Database). El texto original no se ha consultado."
         ),
         ambito="Teatro y narrativa",
         pertinencia=(
@@ -98,8 +100,8 @@ MODELOS: Final[tuple[Modelo, ...]] = (
         clave="siete_puntos",
         nombre="Siete puntos (Dan Wells)",
         origen=(
-            "Dan Wells, ensayo sobre estructura de siete puntos publicado en su web. Es una referencia de puntos de "
-            "giro alrededor del protagonista."
+            "Dan Wells lo presenta en el episodio 21.24 de Writing Excuses («Deconstructing the Seven Point Plot "
+            "Structure»). Es una referencia de puntos de giro alrededor del protagonista, no una teoría académica."
         ),
         ambito="Narrativa",
         pertinencia=(
@@ -156,10 +158,11 @@ MODELOS: Final[tuple[Modelo, ...]] = (
         clave="save_the_cat",
         nombre="Save the Cat! (15 escenas)",
         origen=(
-            "Blake Snyder, «Save the Cat!» (2005). Método para planificar guiones de cine con una hoja de 15 escenas "
-            "(beats). No es una teoría de la estructura dramática."
+            "Blake Snyder, «Save the Cat!» (2005): método para planificar guiones de cine con 15 beats y páginas "
+            "orientativas. Jessica Brody lo adaptó a la novela en «Save the Cat! Writes a Novel», con otros "
+            "porcentajes y listas por género. Este catálogo recoge el método original de Snyder."
         ),
-        ambito="Guion de cine; aplicable a la novela como método de planificación",
+        ambito="Guion de cine; adaptado a la novela en versiones posteriores",
         pertinencia=(
             "Sirve para planificar con detalle en qué momento ocurre cada escena clave y para dar un ritmo marcado a "
             "la historia."
@@ -168,9 +171,9 @@ MODELOS: Final[tuple[Modelo, ...]] = (
             "Historias lineales de causa y efecto, con un protagonista que cambia y un ritmo de escenas bien definido."
         ),
         limitaciones=(
-            "Está pensado para guion de cine, con tiempo de pantalla. Sus hojas incluyen convenciones de género y "
-            "proporciones concretas que pueden imponer una forma ajena a la novela. Los nombres de los beats son de "
-            "un método concreto, no de la teoría dramática."
+            "Está pensado para guion de cine, con páginas orientativas. Sus hojas incluyen listas por género y "
+            "proporciones concretas que pueden imponer una forma ajena a la novela. Las versiones para novela cambian "
+            "porcentajes y nombres: no son el método original."
         ),
         etapas=(
             Etapa(
@@ -255,8 +258,39 @@ MODELOS: Final[tuple[Modelo, ...]] = (
 MODELOS_POR_CLAVE: Final[dict[str, Modelo]] = {modelo.clave: modelo for modelo in MODELOS}
 CLAVES: Final[frozenset[str]] = frozenset(MODELOS_POR_CLAVE)
 
+
 PUNTOS_DE_VISTA_UN_PERSONAJE: Final = frozenset({"un_personaje"})
 FOCALIZACIONES_UN_PERSONAJE: Final = frozenset({"interna_fija"})
+
+# Qué elemento de la premisa engancha con cada etapa. Es una regla de diseño, no una norma literaria:
+# una etapa cuyo elemento no aparece en la premisa se presenta como pregunta abierta, sin contenido.
+ENGANCHE: Final[dict[tuple[str, str], tuple[str, ...]]] = {
+    ("freytag", "Exposición"): ("objetivo",),
+    ("freytag", "Acción ascendente"): ("obstaculo", "tension"),
+    ("freytag", "Clímax"): ("obstaculo",),
+    ("freytag", "Acción descendente"): ("cambio",),
+    ("freytag", "Desenlace"): ("pregunta", "cambio"),
+    ("siete_puntos", "Gancho"): ("pregunta",),
+    ("siete_puntos", "Primer punto de giro"): ("objetivo", "obstaculo"),
+    ("siete_puntos", "Primer punto de presión"): ("obstaculo",),
+    ("siete_puntos", "Punto medio"): ("cambio", "pregunta"),
+    ("siete_puntos", "Segundo punto de presión"): ("tension", "obstaculo"),
+    ("siete_puntos", "Segundo punto de giro"): ("cambio",),
+    ("siete_puntos", "Resolución"): ("pregunta", "cambio"),
+    ("save_the_cat", "Imagen de apertura"): ("cambio",),
+    ("save_the_cat", "Declaración del tema"): ("pregunta",),
+    ("save_the_cat", "Planteamiento"): ("objetivo",),
+    ("save_the_cat", "Catalizador"): ("obstaculo",),
+    ("save_the_cat", "Debate"): ("cambio",),
+    ("save_the_cat", "Entrada al segundo acto"): ("objetivo",),
+    ("save_the_cat", "Punto medio"): ("pregunta",),
+    ("save_the_cat", "Se cierran las fuerzas contrarias"): ("obstaculo", "tension"),
+    ("save_the_cat", "Todo está perdido"): ("obstaculo",),
+    ("save_the_cat", "Noche oscura del alma"): ("cambio",),
+    ("save_the_cat", "Entrada al tercer acto"): ("cambio",),
+    ("save_the_cat", "Final"): ("pregunta", "obstaculo"),
+    ("save_the_cat", "Imagen final"): ("cambio",),
+}
 
 
 @dataclass(frozen=True)
@@ -272,8 +306,8 @@ def _razon(tipo: str, texto: str, peso: int, regla: str) -> dict[str, Any]:
     return {"tipo": tipo, "texto": texto, "peso": peso, "regla": regla}
 
 
-def _reglas(entradas: Entradas) -> dict[str, list[dict[str, Any]]]:
-    """Motivos por modelo. Cada regla devuelve su peso y su texto; un modelo sin motivos queda con puntaje cero."""
+def _reglas_de_datos(entradas: Entradas) -> dict[str, list[dict[str, Any]]]:
+    """Motivos que vienen de directrices y géneros: datos que el autor decidió."""
     motivos: dict[str, list[dict[str, Any]]] = {modelo.clave: [] for modelo in MODELOS}
     punto = entradas.directrices.get("punto_de_vista")
     foco = entradas.directrices.get("focalizacion")
@@ -314,6 +348,67 @@ def _reglas(entradas: Entradas) -> dict[str, list[dict[str, Any]]]:
     return motivos
 
 
+# Criterio «favorece» de cada modelo, citado tal cual en el motivo. Cada regla de premisa usa uno de ellos.
+_CRITERIO_OBJETIVO: Final = "un protagonista con un objetivo claro"
+_CRITERIO_ESCALADA: Final = "un conflicto central que se intensifica"
+_CRITERIO_CAMBIO: Final = "un protagonista que cambia"
+
+
+def _reglas_de_premisa(evaluacion: Mapping[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """Motivos que vienen de pistas de la premisa. Siempre son inferencias: ``canon`` nunca se toca."""
+    motivos: dict[str, list[dict[str, Any]]] = {modelo.clave: [] for modelo in MODELOS}
+    cubiertas = set(evaluacion["cubiertas"])
+    fragmento = {
+        categoria: next((i["fragmento"] for i in evaluacion["inferencias"] if i["categoria"] == categoria), "")
+        for categoria in cubiertas
+    }
+    if "objetivo" in cubiertas:
+        texto = (
+            f"La premisa sugiere un objetivo del protagonista («{fragmento['objetivo']}»). "
+            f"Siete puntos favorece {_CRITERIO_OBJETIVO}."
+        )
+        motivos["siete_puntos"].append(_razon(TIPO_INFERENCIA, texto, 1, "premisa_objetivo"))
+    if {"obstaculo", "tension"} <= cubiertas:
+        texto = (
+            f"La premisa sugiere un obstáculo con presión de tiempo («{fragmento['obstaculo']}»). "
+            f"Freytag favorece {_CRITERIO_ESCALADA}."
+        )
+        motivos["freytag"].append(_razon(TIPO_INFERENCIA, texto, 1, "premisa_escalada"))
+    if "cambio" in cubiertas:
+        texto = (
+            f"La premisa sugiere un cambio del protagonista («{fragmento['cambio']}»). "
+            f"Save the Cat! favorece {_CRITERIO_CAMBIO}."
+        )
+        motivos["save_the_cat"].append(_razon(TIPO_INFERENCIA, texto, 1, "premisa_cambio"))
+    return motivos
+
+
+def _limites_de_premisa(evaluacion: Mapping[str, Any]) -> dict[str, list[str]]:
+    """Cómo limita la premisa a cada modelo: lo que el modelo necesita y la premisa no muestra."""
+    cubiertas = set(evaluacion["cubiertas"])
+    if not cubiertas:
+        mensaje = (
+            "La premisa no ofrece pistas para este modelo: no hay base para evaluarlo."
+            if evaluacion["presente"]
+            else "Sin premisa no hay pistas que evaluar para este modelo."
+        )
+        return {modelo.clave: [mensaje] for modelo in MODELOS}
+    limites: dict[str, list[str]] = {modelo.clave: [] for modelo in MODELOS}
+    if "obstaculo" not in cubiertas:
+        limites["freytag"].append(
+            "La premisa no muestra un conflicto que escalar: Freytag describe una acción que sube, y la escalada queda por decidir."
+        )
+    if "objetivo" not in cubiertas:
+        limites["siete_puntos"].append(
+            "Sin un objetivo visible en la premisa, los giros de Siete puntos no tienen de qué partir."
+        )
+    if "cambio" not in cubiertas:
+        limites["save_the_cat"].append(
+            "La premisa no muestra qué cambia en el protagonista: el método de Save the Cat! presupone ese cambio para su imagen final."
+        )
+    return limites
+
+
 def _motivo_de_posicion(puntaje: int, posicion: int, empates: int, motivos: list[dict[str, Any]]) -> str:
     if puntaje == 0:
         return (
@@ -326,9 +421,14 @@ def _motivo_de_posicion(puntaje: int, posicion: int, empates: int, motivos: list
     return f"{'Primera' if posicion == 1 else f'Posición {posicion}'} por {len(motivos)} señal(es) de tus datos."
 
 
-def rankear(entradas: Entradas) -> list[dict[str, Any]]:
+def rankear(entradas: Entradas, evaluacion: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
     """Ordena los modelos por puntaje. Empates: orden de referencia del catálogo, que es estable."""
-    motivos = _reglas(entradas)
+    if evaluacion is None:
+        evaluacion = PRE.evaluar(entradas.premisa, _hechos_del_autor(entradas))
+    datos = _reglas_de_datos(entradas)
+    premisa = _reglas_de_premisa(evaluacion)
+    limites = _limites_de_premisa(evaluacion)
+    motivos = {clave: datos[clave] + premisa[clave] for clave in datos}
     puntajes = {modelo.clave: sum(razon["peso"] for razon in motivos[modelo.clave]) for modelo in MODELOS}
     orden = sorted(range(len(MODELOS)), key=lambda indice: (-puntajes[MODELOS[indice].clave], indice))
     resultado: list[dict[str, Any]] = []
@@ -355,12 +455,36 @@ def rankear(entradas: Entradas) -> list[dict[str, Any]]:
                 "puntaje": puntaje,
                 "motivo_de_posicion": _motivo_de_posicion(puntaje, posicion, empates, razones),
                 "razones": razones,
+                "limites_de_la_premisa": limites[modelo.clave],
             }
         )
     return resultado
 
 
-def preguntas_pendientes(entradas: Entradas) -> list[str]:
+def _hechos_del_autor(entradas: Entradas) -> list[str]:
+    hechos = [f"Género elegido: {GENEROS.ETIQUETAS.get(clave, clave)}." for clave in entradas.generos]
+    for campo in ("punto_de_vista", "focalizacion"):
+        valor = entradas.directrices.get(campo)
+        if valor:
+            hechos.append(f"{campo.replace('_', ' ').capitalize()} guardado: {valor}.")
+    return hechos
+
+
+def confianza(ranking: Sequence[Mapping[str, Any]], evaluacion: Mapping[str, Any]) -> str:
+    """Qué tan firme es el primer puesto. Nunca «alta»: las reglas son una guía, no una prueba.
+
+    ``insuficiente``: ningún dato apunta a ningún modelo. ``baja``: hay datos, pero el primero apenas supera al
+    segundo. ``moderada``: el primero supera al segundo por dos o más puntos y la premisa cubre al menos dos pistas.
+    """
+    if all(item["puntaje"] == 0 for item in ranking):
+        return "insuficiente"
+    margen = ranking[0]["puntaje"] - ranking[1]["puntaje"]
+    if margen >= 2 and len(evaluacion["cubiertas"]) >= 2:
+        return "moderada"
+    return "baja"
+
+
+def preguntas_pendientes(entradas: Entradas, evaluacion: Mapping[str, Any] | None = None) -> list[str]:
     """Decisiones que el autor debe tomar antes de que el ranking sea más preciso."""
     preguntas: list[str] = []
     if not entradas.premisa:
@@ -369,11 +493,39 @@ def preguntas_pendientes(entradas: Entradas) -> list[str]:
         preguntas.append("Elige al menos un género si quieres que el ranking lo tenga en cuenta.")
     if entradas.directrices.get("punto_de_vista") is None and entradas.directrices.get("focalizacion") is None:
         preguntas.append("Decide el punto de vista o la focalización: es el dato que más pesa en el ranking.")
+    if evaluacion is not None:
+        preguntas.extend(p for p in evaluacion["preguntas"] if p not in preguntas and entradas.premisa)
     return preguntas
+
+
+def analizar(entradas: Entradas) -> dict[str, Any]:
+    """Todo lo que se muestra al autor: evaluación de la premisa, ranking, confianza y preguntas. Solo lectura."""
+    evaluacion = PRE.evaluar(entradas.premisa, _hechos_del_autor(entradas))
+    ranking = rankear(entradas, evaluacion)
+    nivel = confianza(ranking, evaluacion)
+    return {
+        "evaluacion_premisa": evaluacion,
+        "ranking": ranking,
+        "confianza": nivel,
+        "recomendacion_provisional": nivel != "moderada",
+        "preguntas_pendientes": preguntas_pendientes(entradas, evaluacion),
+    }
 
 
 def etapas_de(clave: str) -> tuple[Etapa, ...]:
     return MODELOS_POR_CLAVE[clave].etapas
+
+
+def pregunta_anclada(clave: str, etapa: Etapa, premisa: str | None) -> str:
+    """Pregunta de la etapa, con la frase de la premisa que la engancha. Sin premisa, la pregunta queda genérica."""
+    engancha = ENGANCHE.get((clave, etapa.nombre), ())
+    for categoria in engancha:
+        fragmento = PRE.fragmento_para(premisa, categoria)
+        if fragmento:
+            return f"{etapa.pregunta} Tu premisa menciona: «{fragmento}»."
+    if engancha and premisa:
+        return f"{etapa.pregunta} La premisa no lo muestra: decídelo tú."
+    return etapa.pregunta
 
 
 def etiqueta_genero(clave: str, custom_label: str | None) -> str:

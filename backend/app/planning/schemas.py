@@ -24,9 +24,11 @@ class _Strict(BaseModel):
 
 
 class NarrativeIn(_Strict):
+    """Visión general. «synopsis» se acepta para no tocar datos existentes, pero la interfaz ya no lo envía.
+    Los géneros tienen su propio endpoint (``GenerosIn``)."""
+
     premise: OptNarrativeText = None
     synopsis: OptText = None
-    genre: OptShort = None
     theme: OptNarrativeText = None
     tone: OptShort = None
     development_status: DevelopmentStatus | None = None
@@ -105,3 +107,26 @@ class VinculoIn(_Strict):
 class AprobacionIn(_Strict):
     confirmar: bool = False
     nota: OptText = None
+
+
+class GeneroIn(_Strict):
+    key: str = Field(min_length=1, max_length=40)
+    custom_label: OptShort = None
+
+
+class GenerosIn(_Strict):
+    generos: list[GeneroIn] = Field(default_factory=list, max_length=30)
+
+
+class DirectricesIn(_Strict):
+    voz: OptShort = None
+    persona: Literal["primera", "segunda", "tercera"] | None = None
+    tiempo_verbal: Literal["presente", "pasado", "futuro", "mixto"] | None = None
+    tipo_narrador: Literal["narrador_personaje", "narrador_externo"] | None = None
+    punto_de_vista: Literal["un_personaje", "varios_personajes", "omnisciente"] | None = None
+    focalizacion: Literal["interna_fija", "interna_variable", "externa", "omnisciente"] | None = None
+    estilo: OptText = None
+    intencion: OptText = None
+    limites: OptText = None
+    instrucciones: OptText = None
+

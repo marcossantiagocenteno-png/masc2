@@ -68,7 +68,7 @@ async function expectSaved(page: Page) {
 test("1-3: crear la novela, completar sus datos, estructurarla, reorganizarla y vincular personajes, lugares y trama", async ({ page }) => {
   const projectId = await createProject(page, `Novela ${run}`);
   await page.getByLabel("Premisa").fill(`Premisa ${run}`);
-  await page.getByLabel("Género").fill("Gótico");
+  await page.getByRole("checkbox", { name: "Terror" }).check();
   await page.getByRole("button", { name: "Guardar visión general" }).click();
   await expectSaved_(page, "Visión general guardada.");
   await page.reload();

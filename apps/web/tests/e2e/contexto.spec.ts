@@ -79,7 +79,8 @@ test("en una versión, el bloque Ejecutado cuenta los análisis realmente guarda
   });
   await page.getByRole("button", { name: "Usar la selección del contenido" }).click();
   await page.getByRole("button", { name: "Analizar la selección del contenido" }).click();
-  await expect(page.getByLabel("Análisis guardado")).toBeVisible();
+  // El análisis espera la respuesta del servidor: con la suite completa en paralelo puede superar el tiempo por defecto.
+  await expect(page.getByLabel("Análisis guardado")).toBeVisible({ timeout: 20000 });
 
   await expect(valorDe(page, "Análisis")).toHaveText("1 en total · 1 simulados · 0 con proveedor real");
   await expect(valorDe(page, "Último")).toContainText("analizador simulado, no es una IA");

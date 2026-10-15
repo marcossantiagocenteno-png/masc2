@@ -70,14 +70,14 @@ test("abrir una novela, ver su espacio de trabajo y editar su visión general", 
 
   // Campos vacíos son válidos: guardar sin rellenar nada no está bloqueado.
   await page.getByLabel("Premisa").fill("Una casa que recuerda a quienes la habitan.");
-  await page.getByLabel("Género").fill("Gótico");
+  await page.getByRole("checkbox", { name: "Terror" }).check();
   await page.getByLabel("Estado de desarrollo").selectOption("idea");
   await page.getByRole("button", { name: "Guardar visión general" }).click();
   await expect(status(page, "Visión general guardada.")).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel("Premisa")).toHaveValue("Una casa que recuerda a quienes la habitan.");
-  await expect(page.getByLabel("Género")).toHaveValue("Gótico");
+  await expect(page.getByRole("checkbox", { name: "Terror" })).toBeChecked();
 });
 
 test("crear con solo un nombre, editar y archivar un personaje", async ({ page }) => {

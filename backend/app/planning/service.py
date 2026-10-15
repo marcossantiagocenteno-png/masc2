@@ -25,7 +25,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.base import utc_now
-from app.db.models import NarrativeDecision, NarrativeLink, Project, StructureNode
+from app.db.models import NarrativeDecision, NarrativeDirective, NarrativeLink, Project, ProjectGenre, StructureNode
+from app.planning import directrices as DIR
+from app.planning import generos as GENEROS
 from app.planning import kinds as K
 from app.planning.escritura import sync_title
 from app.texts.errors import ConflictError, NotFoundError, ValidationFailed
@@ -582,6 +584,70 @@ class PlanningService:
     # ------------------------------------------------------------------
     # Internos
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Géneros y directrices (F1). Nada se borra: deseleccionar un género lo marca como inactivo.
+    # ------------------------------------------------------------------
+
+    def get_genres(self, project_id: int) -> list[ProjectGenre]:
+        self._project(project_id)
+        return list(
+            self._session.scalars(
+                select(ProjectGenre)
+                .where(ProjectGenre.project_id == project_id, ProjectGenre.activo.is_(True))
+                .order_by(ProjectGenre.id)
+            ).all()
+        )
+
+    @_atomic
+    def set_genres(self, project_id: int, items: list[tuple[str, str | None]]) -> list[ProjectGenre]:
+        """Fija la selección de géneros. Cada elemento es ``(clave, texto_libre)``; el texto solo va con ``otro``."""
+        project = self._active_project(project_id)
+        wanted: set[tuple[str, str | None]] = set()
+        for clave, texto in items:
+            if clave not in GENEROS.CLAVES:
+                raise ValidationFailed(f"género no válido: '{clave}'")
+            if clave == GENEROS.OTRO:
+                texto = (texto or "").strip()
+                if not texto:
+                    raise ValidationFailed("«Otro» necesita el nombre del género")
+            else:
+                texto = None
+            wanted.add((clave, texto))
+
+        rows = self._session.scalars(select(ProjectGenre).where(ProjectGenre.project_id == project_id)).all()
+        by_key = {(row.genre_key, row.custom_label): row for row in rows}
+        for key, row in by_key.items():
+            row.activo = key in wanted
+        now = self._clock()
+        for key in wanted:
+            if key not in by_key:
+                self._session.add(
+                    ProjectGenre(project_id=project_id, genre_key=key[0], custom_label=key[1], activo=True, created_at=now)
+                )
+        project.updated_at = now
+        self._session.commit()
+        return self.get_genres(project_id)
+
+    def get_directives(self, project_id: int) -> NarrativeDirective | None:
+        self._project(project_id)
+        return self._session.scalar(select(NarrativeDirective).where(NarrativeDirective.project_id == project_id))
+
+    @_atomic
+    def put_directives(self, project_id: int, values: dict[str, Any]) -> NarrativeDirective:
+        """Reemplaza las directrices. Los campos no enviados quedan a ``None``: la petición es completa."""
+        project = self._active_project(project_id)
+        now = self._clock()
+        row = self._session.scalar(select(NarrativeDirective).where(NarrativeDirective.project_id == project_id))
+        if row is None:
+            row = NarrativeDirective(project_id=project_id, created_at=now, updated_at=now)
+            self._session.add(row)
+        for campo in (*DIR.CAMPOS_TEXTO, *DIR.CAMPOS_VALOR):
+            setattr(row, campo, values.get(campo))
+        row.updated_at = now
+        project.updated_at = now
+        self._session.commit()
+        return row
 
     def _project(self, project_id: int) -> Project:
         project = self._session.get(Project, project_id)

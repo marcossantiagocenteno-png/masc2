@@ -4,12 +4,10 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-const SECTIONS: { segment: string; label: string; hash?: string }[] = [
+const SECTIONS: { segment: string; label: string }[] = [
   // Siempre visible: vuelve al índice del manuscrito desde cualquier apartado.
   { segment: "libro", label: "Manuscrito" },
   { segment: "", label: "Visión general" },
-  // Los manuscritos viven en el resumen de la novela: esta entrada lleva a ese bloque.
-  { segment: "", label: "Manuscritos del proyecto", hash: "manuscritos" },
   { segment: "personajes", label: "Personajes" },
   { segment: "lugares", label: "Lugares" },
   { segment: "trama", label: "Trama y misterios" },
@@ -35,8 +33,8 @@ export default function ProjectWorkspaceLayout({ children }: { children: ReactNo
         <p className="ne-kicker">Espacio de trabajo de la novela</p>
         <nav aria-label="Secciones de la novela" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--color-line)] text-[0.9375rem]">
           {SECTIONS.map((section) => {
-            const href = section.hash ? `${base}#${section.hash}` : section.segment ? `${base}/${section.segment}` : base;
-            const active = section.hash ? pathname.startsWith(`${base}/manuscritos`) : isActive(section.segment);
+            const href = section.segment ? `${base}/${section.segment}` : base;
+            const active = isActive(section.segment);
             return (
               <Link
                 key={section.label}

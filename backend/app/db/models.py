@@ -462,3 +462,42 @@ class SceneManuscript(Base):
     manuscript_id: Mapped[int] = mapped_column(ForeignKey("manuscripts.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
 
+
+class ProjectGenre(Base):
+    """Género seleccionado para un proyecto. Deseleccionar no borra la fila: ``activo`` pasa a falso.
+
+    ``genre_key`` viene del catálogo de ``app.planning.generos``; ``custom_label`` solo se usa con ``otro``.
+    """
+
+    __tablename__ = "project_genres"
+    __table_args__ = (UniqueConstraint("project_id", "genre_key", "custom_label", name="uq_project_genres"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    genre_key: Mapped[str] = mapped_column(String(40), nullable=False)
+    custom_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class NarrativeDirective(Base):
+    """Directrices narrativas de un proyecto: una fila por proyecto. El tono y el género no viven aquí."""
+
+    __tablename__ = "narrative_directives"
+    __table_args__ = (UniqueConstraint("project_id", name="uq_narrative_directives_project"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    voz: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    persona: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    tiempo_verbal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    tipo_narrador: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    punto_de_vista: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    focalizacion: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    estilo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    intencion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    limites: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instrucciones: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+

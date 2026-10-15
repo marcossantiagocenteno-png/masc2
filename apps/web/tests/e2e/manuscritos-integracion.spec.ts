@@ -52,11 +52,11 @@ test("la novela da acceso a sus manuscritos y su ruta antigua redirige a la ruta
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
   const manuscriptId = manuscriptIdFrom(page.url());
 
-  // La entrada «Manuscritos» de la navegación de la novela existe y apunta al bloque del resumen.
   await page.goto(`/proyectos/${projectId}`);
+  // El bloque «Manuscritos del proyecto» ya no está en la navegación de la novela (F1): el acceso es «Manuscrito».
   await expect(
     page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscritos del proyecto", exact: true }),
-  ).toHaveAttribute("href", `/proyectos/${projectId}#manuscritos`);
+  ).toHaveCount(0);
 
   // La ruta antigua no pierde el manuscrito: redirige a su ruta dentro de la novela.
   await page.goto(`/manuscritos/${manuscriptId}`);

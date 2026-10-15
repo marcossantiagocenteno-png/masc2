@@ -346,7 +346,22 @@ export const api = {
 
   getNarrative: (projectId: number) => request<NarrativeData>(`/projects/${projectId}/planificacion/narrativa`),
 
-  updateNarrative: (projectId: number, body: Partial<Omit<NarrativeData, "id" | "name">>) =>
+  putGenres: (projectId: number, generos: { key: string; custom_label?: string | null }[]) =>
+    request<{ genres: GeneroSeleccionado[] }>(`/projects/${projectId}/planificacion/generos`, {
+      method: "PUT",
+      body: JSON.stringify({ generos }),
+    }),
+
+  putDirectives: (projectId: number, body: Omit<NarrativeDirectives, "updated_at">) =>
+    request<NarrativeDirectives>(`/projects/${projectId}/planificacion/directrices`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+
+  updateNarrative: (
+    projectId: number,
+    body: Partial<Pick<NarrativeData, "premise" | "theme" | "tone" | "development_status">>,
+  ) =>
     request<NarrativeData>(`/projects/${projectId}/planificacion/narrativa`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -551,15 +566,37 @@ export type NarrativeDecision = {
   created_at: string;
 };
 
+export type GeneroCatalogo = { key: string; label: string };
+export type GeneroSeleccionado = { key: string; label: string; custom_label: string | null };
+
+export type NarrativeDirectives = {
+  voz: string | null;
+  persona: "primera" | "segunda" | "tercera" | null;
+  tiempo_verbal: "presente" | "pasado" | "futuro" | "mixto" | null;
+  tipo_narrador: "narrador_personaje" | "narrador_externo" | null;
+  punto_de_vista: "un_personaje" | "varios_personajes" | "omnisciente" | null;
+  focalizacion: "interna_fija" | "interna_variable" | "externa" | "omnisciente" | null;
+  estilo: string | null;
+  intencion: string | null;
+  limites: string | null;
+  instrucciones: string | null;
+  updated_at: string;
+};
+
 export type NarrativeData = {
   id: number;
   name: string;
   premise: string | null;
+  /** Conservada en la base pero oculta en la interfaz. */
   synopsis: string | null;
+  /** Texto derivado de los géneros activos. Solo lectura. */
   genre: string | null;
+  genres: GeneroSeleccionado[];
+  genre_catalog: GeneroCatalogo[];
   theme: string | null;
   tone: string | null;
   development_status: DevelopmentStatus | null;
+  directives: NarrativeDirectives | null;
 };
 
 /** Rutas de los tipos de elemento que comparten el mismo contrato CRUD y de canon. */

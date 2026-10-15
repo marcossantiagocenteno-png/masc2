@@ -59,7 +59,8 @@ RELATIONS: Final[dict[tuple[str, str], frozenset[str]]] = {
     ("elemento_trama", "escena"): frozenset({"aparece_en"}),
 }
 
-NARRATIVE_FIELDS: Final = ("premise", "synopsis", "genre", "theme", "tone", "development_status")
+# «genre» no está aquí: los géneros tienen su propia tabla (migración 0010). «synopsis» se conserva, pero ya no se edita.
+NARRATIVE_FIELDS: Final = ("premise", "synopsis", "theme", "tone", "development_status")
 DEVELOPMENT_STATUSES: Final = ("idea", "planificacion", "escritura", "revision", "terminada")
 
 

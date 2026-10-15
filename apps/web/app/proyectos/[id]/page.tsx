@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { DirectivesForm } from "@/components/planning/DirectivesForm";
 import { NarrativeForm } from "@/components/planning/NarrativeForm";
 import { manuscriptPath } from "@/lib/manuscript-paths";
 import {
@@ -144,6 +145,13 @@ export default function ProjectPanelPage() {
           Visión general de la novela
         </h2>
         <NarrativeForm projectId={projectId} />
+      </section>
+
+      <section aria-labelledby="directrices" className="flex flex-col gap-4">
+        <h2 id="directrices" className="ne-section-title">
+          Directrices narrativas
+        </h2>
+        <DirectivesForm projectId={projectId} />
       </section>
 
       {error ? (

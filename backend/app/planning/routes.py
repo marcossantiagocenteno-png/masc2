@@ -12,9 +12,11 @@ from sqlalchemy.orm import Session
 from app.planning.schemas import (
     AcontecimientoIn,
     AprobacionIn,
+    DirectricesIn,
     ElementoTramaIn,
     EstructuraCreate,
     EstructuraPatch,
+    GenerosIn,
     LugarIn,
     MoverIn,
     NarrativeIn,
@@ -23,6 +25,8 @@ from app.planning.schemas import (
     VinculoIn,
 )
 from app.drafts.schemas import DraftOut, DraftSave
+from app.planning import directrices as DIR
+from app.planning import generos as GENEROS
 from app.planning.escritura import SIN_ESCRITURA, SceneWritingService, scene_states
 from app.planning.service import PlanningService
 from app.texts.routes import get_session
@@ -38,19 +42,57 @@ def _out(row: Any) -> dict[str, Any]:
     return {column.name: getattr(row, column.name) for column in row.__table__.columns}
 
 
+def _genero_out(row: Any) -> dict[str, Any]:
+    return {"key": row.genre_key, "label": GENEROS.ETIQUETAS[row.genre_key], "custom_label": row.custom_label}
+
+
+def _directivas_out(row: Any) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {campo: getattr(row, campo) for campo in (*DIR.CAMPOS_TEXTO, *DIR.CAMPOS_VALOR)} | {
+        "updated_at": row.updated_at.isoformat()
+    }
+
+
 @router.get("/narrativa")
 def get_narrative(project_id: int, service: PlanningService = Depends(get_service)) -> dict[str, Any]:
     project = service.get_narrative(project_id)
+    generos = [_genero_out(row) for row in service.get_genres(project_id)]
     return {
         "id": project.id,
         "name": project.name,
         "premise": project.premise,
         "synopsis": project.synopsis,
-        "genre": project.genre,
+        "genres": generos,
+        # Texto derivado de la selección activa, para compatibilidad. No es una fuente de datos.
+        "genre": ", ".join(g["custom_label"] or g["label"] for g in generos) or None,
+        "genre_catalog": GENEROS.catalogo(),
         "theme": project.theme,
         "tone": project.tone,
         "development_status": project.development_status,
+        "directives": _directivas_out(service.get_directives(project_id)),
     }
+
+
+@router.put("/generos")
+def put_genres(
+    project_id: int, payload: GenerosIn, service: PlanningService = Depends(get_service)
+) -> dict[str, Any]:
+    rows = service.set_genres(project_id, [(g.key, g.custom_label) for g in payload.generos])
+    return {"genres": [_genero_out(row) for row in rows]}
+
+
+@router.get("/directrices")
+def get_directives(project_id: int, service: PlanningService = Depends(get_service)) -> dict[str, Any] | None:
+    return _directivas_out(service.get_directives(project_id))
+
+
+@router.put("/directrices")
+def put_directives(
+    project_id: int, payload: DirectricesIn, service: PlanningService = Depends(get_service)
+) -> dict[str, Any] | None:
+    row = service.put_directives(project_id, payload.model_dump())
+    return _directivas_out(row)
 
 
 @router.patch("/narrativa")

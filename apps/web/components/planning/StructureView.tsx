@@ -50,6 +50,9 @@ export function StructureView({ projectId }: { projectId: number }) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingChange | null>(null);
   const [busy, setBusy] = useState(false);
+  // Renombrado en la propia fila. Los elementos canónicos se renombran en el panel de edición, con su confirmación.
+  const [renaming, setRenaming] = useState<{ id: number; value: string } | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const [kind, setKind] = useState<StructureKind>("capitulo");
   const [parentValue, setParentValue] = useState("root");
   const [title, setTitle] = useState("");
@@ -209,6 +212,21 @@ export function StructureView({ projectId }: { projectId: number }) {
     );
   }
 
+  async function saveRename(node: StructureNode, value: string) {
+    setBusy(true);
+    setRenameError(null);
+    try {
+      await api.updateElement(projectId, "estructura", node.id, { title: value.trim() === "" ? null : value });
+      setRenaming(null);
+      setNotice("Título guardado.");
+      await load();
+    } catch (reason) {
+      setRenameError(describeFailure(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function renderNode(entry: TreeNode): ReactNode {
     const { node, children, depth } = entry;
     const name = node.title?.trim() || "Sin título";
@@ -268,6 +286,19 @@ export function StructureView({ projectId }: { projectId: number }) {
                 Añadir {childLabel(child)}
               </button>
             ))}
+            <button
+              type="button"
+              disabled={busy || node.estado === "canonico"}
+              title={node.estado === "canonico" ? "Los elementos canónicos se renombran en el panel de edición, con su confirmación." : undefined}
+              onClick={() => {
+                setRenameError(null);
+                setRenaming({ id: node.id, value: node.title ?? "" });
+              }}
+              aria-label={`Renombrar ${label}`}
+              className="ne-button ne-button--ghost ne-button--small"
+            >
+              Renombrar
+            </button>
             {node.kind === "escena" ? (
               <Link href={`/proyectos/${projectId}/estructura/${node.id}`} aria-label={`Abrir ${label}`} className="ne-button ne-button--small">
                 Escribir
@@ -275,6 +306,40 @@ export function StructureView({ projectId }: { projectId: number }) {
             ) : null}
           </div>
         </div>
+        {renaming?.id === node.id ? (
+          <form
+            aria-label={`Renombrar ${label}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveRename(node, renaming.value);
+            }}
+            className="ne-tree__rename flex flex-wrap items-end gap-2 pb-2 pl-8"
+          >
+            <label className="flex flex-col gap-1 text-[0.9375rem]">
+              <span className="ne-label">Nuevo título</span>
+              <input
+                autoFocus
+                maxLength={200}
+                value={renaming.value}
+                onChange={(event) => setRenaming({ id: node.id, value: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setRenaming(null);
+                }}
+              />
+            </label>
+            <button type="submit" disabled={busy} className="ne-button ne-button--small ne-button--primary">
+              Guardar título
+            </button>
+            <button type="button" onClick={() => setRenaming(null)} className="ne-button ne-button--small">
+              Cancelar
+            </button>
+            {renameError ? (
+              <p role="alert" className="ne-notice ne-notice--danger w-full">
+                {renameError}
+              </p>
+            ) : null}
+          </form>
+        ) : null}
         {children.length > 0 && expanded ? <ul className="ne-tree__children">{children.map(renderNode)}</ul> : null}
       </li>
     );

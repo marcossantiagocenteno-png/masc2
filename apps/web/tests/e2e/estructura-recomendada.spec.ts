@@ -33,6 +33,14 @@ async function prepararDatos(request: APIRequestContext, projectId: number, punt
   expect(directrices.status()).toBe(200);
 }
 
+/** Los modelos y propuestas están plegados bajo el árbol: se abren antes de usarlos. */
+async function abrirModelos(page: Page) {
+  const bloque = page.locator("details", { hasText: "Modelos de estructura y propuestas de actos" });
+  if (!(await bloque.evaluate((elemento) => (elemento as HTMLDetailsElement).open))) {
+    await bloque.locator("summary").click();
+  }
+}
+
 function modelo(page: Page, nombre: string): Locator {
   return page.getByRole("article").filter({ hasText: nombre });
 }
@@ -47,6 +55,8 @@ test("el ranking muestra motivos, y un punto de vista de un personaje pone Siete
   await prepararDatos(request, projectId, "un_personaje");
 
   await page.goto(`/proyectos/${projectId}/estructura`);
+
+  await abrirModelos(page);
   await expect(page.getByRole("heading", { name: "Modelos, del más al menos pertinente" })).toBeVisible();
 
   await expect(page.getByRole("article").first()).toContainText("1. Siete puntos (Dan Wells)");
@@ -64,6 +74,7 @@ test("sin datos, los modelos empiezan por el orden de referencia y lo dice", asy
   await page.setViewportSize({ width: 1440, height: 900 });
   const projectId = await createProject(page, `Sin datos ${runId}`);
   await page.goto(`/proyectos/${projectId}/estructura`);
+  await abrirModelos(page);
   await expect(modelo(page, "Pirámide de Freytag").first()).toContainText("1. Pirámide de Freytag");
   await expect(page.getByText("Sin datos que lo distingan").first()).toBeVisible();
   await expect(page.getByText("Escribe la premisa", { exact: false })).toBeVisible();
@@ -78,6 +89,8 @@ test("elegir, generar, editar y aceptar crea un acto provisional de origen IA y 
   const directricesAntes = await (await request.get(`${base}/directrices`)).json();
 
   await page.goto(`/proyectos/${projectId}/estructura`);
+
+  await abrirModelos(page);
   await modelo(page, "Pirámide de Freytag").getByRole("button", { name: "Elegir este modelo" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Modelo elegido: Pirámide de Freytag" })).toBeVisible();
 
@@ -124,6 +137,7 @@ test("en 360 px la recomendación se lee sin desbordamiento horizontal", async (
   const projectId = await createProject(page, `Movil ${runId}`);
   await prepararDatos(request, projectId, "un_personaje");
   await page.goto(`/proyectos/${projectId}/estructura`);
+  await abrirModelos(page);
   await expect(page.getByRole("heading", { name: "Modelos, del más al menos pertinente" })).toBeVisible();
   const desbordamiento = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(desbordamiento, "desbordamiento horizontal a 360 px").toBeLessThanOrEqual(0);
@@ -134,6 +148,7 @@ test("cambiar la premisa cambia las pistas que se muestran, y la recomendación 
   const projectId = await createProject(page, `Premisa viva ${runId}`);
   await prepararDatos(request, projectId);
   await page.goto(`/proyectos/${projectId}/estructura`);
+  await abrirModelos(page);
   await expect(page.getByText("Lo que escribiste")).toBeVisible();
   await expect(page.getByText("Pistas que sugiere la premisa")).toBeVisible();
   await expect(page.getByText("Posible presión de tiempo o plazo")).toHaveCount(0);
@@ -144,6 +159,7 @@ test("cambiar la premisa cambia las pistas que se muestran, y la recomendación 
   });
   expect(cambio.status()).toBe(200);
   await page.reload();
+  await abrirModelos(page);
   await expect(page.getByText("Posible presión de tiempo o plazo")).toBeVisible();
   await expect(page.getByText("Pistas que sugiere la premisa")).toBeVisible();
   // Las inferencias se muestran como hipótesis con confianza baja, nunca como canon.

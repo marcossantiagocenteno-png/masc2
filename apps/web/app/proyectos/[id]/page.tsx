@@ -203,8 +203,11 @@ export default function ProjectPanelPage() {
         <h2 id="estructura-seccion-titulo" className="ne-section-title">
           Estructura
         </h2>
-        <EstructuraRecomendada projectId={projectId} onActoCreado={() => setEstructuraRevision((value) => value + 1)} />
         <StructureView key={estructuraRevision} projectId={projectId} />
+        <details className="flex flex-col gap-6">
+          <summary className="ne-meta cursor-pointer">Modelos de estructura y propuestas de actos</summary>
+          <EstructuraRecomendada projectId={projectId} onActoCreado={() => setEstructuraRevision((value) => value + 1)} />
+        </details>
       </section>
 
       {error ? (

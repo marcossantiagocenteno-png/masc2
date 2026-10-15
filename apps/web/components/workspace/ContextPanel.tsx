@@ -153,10 +153,12 @@ export function ContextPanel() {
           </p>
         ) : null}
         {guardado === null && !error ? <p className="ne-meta">Cargando…</p> : null}
-        {guardado ? <GuardadoBloque data={guardado} /> : null}
-        {versionKey !== null ? <EjecutadoBloque estado={ejecutadoActual} /> : null}
-        {guardado ? <AdvertenciasBloque data={guardado} /> : null}
-        {guardado ? <NoDisponibleBloque /> : null}
+        <div className="flex flex-col gap-8">
+          {guardado ? <GuardadoBloque data={guardado} /> : null}
+          {versionKey !== null ? <EjecutadoBloque estado={ejecutadoActual} /> : null}
+          {guardado ? <AdvertenciasBloque data={guardado} /> : null}
+          {guardado ? <NoDisponibleBloque /> : null}
+        </div>
       </div>
     </section>
   );
@@ -179,12 +181,10 @@ function GuardadoBloque({ data }: { data: Guardado }) {
         <Fila nombre="Personajes" valor={String(data.personajes)} />
         <Fila nombre="Lugares" valor={String(data.lugares)} />
         <Fila nombre="Acontecimientos" valor={String(data.acontecimientos)} />
-        <Fila
-          nombre="Trama"
-          valor={`conflictos ${data.trama.conflicto ?? 0} · subtramas ${data.trama.subtrama ?? 0} · misterios ${
-            data.trama.misterio ?? 0
-          } · preguntas abiertas ${data.trama.pregunta_abierta ?? 0}`}
-        />
+        <Fila nombre="Conflictos" valor={String(data.trama.conflicto ?? 0)} />
+        <Fila nombre="Subtramas" valor={String(data.trama.subtrama ?? 0)} />
+        <Fila nombre="Misterios" valor={String(data.trama.misterio ?? 0)} />
+        <Fila nombre="Preguntas abiertas" valor={String(data.trama.pregunta_abierta ?? 0)} />
         <Fila nombre="Capítulos" valor={String(data.capitulos)} />
         <Fila nombre="Escenas" valor={String(data.escenas)} />
         <Fila

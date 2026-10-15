@@ -18,7 +18,8 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
   await page.getByLabel("Título").fill(`Manuscrito de A ${runId}`);
   await page.getByLabel("Texto de la versión 1").fill("Texto exclusivo de la novela A.");
   await page.getByRole("button", { name: "Crear manuscrito" }).click();
-  await expect(page.getByRole("link", { name: `Manuscrito de A ${runId}`, exact: true })).toBeVisible();
+  // La visión general no lista los manuscritos: el último trabajo enlaza con el recién creado.
+  await expect(page.getByRole("link", { name: `Abrir «Manuscrito de A ${runId}» para escribir o revisar`, exact: true })).toBeVisible();
   const projectAUrl = page.url();
 
   // Proyecto B: no debe mostrar nada de A.
@@ -28,7 +29,7 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
   await page.getByLabel("Título").fill(`Manuscrito de B ${runId}`);
   await page.getByLabel("Texto de la versión 1").fill("Texto exclusivo de la novela B.");
   await page.getByRole("button", { name: "Crear manuscrito" }).click();
-  await expect(page.getByRole("link", { name: `Manuscrito de B ${runId}`, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: `Abrir «Manuscrito de B ${runId}» para escribir o revisar`, exact: true })).toBeVisible();
 
   // La biblioteca lista ambos proyectos.
   await page.goto("/proyectos");
@@ -45,7 +46,7 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
   await page.getByRole("button", { name: "Archivar proyecto" }).click();
   await expect(page.getByRole("status")).toHaveText(/Proyecto archivado/);
   await expect(page.getByText("El proyecto está archivado. Restáuralo para añadir manuscritos.")).toBeVisible();
-  await expect(page.getByRole("link", { name: `Manuscrito de A ${runId}`, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: `Abrir «Manuscrito de A ${runId}» para escribir o revisar`, exact: true })).toBeVisible();
 
   // Aparece en el filtro de archivados y no en los activos.
   await page.goto("/proyectos");

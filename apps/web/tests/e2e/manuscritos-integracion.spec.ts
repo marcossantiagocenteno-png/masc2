@@ -22,7 +22,12 @@ async function createManuscriptInProject(page: Page, projectId: number, title: s
   await page.getByLabel("Título", { exact: true }).fill(title);
   await page.getByLabel("Texto de la versión 1").fill(`Texto de ${title}.`);
   await page.getByRole("button", { name: "Crear manuscrito", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("link", { name: title, exact: true })).toBeVisible();
+  // La visión general no lista los manuscritos: el último trabajo del proyecto enlaza con el recién creado.
+  await expect(abrirUltimo(page, title)).toBeVisible();
+}
+
+function abrirUltimo(page: Page, title: string): Locator {
+  return page.getByRole("link", { name: `Abrir «${title}» para escribir o revisar`, exact: true });
 }
 
 function manuscriptIdFrom(url: string): number {
@@ -47,7 +52,7 @@ test("la novela da acceso a sus manuscritos y su ruta antigua redirige a la ruta
   await createManuscriptInProject(page, projectId, title);
 
   // Desde el espacio de trabajo: el manuscrito se abre dentro de la novela.
-  await page.getByRole("main").getByRole("link", { name: title, exact: true }).click();
+  await abrirUltimo(page, title).click();
   await expect(page).toHaveURL(new RegExp(`/proyectos/${projectId}/manuscritos/\\d+$`));
   await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
   const manuscriptId = manuscriptIdFrom(page.url());
@@ -57,6 +62,9 @@ test("la novela da acceso a sus manuscritos y su ruta antigua redirige a la ruta
   await expect(
     page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscritos del proyecto", exact: true }),
   ).toHaveCount(0);
+  // La visión general tampoco muestra la lista; el manuscrito sigue accesible desde «Manuscrito».
+  await expect(page.getByRole("heading", { name: "Manuscritos del proyecto", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscrito", exact: true })).toBeVisible();
 
   // La ruta antigua no pierde el manuscrito: redirige a su ruta dentro de la novela.
   await page.goto(`/manuscritos/${manuscriptId}`);
@@ -100,7 +108,7 @@ test("una ruta de otra novela no muestra el contenido del manuscrito", async ({ 
   const ownerId = await createProject(page, `Dueña ${runId}`);
   const title = `Ajeno ${runId}`;
   await createManuscriptInProject(page, ownerId, title);
-  await page.getByRole("main").getByRole("link", { name: title, exact: true }).click();
+  await abrirUltimo(page, title).click();
   await expect(page).toHaveURL(new RegExp(`/proyectos/${ownerId}/manuscritos/\\d+$`));
   const manuscriptId = manuscriptIdFrom(page.url());
 

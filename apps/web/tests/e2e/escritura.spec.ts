@@ -199,13 +199,15 @@ test("las versiones siguen en la página del manuscrito, y la escena no aparece 
   await page.goBack();
   await expect(editor(page)).toHaveValue("Primera versión de la escena.");
 
-  // Control positivo: un manuscrito ordinario de la novela sí aparece en su visión general.
+  // Control positivo: un manuscrito ordinario de la novela sí figura entre los manuscritos del proyecto.
   const ordinary = `Capítulo suelto ${runId}`;
   const created = await request.post(`${API}/projects/${projectId}/manuscripts`, { data: { title: ordinary, content: "Texto" } });
   expect(created.status()).toBe(201);
-  await page.goto(`/proyectos/${projectId}`);
-  await expect(page.getByRole("link", { name: ordinary, exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: `Versionada ${runId}`, exact: true })).toHaveCount(0);
+  // La visión general ya no lista manuscritos: la pertenencia se comprueba en la lista de la API.
+  const lista = await (await request.get(`${API}/projects/${projectId}/manuscripts`)).json();
+  const titulos = lista.map((item: { title: string }) => item.title);
+  expect(titulos).toContain(ordinary);
+  expect(titulos).not.toContain(`Versionada ${runId}`);
 });
 
 test("la escena escrita se ve bien en 360 px sin desbordamiento horizontal", async ({ page }) => {

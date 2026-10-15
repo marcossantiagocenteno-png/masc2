@@ -45,8 +45,10 @@ test("un capítulo vacío aparece en el índice como vacío y abrirlo no crea ni
   await expect(page).toHaveURL(/\/libro\/\d+$/);
   await expect(page.getByLabel("Texto del capítulo")).toBeVisible();
 
+  // Sin manuscritos, la visión general no ofrece ningún «último trabajo» para abrir.
   await page.goto(`/proyectos/${projectId}`);
-  await expect(page.getByText("Este proyecto todavía no tiene manuscritos.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manuscritos del proyecto", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Abrir «/ })).toHaveCount(0);
 });
 
 test("«Empezar a escribir» crea la escena y su manuscrito con el texto escrito, y el índice lo refleja", async ({ page }) => {

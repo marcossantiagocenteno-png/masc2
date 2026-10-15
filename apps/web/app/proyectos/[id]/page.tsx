@@ -181,28 +181,6 @@ export default function ProjectPanelPage() {
         </section>
       ) : null}
 
-      <section aria-labelledby="manuscritos" className="flex flex-col gap-3">
-        <h2 id="manuscritos" className="ne-section-title">
-          Manuscritos del proyecto
-        </h2>
-        {manuscripts === null ? <p className="ne-meta">Cargando…</p> : null}
-        {manuscripts?.length === 0 ? (
-          <p className="ne-empty">Este proyecto todavía no tiene manuscritos.</p>
-        ) : null}
-        <ul className="divide-y divide-[var(--color-muted)]/40">
-          {manuscripts?.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={manuscriptPath(projectId, item.id)} className="ne-link font-medium">
-                {item.title}
-              </Link>
-              <span className="ne-meta">
-                {item.version_count} {item.version_count === 1 ? "versión" : "versiones"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <section aria-labelledby="nuevo-manuscrito" className="flex flex-col gap-4">
         <h2 id="nuevo-manuscrito" className="ne-section-title">
           Nuevo manuscrito en este proyecto

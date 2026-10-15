@@ -65,13 +65,16 @@ test("en una versión, el bloque Ejecutado cuenta los análisis realmente guarda
   await page.getByLabel("Título", { exact: true }).fill(title);
   await page.getByLabel("Texto de la versión 1").fill("Frase breve para analizar. Otra frase de prueba.");
   await page.getByRole("button", { name: "Crear manuscrito", exact: true }).click();
-  await page.getByRole("main").getByRole("link", { name: title, exact: true }).click();
+  // La visión general no lista los manuscritos: el último trabajo del proyecto lleva al recién creado.
+  await page.getByRole("link", { name: `Abrir «${title}» para escribir o revisar`, exact: true }).click();
   await page.getByRole("link", { name: "Versión 1", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/proyectos/${projectId}/manuscritos/\\d+/versiones/\\d+$`));
 
   await expect(contexto(page).getByText("Esta versión no tiene análisis ejecutados.")).toBeVisible();
 
   // Un análisis real del analizador simulado, sobre la selección del contenido.
+  // El texto llega del servidor después de la navegación: marcar antes lo perdería, porque el campo se rellena luego.
+  await expect(page.locator("#contenido-version")).toHaveValue("Frase breve para analizar. Otra frase de prueba.");
   await page.evaluate(() => {
     const el = document.getElementById("contenido-version") as HTMLTextAreaElement;
     el.focus();
@@ -79,8 +82,7 @@ test("en una versión, el bloque Ejecutado cuenta los análisis realmente guarda
   });
   await page.getByRole("button", { name: "Usar la selección del contenido" }).click();
   await page.getByRole("button", { name: "Analizar la selección del contenido" }).click();
-  // El análisis espera la respuesta del servidor: con la suite completa en paralelo puede superar el tiempo por defecto.
-  await expect(page.getByLabel("Análisis guardado")).toBeVisible({ timeout: 20000 });
+  await expect(page.getByLabel("Análisis guardado")).toBeVisible();
 
   await expect(valorDe(page, "Análisis")).toHaveText("1 en total · 1 simulados · 0 con proveedor real");
   await expect(valorDe(page, "Último")).toContainText("analizador simulado, no es una IA");

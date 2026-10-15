@@ -67,6 +67,48 @@ export default function ManuscriptsPage() {
         </p>
       </header>
 
+      <section aria-labelledby="sin-proyecto-titulo" className="flex flex-col gap-3">
+        <h2 id="sin-proyecto-titulo" className="ne-section-title">
+          Sin proyecto
+        </h2>
+        {items === null && !error ? <p className="ne-meta">Cargando…</p> : null}
+        {items !== null && sinProyecto.length === 0 ? (
+          <p className="ne-empty">No hay manuscritos sin proyecto.</p>
+        ) : null}
+        <ul className="divide-y divide-[var(--color-muted)]/40">
+          {sinProyecto.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+              <Link href={manuscriptPath(null, item.id)} className="ne-link font-medium">
+                {item.title}
+              </Link>
+              <span className="ne-meta">
+                {item.version_count} {item.version_count === 1 ? "versión" : "versiones"} · creado {formatDate(item.created_at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="en-novelas-titulo" className="flex flex-col gap-3">
+        <h2 id="en-novelas-titulo" className="ne-section-title">
+          Manuscritos de las novelas
+        </h2>
+        {items !== null && enNovelas.length === 0 ? <p className="ne-empty">Ninguna novela tiene manuscritos todavía.</p> : null}
+        <ul className="divide-y divide-[var(--color-muted)]/40">
+          {enNovelas.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+              <Link href={manuscriptPath(item.project_id, item.id)} className="ne-link font-medium">
+                {item.title}
+              </Link>
+              <span className="ne-meta">
+                {nombres.get(item.project_id ?? -1) ?? "Novela"} · {item.version_count}{" "}
+                {item.version_count === 1 ? "versión" : "versiones"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section aria-labelledby="crear-titulo" className="flex flex-col gap-4">
         <h2 id="crear-titulo" className="ne-section-title">
           Crear manuscrito
@@ -112,48 +154,6 @@ export default function ManuscriptsPage() {
             {error}
           </p>
         ) : null}
-      </section>
-
-      <section aria-labelledby="sin-proyecto-titulo" className="flex flex-col gap-3">
-        <h2 id="sin-proyecto-titulo" className="ne-section-title">
-          Sin proyecto
-        </h2>
-        {items === null && !error ? <p className="ne-meta">Cargando…</p> : null}
-        {items !== null && sinProyecto.length === 0 ? (
-          <p className="ne-empty">No hay manuscritos sin proyecto.</p>
-        ) : null}
-        <ul className="divide-y divide-[var(--color-muted)]/40">
-          {sinProyecto.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={manuscriptPath(null, item.id)} className="ne-link font-medium">
-                {item.title}
-              </Link>
-              <span className="ne-meta">
-                {item.version_count} {item.version_count === 1 ? "versión" : "versiones"} · creado {formatDate(item.created_at)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="en-novelas-titulo" className="flex flex-col gap-3">
-        <h2 id="en-novelas-titulo" className="ne-section-title">
-          Manuscritos de las novelas
-        </h2>
-        {items !== null && enNovelas.length === 0 ? <p className="ne-empty">Ninguna novela tiene manuscritos todavía.</p> : null}
-        <ul className="divide-y divide-[var(--color-muted)]/40">
-          {enNovelas.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={manuscriptPath(item.project_id, item.id)} className="ne-link font-medium">
-                {item.title}
-              </Link>
-              <span className="ne-meta">
-                {nombres.get(item.project_id ?? -1) ?? "Novela"} · {item.version_count}{" "}
-                {item.version_count === 1 ? "versión" : "versiones"}
-              </span>
-            </li>
-          ))}
-        </ul>
       </section>
     </main>
   );

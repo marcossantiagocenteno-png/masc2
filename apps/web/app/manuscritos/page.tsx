@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
-import { api, ApiError, formatDate, type ManuscriptSummary } from "@/lib/api";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { api, ApiError, formatDate, type ManuscriptSummary, type Project } from "@/lib/api";
+import { manuscriptPath } from "@/lib/manuscript-paths";
 
-/** Lista de manuscritos y formulario para crear uno con su versión 1. */
+/**
+ * Manuscritos fuera de los espacios de trabajo: los que no tienen proyecto y los de las novelas, agrupados por novela.
+ * Los manuscritos de escena son el texto de una escena y se abren desde esa escena: no aparecen aquí.
+ */
 export default function ManuscriptsPage() {
   const router = useRouter();
   const [items, setItems] = useState<ManuscriptSummary[] | null>(null);
+  const [projects, setProjects] = useState<Project[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -16,11 +21,25 @@ export default function ManuscriptsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api
-      .listManuscripts()
-      .then(setItems)
-      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Error desconocido."));
+    let active = true;
+    Promise.all([api.listManuscripts(), api.listProjects("todos")])
+      .then(([list, projectList]) => {
+        if (!active) return;
+        setItems(list);
+        setProjects(projectList);
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : "Error desconocido.");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
+
+  const visibles = useMemo(() => (items ?? []).filter((item) => item.scene_node_id === null), [items]);
+  const sinProyecto = visibles.filter((item) => item.project_id === null);
+  const enNovelas = visibles.filter((item) => item.project_id !== null);
+  const nombres = useMemo(() => new Map((projects ?? []).map((project) => [project.id, project.name])), [projects]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,7 +47,7 @@ export default function ManuscriptsPage() {
     setError(null);
     try {
       const created = await api.createManuscript({ title, content, note: note || undefined });
-      router.push(`/manuscritos/${created.id}`);
+      router.push(manuscriptPath(null, created.id));
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "No se pudo crear el manuscrito.");
       setSaving(false);
@@ -44,6 +63,7 @@ export default function ManuscriptsPage() {
         <h1 className="ne-page-title">Manuscritos</h1>
         <p className="ne-meta">
           Cada manuscrito tiene versiones numeradas. Una versión guardada no se modifica: los cambios crean una versión nueva.
+          Los manuscritos de una novela se abren desde su espacio de trabajo.
         </p>
       </header>
 
@@ -51,6 +71,7 @@ export default function ManuscriptsPage() {
         <h2 id="crear-titulo" className="ne-section-title">
           Crear manuscrito
         </h2>
+        <p className="ne-meta">Se crea en «Sin proyecto». Para crearlo dentro de una novela, usa su espacio de trabajo.</p>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1">
             <span className="ne-label">Título del manuscrito</span>
@@ -59,7 +80,7 @@ export default function ManuscriptsPage() {
               maxLength={200}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              
+
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -77,15 +98,11 @@ export default function ManuscriptsPage() {
               maxLength={200}
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              
+
             />
           </label>
           <div>
-            <button
-              type="submit"
-              disabled={saving}
-              className="ne-button ne-button--primary"
-            >
+            <button type="submit" disabled={saving} className="ne-button ne-button--primary">
               {saving ? "Guardando…" : "Crear manuscrito"}
             </button>
           </div>
@@ -97,20 +114,42 @@ export default function ManuscriptsPage() {
         ) : null}
       </section>
 
-      <section aria-labelledby="lista-titulo" className="flex flex-col gap-3">
-        <h2 id="lista-titulo" className="ne-section-title">
-          Manuscritos guardados
+      <section aria-labelledby="sin-proyecto-titulo" className="flex flex-col gap-3">
+        <h2 id="sin-proyecto-titulo" className="ne-section-title">
+          Sin proyecto
         </h2>
-        {items === null ? <p className="ne-meta">Cargando…</p> : null}
-        {items?.length === 0 ? <p className="ne-empty">Todavía no hay manuscritos.</p> : null}
+        {items === null && !error ? <p className="ne-meta">Cargando…</p> : null}
+        {items !== null && sinProyecto.length === 0 ? (
+          <p className="ne-empty">No hay manuscritos sin proyecto.</p>
+        ) : null}
         <ul className="divide-y divide-[var(--color-muted)]/40">
-          {items?.map((item) => (
+          {sinProyecto.map((item) => (
             <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={`/manuscritos/${item.id}`} className="ne-link font-medium">
+              <Link href={manuscriptPath(null, item.id)} className="ne-link font-medium">
                 {item.title}
               </Link>
               <span className="ne-meta">
                 {item.version_count} {item.version_count === 1 ? "versión" : "versiones"} · creado {formatDate(item.created_at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="en-novelas-titulo" className="flex flex-col gap-3">
+        <h2 id="en-novelas-titulo" className="ne-section-title">
+          Manuscritos de las novelas
+        </h2>
+        {items !== null && enNovelas.length === 0 ? <p className="ne-empty">Ninguna novela tiene manuscritos todavía.</p> : null}
+        <ul className="divide-y divide-[var(--color-muted)]/40">
+          {enNovelas.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
+              <Link href={manuscriptPath(item.project_id, item.id)} className="ne-link font-medium">
+                {item.title}
+              </Link>
+              <span className="ne-meta">
+                {nombres.get(item.project_id ?? -1) ?? "Novela"} · {item.version_count}{" "}
+                {item.version_count === 1 ? "versión" : "versiones"}
               </span>
             </li>
           ))}

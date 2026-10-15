@@ -7,6 +7,8 @@ import { api, ApiError, type DraftOut, type SceneWriting as Writing } from "@/li
 import { DraftSaver, type SaveStatus } from "@/lib/draft-saver";
 import { useDirty } from "./UnsavedChanges";
 
+import { manuscriptPath } from "@/lib/manuscript-paths";
+
 type Props = { projectId: number; nodeId: number; sceneTitle: string };
 
 /**
@@ -175,7 +177,7 @@ export function SceneWriting({ projectId, nodeId, sceneTitle }: Props) {
         onDownload={downloadCopy}
       />
       <p className="ne-meta">
-        <Link href={`/manuscritos/${writing.manuscript_id}`} className="ne-link">
+        <Link href={manuscriptPath(projectId, writing.manuscript_id)} className="ne-link">
           Versiones y puntos de recuperación
         </Link>{" "}
         · crear una versión formal es una acción aparte, en esa página.

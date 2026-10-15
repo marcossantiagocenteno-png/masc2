@@ -114,8 +114,9 @@ test("renombrar una escena conserva su texto y el nombre del manuscrito se actua
   await expect(page.getByRole("heading", { name: `Planificación de «Nombre nuevo ${runId}»` })).toBeVisible();
   await expect(editor(page)).toHaveValue("Texto bajo otro nombre.");
 
-  await page.goto("/manuscritos");
-  await expect(page.getByRole("link", { name: `Nombre nuevo ${runId}`, exact: true })).toBeVisible();
+  // El manuscrito de la escena no aparece en el listado global: su título se comprueba en su propia página.
+  await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: `Nombre nuevo ${runId}` })).toBeVisible();
 });
 
 test("un fallo al guardar mantiene el texto en pantalla y se puede reintentar", async ({ page }) => {

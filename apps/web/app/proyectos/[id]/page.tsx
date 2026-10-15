@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { NarrativeForm } from "@/components/planning/NarrativeForm";
+import { manuscriptPath } from "@/lib/manuscript-paths";
 import {
   api,
   ApiError,
@@ -165,7 +166,7 @@ export default function ProjectPanelPage() {
             Último manuscrito: <span className="font-medium">{latest.title}</span>
           </p>
           <div className="text-sm">
-            <Link href={`/manuscritos/${latest.id}`} className="ne-link">
+            <Link href={manuscriptPath(projectId, latest.id)} className="ne-link">
               Abrir «{latest.title}» para escribir o revisar
             </Link>
           </div>
@@ -183,7 +184,7 @@ export default function ProjectPanelPage() {
         <ul className="divide-y divide-[var(--color-muted)]/40">
           {manuscripts?.map((item) => (
             <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
-              <Link href={`/manuscritos/${item.id}`} className="ne-link font-medium">
+              <Link href={manuscriptPath(projectId, item.id)} className="ne-link font-medium">
                 {item.title}
               </Link>
               <span className="ne-meta">

@@ -1,11 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { ANALISIS_GUARDADO } from "@/lib/workspace-events";
 import {
   api,
   ApiError,
   formatDate,
+  versionOps,
+  type AnalysisRun,
   type Character,
   type PlotElement,
   type ProjectDetail,
@@ -54,6 +57,14 @@ async function loadGuardado(projectId: number): Promise<Guardado> {
   };
 }
 
+type Ejecutado = { key: string; runs: AnalysisRun[] } | { key: string; error: string };
+
+/** Ruta de una versión: ``proyecto/manuscrito/versión``, o null si no estamos en una versión. */
+function versionKeyOf(pathname: string): string | null {
+  const match = /^\/proyectos\/(\d+)\/manuscritos\/(\d+)\/versiones\/(\d+)/.exec(pathname);
+  return match ? `${match[1]}/${match[2]}/${match[3]}` : null;
+}
+
 /**
  * Contexto de la novela abierta: columna derecha desde 1280 px y bajo el contenido por debajo.
  * Solo lee datos guardados. Cada cifra procede de la planificación o del manuscrito, no de una estimación.
@@ -64,7 +75,9 @@ export function ContextPanel() {
   const [open, setOpen] = useState(false);
   const [guardado, setGuardado] = useState<Guardado | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ejecutado, setEjecutado] = useState<Ejecutado | null>(null);
   const panelId = useId();
+  const versionKey = versionKeyOf(pathname);
 
   useEffect(() => {
     if (projectId === null) return;
@@ -84,7 +97,33 @@ export function ContextPanel() {
     };
   }, [projectId, pathname]);
 
+  // Análisis realmente ejecutados sobre la versión abierta. Se piden solo al entrar en una versión.
+  const cargarEjecutado = useCallback(
+    (key: string): Promise<void> => {
+      const [project, manuscript, version] = key.split("/").map(Number);
+      return versionOps(project, manuscript, version).listAnalyses().then(
+        (runs) => setEjecutado({ key, runs }),
+        (reason: unknown) =>
+          setEjecutado({
+            key,
+            error: reason instanceof ApiError ? reason.message : "No se pudieron cargar los análisis de esta versión.",
+          }),
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (versionKey === null) return;
+    void cargarEjecutado(versionKey);
+    // Un análisis nuevo de esta versión se anuncia y vuelve a leerse: el bloque no queda desactualizado.
+    const onAnalisis = () => void cargarEjecutado(versionKey);
+    window.addEventListener(ANALISIS_GUARDADO, onAnalisis);
+    return () => window.removeEventListener(ANALISIS_GUARDADO, onAnalisis);
+  }, [versionKey, cargarEjecutado]);
+
   if (projectId === null) return null;
+  const ejecutadoActual = ejecutado && versionKey !== null && ejecutado.key === versionKey ? ejecutado : null;
 
   return (
     <section aria-labelledby={`${panelId}-titulo`} className="ne-workspace__context">
@@ -110,6 +149,7 @@ export function ContextPanel() {
         ) : null}
         {guardado === null && !error ? <p className="ne-meta">Cargando…</p> : null}
         {guardado ? <GuardadoBloque data={guardado} /> : null}
+        {versionKey !== null ? <EjecutadoBloque estado={ejecutadoActual} /> : null}
       </div>
     </section>
   );
@@ -146,6 +186,42 @@ function GuardadoBloque({ data }: { data: Guardado }) {
         />
       </dl>
     </section>
+  );
+}
+
+function EjecutadoBloque({ estado }: { estado: Ejecutado | null }) {
+  return (
+    <section aria-labelledby="contexto-ejecutado" className="flex flex-col gap-3">
+      <h3 id="contexto-ejecutado" className="ne-subtitle">
+        Ejecutado
+      </h3>
+      <p className="ne-hint">Análisis realmente ejecutados sobre esta versión.</p>
+      {estado === null ? <p className="ne-meta">Cargando…</p> : null}
+      {estado && "error" in estado ? (
+        <p role="alert" className="ne-notice ne-notice--danger">
+          {estado.error}
+        </p>
+      ) : null}
+      {estado && "runs" in estado && estado.runs.length === 0 ? (
+        <p className="ne-meta">Esta versión no tiene análisis ejecutados.</p>
+      ) : null}
+      {estado && "runs" in estado && estado.runs.length > 0 ? <ResumenAnalisis runs={estado.runs} /> : null}
+    </section>
+  );
+}
+
+/** Resumen de los análisis guardados. El tipo de cada uno se indica con texto, no solo con etiquetas. */
+function ResumenAnalisis({ runs }: { runs: AnalysisRun[] }) {
+  const reales = runs.filter((run) => run.sent_external).length;
+  const simulados = runs.length - reales;
+  const ultimo = runs[runs.length - 1];
+  const tipo = ultimo.sent_external ? `proveedor real (${ultimo.provider_name})` : "analizador simulado, no es una IA";
+  return (
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+      <Fila nombre="Análisis" valor={`${runs.length} en total · ${simulados} simulados · ${reales} con proveedor real`} />
+      <Fila nombre="Último" valor={`${formatDate(ultimo.created_at)} · ${tipo}`} />
+      <Fila nombre="Fragmento" valor={`caracteres ${ultimo.fragment_start}–${ultimo.fragment_end}`} />
+    </dl>
   );
 }
 

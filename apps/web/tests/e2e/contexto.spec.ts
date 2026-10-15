@@ -57,3 +57,31 @@ test("en la biblioteca de proyectos no hay columna de contexto", async ({ page }
   await expect(page.getByRole("heading", { level: 1, name: "Proyectos" })).toBeVisible();
   await expect(contexto(page)).toHaveCount(0);
 });
+
+test("en una versión, el bloque Ejecutado cuenta los análisis realmente guardados", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Ejecutado ${runId}`);
+  const title = `Versión ${runId}`;
+  await page.getByLabel("Título", { exact: true }).fill(title);
+  await page.getByLabel("Texto de la versión 1").fill("Frase breve para analizar. Otra frase de prueba.");
+  await page.getByRole("button", { name: "Crear manuscrito", exact: true }).click();
+  await page.getByRole("main").getByRole("link", { name: title, exact: true }).click();
+  await page.getByRole("link", { name: "Versión 1", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/proyectos/${projectId}/manuscritos/\\d+/versiones/\\d+$`));
+
+  await expect(contexto(page).getByText("Esta versión no tiene análisis ejecutados.")).toBeVisible();
+
+  // Un análisis real del analizador simulado, sobre la selección del contenido.
+  await page.evaluate(() => {
+    const el = document.getElementById("contenido-version") as HTMLTextAreaElement;
+    el.focus();
+    el.setSelectionRange(0, 17);
+  });
+  await page.getByRole("button", { name: "Usar la selección del contenido" }).click();
+  await page.getByRole("button", { name: "Analizar la selección del contenido" }).click();
+  await expect(page.getByLabel("Análisis guardado")).toBeVisible();
+
+  await expect(valorDe(page, "Análisis")).toHaveText("1 en total · 1 simulados · 0 con proveedor real");
+  await expect(valorDe(page, "Último")).toContainText("analizador simulado, no es una IA");
+  await expect(valorDe(page, "Fragmento")).toHaveText("caracteres 0–17");
+});

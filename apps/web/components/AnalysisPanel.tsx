@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { anunciarAnalisisGuardado } from "@/lib/workspace-events";
 import {
   api,
   ApiError,
@@ -110,6 +111,7 @@ export function AnalysisPanel({ versionId, versionNumber, ops, readSelection }: 
       const list = await ops.listAnalyses();
       setRuns(list);
       setSelectedId(run.id);
+      anunciarAnalisisGuardado();
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : "No se pudo completar el análisis.");
     } finally {

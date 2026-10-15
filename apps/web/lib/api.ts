@@ -239,7 +239,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch {
-    throw new ApiError(`No se pudo conectar con el backend en ${API_BASE_URL}.`, 0);
+    // Un fallo de red o de CORS llega aquí. Un error del servidor (p. ej. base sin migrar) suele llegar sin CORS,
+    // así que el mensaje indica dónde mirar: si el backend está en marcha y si su esquema está al día.
+    throw new ApiError(
+      `No se pudo conectar con el backend en ${API_BASE_URL}. Comprueba que está en marcha y que ${API_BASE_URL}/health indica que la base de datos está al día.`,
+      0,
+    );
   }
 
   if (!response.ok) {

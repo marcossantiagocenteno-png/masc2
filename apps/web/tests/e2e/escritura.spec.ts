@@ -185,14 +185,22 @@ test("las versiones siguen en la página del manuscrito, y la escena no aparece 
   await editor(page).fill("Primera versión de la escena.");
   await expect(status(page, "Guardado")).toBeVisible();
 
-  await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
-  await expect(page).toHaveURL(/\/manuscritos\/\d+$/);
-  await expect(page.getByRole("heading", { name: "Versiones", exact: true })).toBeVisible();
+  // La versión formal se crea desde la escena, que es el único editor del texto.
   await page.getByRole("button", { name: "Guardar como nueva versión" }).click();
   await expect(page).toHaveURL(/\/manuscritos\/\d+\/versiones\/\d+$/);
 
-  // La versión formal no cambia el borrador: al volver, el texto sigue igual.
+  // La página del manuscrito de la escena solo consulta: el texto se muestra, no se puede editar ni restaurar allí.
   await page.goBack();
+  await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
+  await expect(page).toHaveURL(/\/manuscritos\/\d+$/);
+  await expect(page.getByRole("heading", { name: "Versiones", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Contenido de la nueva versión")).toHaveCount(0);
+  const textoSolo = page.getByRole("textbox", { name: "Texto de la escena (solo lectura)" });
+  await expect(textoSolo).toHaveValue("Primera versión de la escena.");
+  await expect(textoSolo).toHaveAttribute("readonly", "");
+  await expect(page.getByRole("button", { name: /^Restaurar punto de/ })).toHaveCount(0);
+
+  // Volver a la escena: el texto sigue igual.
   await page.goBack();
   await expect(editor(page)).toHaveValue("Primera versión de la escena.");
 
@@ -228,7 +236,7 @@ test("el manuscrito de una escena indica que su título se cambia en la escena, 
   await startWriting(page);
   await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
   await expect(page).toHaveURL(/\/manuscritos\/\d+$/);
-  await expect(page.getByText("Es el texto de una escena. Su título es el de la escena y se cambia allí:")).toBeVisible();
-  await page.getByRole("link", { name: "editar la escena" }).click();
+  await expect(page.getByText("Es el texto de una escena. Solo se consulta aquí", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Abrir la escena" }).click();
   await expect(page.getByRole("heading", { name: `Planificación de «${title}»` })).toBeVisible();
 });

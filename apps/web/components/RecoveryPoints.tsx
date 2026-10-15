@@ -13,7 +13,8 @@ const REASON_LABELS: Record<RecoveryPointReason, string> = {
 type Props = {
   points: RecoveryPointSummary[] | null;
   error: string | null;
-  onRestore: (point: RecoveryPointSummary) => void;
+  /** Sin acción, la lista es solo de consulta: el texto se restaura desde el editor que lo gestiona. */
+  onRestore?: (point: RecoveryPointSummary) => void;
   onRefresh: () => void;
 };
 
@@ -56,14 +57,16 @@ export default function RecoveryPoints({ points, error, onRestore, onRefresh }: 
                 {formatDate(point.created_at)} · {point.char_count} caracteres
               </span>
             </div>
-            <button
-              type="button"
-              aria-label={`Restaurar punto de ${formatDate(point.created_at)}`}
-              onClick={() => onRestore(point)}
-              className="ne-button ne-button--small"
-            >
-              Restaurar
-            </button>
+            {onRestore ? (
+              <button
+                type="button"
+                aria-label={`Restaurar punto de ${formatDate(point.created_at)}`}
+                onClick={() => onRestore(point)}
+                className="ne-button ne-button--small"
+              >
+                Restaurar
+              </button>
+            ) : null}
           </li>
         ))}
       </ol>

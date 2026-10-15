@@ -62,6 +62,7 @@ export function ManuscriptPage({
 
   const byId = useMemo(() => new Map((versions ?? []).map((v) => [v.id, v])), [versions]);
   const ready = status !== null;
+  const esEscena = manuscript?.scene_node_id != null;
 
   function refreshPoints() {
     const ops = opsRef.current;
@@ -96,6 +97,13 @@ export function ManuscriptPage({
         const latest = versionData[versionData.length - 1];
         if (latest) setBaseId(latest.id);
 
+        if (manuscriptData.scene_node_id !== null) {
+          // Texto de una escena: lo escribe, versiona y restaura solo su editor. Aquí se consulta.
+          setContent(initialized.draft.content);
+          const pointList = await ops.listRecoveryPoints();
+          if (active) setPoints(pointList);
+          return;
+        }
         saverRef.current?.dispose();
         // Un guardado confirmado puede haber creado un punto de recuperación: la lista se refresca.
         let savingInFlight = false;
@@ -316,18 +324,19 @@ export function ManuscriptPage({
     >
       <header className="flex flex-col gap-2">
         <Link
-          href={expectedProjectId === null ? "/manuscritos" : `/proyectos/${expectedProjectId}#manuscritos`}
+          href={expectedProjectId === null ? "/manuscritos" : `/proyectos/${expectedProjectId}`}
           className="ne-meta ne-link"
         >
-          {expectedProjectId === null ? "Manuscritos" : "Manuscritos del proyecto"}
+          {expectedProjectId === null ? "Manuscritos" : "Visión general de la novela"}
         </Link>
         <p className="ne-kicker">Manuscrito</p>
         <h1 className="ne-page-title">{manuscript?.title ?? "Cargando…"}</h1>
         {manuscript?.scene_node_id ? (
           <p className="ne-meta">
-            Es el texto de una escena. Su título es el de la escena y se cambia allí:{" "}
+            Es el texto de una escena. Solo se consulta aquí: el texto, las versiones y la restauración se gestionan en la
+            escena.{" "}
             <Link href={`/proyectos/${manuscript.project_id}/estructura/${manuscript.scene_node_id}`} className="ne-link">
-              editar la escena
+              Abrir la escena
             </Link>
             .
           </p>
@@ -364,6 +373,17 @@ export function ManuscriptPage({
         </ol>
       </section>
 
+      {esEscena ? (
+        <section aria-labelledby="texto-escena-titulo" className="flex flex-col gap-3">
+          <h2 id="texto-escena-titulo" className="ne-section-title">
+            Texto de la escena
+          </h2>
+          <p className="ne-meta">Solo lectura. Para escribir, crear una versión o restaurar un punto, abre la escena.</p>
+          <textarea readOnly rows={12} value={content} aria-label="Texto de la escena (solo lectura)" className="ne-prose-field" />
+        </section>
+      ) : null}
+
+      {esEscena ? null : (
       <section aria-labelledby="nueva-titulo" className="flex flex-col gap-4">
         <h2 id="nueva-titulo" className="ne-section-title">
           Nueva versión
@@ -430,8 +450,14 @@ export function ManuscriptPage({
           </p>
         ) : null}
       </section>
+      )}
 
-      <RecoveryPoints points={points} error={pointsError} onRestore={(point) => void handleRestore(point)} onRefresh={refreshPoints} />
+      <RecoveryPoints
+        points={points}
+        error={pointsError}
+        onRestore={esEscena ? undefined : (point) => void handleRestore(point)}
+        onRefresh={refreshPoints}
+      />
       {restoreError ? (
         <p role="alert" className="ne-notice ne-notice--danger">
           {restoreError}

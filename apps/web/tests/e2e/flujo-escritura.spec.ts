@@ -257,16 +257,13 @@ test("7-8: crear una versión formal con el texto esperado y restaurar un punto 
   await editor(page).fill("Segunda redacción, la que se publica.");
   await expectSaved(page);
 
-  // Versión formal: el contenido de la versión coincide con el borrador confirmado.
-  await page.getByRole("link", { name: "Versiones y puntos de recuperación" }).click();
-  await expect(page).toHaveURL(/\/manuscritos\/\d+$/);
-  const manuscriptId = Number(page.url().match(/\/manuscritos\/(\d+)/)?.[1]);
-  await expect(page.getByLabel("Contenido de la nueva versión")).toHaveValue("Segunda redacción, la que se publica.");
+  // Versión formal desde la escena: el contenido de la versión coincide con el borrador confirmado.
   await page.getByRole("button", { name: "Guardar como nueva versión" }).click();
   await expect(page).toHaveURL(/\/versiones\/\d+$/);
+  const manuscriptId = Number(page.url().match(/\/manuscritos\/(\d+)/)?.[1]);
   await expect(page.locator("#contenido-version")).toHaveValue("Segunda redacción, la que se publica.");
 
-  // Restaurar el punto de conflicto: el borrador pasa a su contenido, y el estado anterior queda como punto.
+  // Restaurar el punto de conflicto desde la escena: el borrador pasa a su contenido, y el estado anterior queda como punto.
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Puntos de recuperación" })).toBeVisible();
   const points = await (await request.get(`${API}/projects/${projectId}/manuscripts/${manuscriptId}/recovery-points`)).json();
@@ -277,7 +274,7 @@ test("7-8: crear una versión formal con el texto esperado y restaurar un punto 
   }
   expect(index, "el conflicto debe haber creado su punto de recuperación").toBeGreaterThanOrEqual(0);
   await page.getByRole("button", { name: /^Restaurar punto de / }).nth(index).click();
-  await expect(page.getByLabel("Contenido de la nueva versión")).toHaveValue("Mi redacción conflictiva.");
+  await expect(editor(page)).toHaveValue("Mi redacción conflictiva.");
   await expect(page.getByText("Antes de restaurar").first()).toBeVisible();
   // La versión formal publicada no cambia con la restauración del borrador.
   const versions = await (await request.get(`${API}/projects/${projectId}/manuscripts/${manuscriptId}/versions`)).json();

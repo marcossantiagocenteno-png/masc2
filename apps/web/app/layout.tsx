@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { UnsavedChangesProvider } from "@/components/planning/UnsavedChanges";
+import { ContextPanel } from "@/components/workspace/ContextPanel";
 import { ProjectsSidebar } from "@/components/workspace/ProjectsSidebar";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 import "./globals.css";
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </nav>
             </div>
           </header>
-          <WorkspaceShell sidebar={<ProjectsSidebar />}>{children}</WorkspaceShell>
+          <WorkspaceShell sidebar={<ProjectsSidebar />} context={<ContextPanel />}>
+            {children}
+          </WorkspaceShell>
         </UnsavedChangesProvider>
       </body>
     </html>

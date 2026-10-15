@@ -32,8 +32,8 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
 
   // La biblioteca lista ambos proyectos.
   await page.goto("/proyectos");
-  await expect(page.getByRole("link", { name: nameA })).toBeVisible();
-  await expect(page.getByRole("link", { name: nameB })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: nameA })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: nameB })).toBeVisible();
 
   // Archivar A: confirmación, y sus textos siguen legibles.
   await page.goto(projectAUrl);
@@ -45,12 +45,12 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
 
   // Aparece en el filtro de archivados y no en los activos.
   await page.goto("/proyectos");
-  await expect(page.getByRole("link", { name: nameA })).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("link", { name: nameA })).toHaveCount(0);
   await page.getByRole("button", { name: "Archivados" }).click();
-  await expect(page.getByRole("link", { name: nameA })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: nameA })).toBeVisible();
 
   // Restaurar: vuelve a estar activo.
-  await page.getByRole("link", { name: nameA }).click();
+  await page.getByRole("main").getByRole("link", { name: nameA }).click();
   await page.getByRole("button", { name: "Restaurar proyecto" }).click();
   await expect(page.getByText("Proyecto restaurado.")).toBeVisible();
   await expect(page.getByLabel("Título")).toBeVisible();

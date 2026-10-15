@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { UnsavedChangesProvider } from "@/components/planning/UnsavedChanges";
 
 const SECTIONS = [
   { segment: "", label: "Visión general" },
@@ -27,7 +26,7 @@ export default function ProjectWorkspaceLayout({ children }: { children: ReactNo
   }
 
   return (
-    <UnsavedChangesProvider>
+    <>
       <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
         <p className="ne-kicker">Espacio de trabajo de la novela</p>
         <nav aria-label="Secciones de la novela" className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-b border-[var(--color-line)] text-[0.9375rem]">
@@ -48,6 +47,6 @@ export default function ProjectWorkspaceLayout({ children }: { children: ReactNo
         </nav>
       </div>
       {children}
-    </UnsavedChangesProvider>
+    </>
   );
 }

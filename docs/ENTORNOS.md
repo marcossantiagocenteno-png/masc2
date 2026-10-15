@@ -27,3 +27,8 @@ el 15 de octubre. Este documento describe la configuración, no el contenido de 
 1. Con el backend en marcha, abre `http://localhost:8000/health`. Debe mostrar `"al_dia": true` en `esquema`.
 2. Para saber qué archivo usa el backend: el valor de `DATABASE_URL` si está definido; si no, `data/novel_engine.sqlite`.
 3. Para saber qué base contiene tus novelas, lista proyectos con la API (`GET /projects`) antes de tocar nada.
+
+## Asistente
+
+Variables del asistente y del proveedor externo: ver `docs/ASISTENTE.md`. Por defecto el asistente usa el proveedor
+simulado, sin red ni claves. La clave `ANTHROPIC_API_KEY` solo debe existir en el entorno del backend.

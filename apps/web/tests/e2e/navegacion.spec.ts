@@ -25,12 +25,13 @@ const SECCIONES = [
   { segmento: "estructura", ancla: "estructura", titulo: "Estructura", etiqueta: "Estructura" },
 ] as const;
 
-test("la navegación de la novela tiene solo Manuscrito y Visión general", async ({ page }) => {
+test("la navegación de la novela tiene Manuscrito, Asistente y Visión general, y nada más", async ({ page }) => {
   const projectId = await createProject(page, `Pestañas ${runId}`);
   await page.goto(`/proyectos/${projectId}`);
   const nav = page.getByRole("navigation", { name: "Secciones de la novela" });
-  await expect(nav.getByRole("link")).toHaveCount(2);
+  await expect(nav.getByRole("link")).toHaveCount(3);
   await expect(nav.getByRole("link", { name: "Manuscrito", exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Asistente", exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Visión general", exact: true })).toBeVisible();
 });
 

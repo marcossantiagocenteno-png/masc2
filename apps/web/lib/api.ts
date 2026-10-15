@@ -231,6 +231,66 @@ export class ApiError extends Error {
   }
 }
 
+export type AsistenteProveedor = { nombre: string; simulado: boolean; externo: boolean };
+
+export type AsistenteMensaje = {
+  id: number;
+  client_id: string | null;
+  role: "usuario" | "asistente" | "sistema";
+  content: string;
+  proveedor: string | null;
+  simulado: boolean;
+  created_at: string;
+};
+
+export type AsistenteEstadoPropuesta = "pendiente" | "aplicada" | "rechazada" | "fallida" | "desactualizada";
+
+export type AsistentePropuesta = {
+  id: number;
+  message_id: number | null;
+  operacion: "crear" | "actualizar";
+  entidad: "personaje" | "lugar" | "elemento_trama" | "acontecimiento" | "premisa";
+  target_id: number | null;
+  datos: Record<string, string>;
+  actual: Record<string, string>;
+  motivo: string;
+  estado: AsistenteEstadoPropuesta;
+  resultado: string | null;
+  resultado_id: number | null;
+  base_cambiada: boolean;
+  created_at: string;
+  decided_at: string | null;
+  applied_at: string | null;
+};
+
+export type AsistenteMemoria = {
+  id: number;
+  kind: "confirmado" | "propuesta" | "idea" | "pendiente" | "contradiccion" | "rechazada";
+  texto: string;
+  proposal_id: number | null;
+  updated_at: string;
+};
+
+export type AsistenteEstado = {
+  conversacion_id: number;
+  mensajes: AsistenteMensaje[];
+  proveedor: AsistenteProveedor;
+};
+
+export type AsistenteEnvio = {
+  mensajes: AsistenteMensaje[];
+  propuestas: AsistentePropuesta[];
+  error: string | null;
+};
+
+export type AsistenteVistaPrevia = {
+  contenido: string;
+  huella: string;
+  proveedor: string;
+  externo: boolean;
+  simulado: boolean;
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -272,6 +332,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  asistenteEstado: (projectId: number) => request<AsistenteEstado>(`/projects/${projectId}/asistente`),
+
+  asistenteVistaPrevia: (projectId: number, texto: string) =>
+    request<AsistenteVistaPrevia>(`/projects/${projectId}/asistente/vista-previa`, {
+      method: "POST",
+      body: JSON.stringify({ texto }),
+    }),
+
+  asistenteEnviar: (projectId: number, body: { client_id: string; texto: string; autorizacion_hash?: string }) =>
+    request<AsistenteEnvio>(`/projects/${projectId}/asistente/mensajes`, { method: "POST", body: JSON.stringify(body) }),
+
+  asistentePropuestas: (projectId: number) =>
+    request<AsistentePropuesta[]>(`/projects/${projectId}/asistente/propuestas`),
+
+  asistenteAprobar: (projectId: number, proposalId: number) =>
+    request<AsistentePropuesta>(`/projects/${projectId}/asistente/propuestas/${proposalId}/aprobar`, { method: "POST" }),
+
+  asistenteRechazar: (projectId: number, proposalId: number) =>
+    request<AsistentePropuesta>(`/projects/${projectId}/asistente/propuestas/${proposalId}/rechazar`, { method: "POST" }),
+
+  asistenteMemoria: (projectId: number) => request<AsistenteMemoria[]>(`/projects/${projectId}/asistente/memoria`),
+
   listManuscripts: () => request<ManuscriptSummary[]>("/manuscripts"),
 
   getManuscript: (id: number) => request<ManuscriptSummary>(`/manuscripts/${id}`),

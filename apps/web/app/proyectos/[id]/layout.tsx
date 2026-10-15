@@ -7,6 +7,8 @@ import type { ReactNode } from "react";
 const SECTIONS: { segment: string; label: string }[] = [
   // Siempre visible: vuelve al índice del manuscrito desde cualquier apartado.
   { segment: "libro", label: "Manuscrito" },
+  // Chat de la novela: propuestas que el autor aprueba o rechaza; nada cambia sin aprobación.
+  { segment: "asistente", label: "Asistente" },
   // Personajes, lugares, trama, cronología y estructura viven en la visión general (ver apps/web/app/proyectos/[id]/page.tsx).
   { segment: "", label: "Visión general" },
 ];

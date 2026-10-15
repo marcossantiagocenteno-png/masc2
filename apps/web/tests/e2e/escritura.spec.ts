@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { section } from "./helpers/secciones";
 
 /**
  * Escritura de escenas: cada escena escribe en su propio manuscrito, desde la estructura.
@@ -17,26 +18,22 @@ async function createProject(page: Page, name: string) {
   return Number(page.url().match(/\/proyectos\/(\d+)/)?.[1]);
 }
 
-async function section(page: Page, name: string) {
-  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name, exact: true }).click();
-}
-
 function status(page: Page, text: string): Locator {
   return page.getByRole("status").filter({ hasText: text });
 }
 
 async function addScene(page: Page, title: string, parentLabel?: string) {
-  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: "Escena" });
-  if (parentLabel) await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Tipo", { exact: true }).selectOption({ label: "Escena" });
+  if (parentLabel) await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Añadir escena", exact: true }).click();
   await expect(status(page, "añadid")).toBeVisible();
 }
 
 async function addChapter(page: Page, title: string, parentLabel: string) {
-  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: "Capítulo" });
-  await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Tipo", { exact: true }).selectOption({ label: "Capítulo" });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(title);
   await page.getByRole("button", { name: "Añadir capítulo", exact: true }).click();
   await expect(status(page, "añadid")).toBeVisible();
 }

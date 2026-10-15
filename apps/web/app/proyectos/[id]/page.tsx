@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { DirectivesForm } from "@/components/planning/DirectivesForm";
+import { ElementCollection } from "@/components/planning/ElementCollection";
+import { EstructuraRecomendada } from "@/components/planning/EstructuraRecomendada";
 import { NarrativeForm } from "@/components/planning/NarrativeForm";
+import { StructureView } from "@/components/planning/StructureView";
+import { COLLECTIONS } from "@/lib/planning";
 import { manuscriptPath } from "@/lib/manuscript-paths";
 import {
   api,
@@ -22,6 +26,8 @@ export default function ProjectPanelPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [manuscripts, setManuscripts] = useState<ManuscriptSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Al crear un acto desde las recomendaciones, la vista de actos se vuelve a cargar.
+  const [estructuraRevision, setEstructuraRevision] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -140,18 +146,65 @@ export default function ProjectPanelPage() {
         ) : null}
       </header>
 
-      <section aria-labelledby="vision" className="flex flex-col gap-4">
-        <h2 id="vision" className="ne-section-title">
+      <nav aria-label="Secciones de la visión general" className="ne-meta flex flex-wrap gap-x-5 gap-y-2">
+        <a href="#vision" className="ne-link">Premisa y géneros</a>
+        <a href="#directrices" className="ne-link">Directrices</a>
+        <a href="#personajes" className="ne-link">Personajes</a>
+        <a href="#lugares" className="ne-link">Lugares</a>
+        <a href="#trama" className="ne-link">Trama</a>
+        <a href="#cronologia" className="ne-link">Cronología</a>
+        <a href="#estructura" className="ne-link">Estructura</a>
+        <Link href={`/proyectos/${projectId}/libro`} className="ne-link">Manuscrito</Link>
+      </nav>
+
+      <section id="vision" aria-labelledby="vision-titulo" className="flex flex-col gap-4">
+        <h2 id="vision-titulo" className="ne-section-title">
           Visión general de la novela
         </h2>
         <NarrativeForm projectId={projectId} />
       </section>
 
-      <section aria-labelledby="directrices" className="flex flex-col gap-4">
-        <h2 id="directrices" className="ne-section-title">
+      <section id="directrices" aria-labelledby="directrices-titulo" className="flex flex-col gap-4">
+        <h2 id="directrices-titulo" className="ne-section-title">
           Directrices narrativas
         </h2>
         <DirectivesForm projectId={projectId} />
+      </section>
+
+      <section id="personajes" aria-labelledby="personajes-titulo" className="flex flex-col gap-4">
+        <h2 id="personajes-titulo" className="ne-section-title">
+          Personajes
+        </h2>
+        <ElementCollection projectId={projectId} config={COLLECTIONS.personajes} />
+      </section>
+
+      <section id="lugares" aria-labelledby="lugares-titulo" className="flex flex-col gap-4">
+        <h2 id="lugares-titulo" className="ne-section-title">
+          Lugares
+        </h2>
+        <ElementCollection projectId={projectId} config={COLLECTIONS.lugares} />
+      </section>
+
+      <section id="trama" aria-labelledby="trama-titulo" className="flex flex-col gap-4">
+        <h2 id="trama-titulo" className="ne-section-title">
+          Trama y misterios
+        </h2>
+        <ElementCollection projectId={projectId} config={COLLECTIONS.trama} />
+      </section>
+
+      <section id="cronologia" aria-labelledby="cronologia-titulo" className="flex flex-col gap-4">
+        <h2 id="cronologia-titulo" className="ne-section-title">
+          Cronología
+        </h2>
+        <ElementCollection projectId={projectId} config={COLLECTIONS.cronologia} />
+      </section>
+
+      <section id="estructura" aria-labelledby="estructura-seccion-titulo" className="flex flex-col gap-8">
+        <h2 id="estructura-seccion-titulo" className="ne-section-title">
+          Estructura
+        </h2>
+        <EstructuraRecomendada projectId={projectId} onActoCreado={() => setEstructuraRevision((value) => value + 1)} />
+        <StructureView key={estructuraRevision} projectId={projectId} />
       </section>
 
       {error ? (

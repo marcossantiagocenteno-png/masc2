@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { section } from "./helpers/secciones";
 
 /**
  * Validación del flujo de escritura de principio a fin (fase 2g). Cada prueba crea su propia novela con datos
@@ -18,28 +19,14 @@ async function createProject(page: Page, name: string): Promise<number> {
   return Number(page.url().match(/\/proyectos\/(\d+)/)?.[1]);
 }
 
-const SECTION_PATH: Record<string, string> = {
-  Personajes: "personajes",
-  Lugares: "lugares",
-  "Trama y misterios": "trama",
-  Cronología: "cronologia",
-  Estructura: "estructura",
-};
-
-/** Navega a una sección y espera a que la URL cambie: Next navega de forma asíncrona. */
-async function section(page: Page, name: string) {
-  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name, exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/${SECTION_PATH[name]}$`));
-}
-
 function status(page: Page, text: string): Locator {
   return page.getByRole("status").filter({ hasText: text });
 }
 
 async function addNode(page: Page, kind: "Acto" | "Capítulo" | "Escena", title: string, parentLabel?: string) {
-  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
-  if (parentLabel) await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
+  if (parentLabel) await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(title);
   await page.getByRole("button", { name: `Añadir ${kind.toLowerCase()}`, exact: true }).click();
   await expect(status(page, "añadid")).toBeVisible();
 }
@@ -86,7 +73,7 @@ test("1-3: crear la novela, completar sus datos, estructurarla, reorganizarla y 
   await section(page, "Trama y misterios");
   await page.getByLabel("Título del nuevo elemento de trama").fill(`Carta ${run}`);
   await page.getByRole("button", { name: "Crear elemento de trama", exact: true }).click();
-  await expect(status(page, "creado")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Trama y misterios" }).getByRole("status").filter({ hasText: "creado" })).toBeVisible();
 
   // Estructura: acto, dos capítulos y tres escenas.
   await section(page, "Estructura");
@@ -175,7 +162,7 @@ test("4-5: escribir, salir con texto recién escrito sin perderlo, regresar y re
   // Escribir y salir de inmediato, antes de que venza el anti-rebote: el texto debe enviarse antes de salir.
   await editor(page).fill("Texto escrito justo antes de salir.");
   await page.getByRole("link", { name: "Volver a la estructura" }).click();
-  await expect(page).toHaveURL(/\/proyectos\/\d+\/estructura$/);
+  await expect(page).toHaveURL(/\/proyectos\/\d+#estructura$/);
   await expect(page.getByRole("link", { name: `Abrir Escena: Nav 1 ${run}`, exact: true })).toBeVisible();
   expect(dialogs, "salir con el texto pendiente no debe pedir confirmación si el guardado funciona").toEqual([]);
 

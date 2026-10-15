@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { section } from "./helpers/secciones";
 
 /**
  * Espacio de trabajo (fase 3b, etapa 1): lista de novelas persistente, plegado en pantallas estrechas
@@ -55,7 +56,7 @@ test("cambiar de novela desde la lista o la cabecera con cambios sin guardar pid
   await createProject(page, currentName);
 
   // Un personaje con texto sin guardar en la novela actual.
-  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Personajes", exact: true }).click();
+  await section(page, "Personajes");
   await page.getByLabel("Nombre del nuevo personaje").fill(`Pendiente ${runId}`);
   await page.getByRole("button", { name: "Crear personaje" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Personaje creado" })).toBeVisible();
@@ -65,13 +66,15 @@ test("cambiar de novela desde la lista o la cabecera con cambios sin guardar pid
   page.once("dialog", (dialog) => void dialog.dismiss());
   await novelList(page).getByRole("link", { name: otherName, exact: true }).click();
   await expect(page.getByLabel("Objetivos")).toHaveValue("Cambio sin guardar");
-  await expect(page).toHaveURL(/\/proyectos\/\d+\/personajes$/);
+  // Al quedarse, sigue en la misma novela, en la sección de personajes de la visión general.
+  await expect(page).toHaveURL(/\/proyectos\/\d+#personajes$/);
 
   // Desde la cabecera: el mismo aviso protege el cambio.
   page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Manuscritos", exact: true }).click();
   await expect(page.getByLabel("Objetivos")).toHaveValue("Cambio sin guardar");
-  await expect(page).toHaveURL(/\/proyectos\/\d+\/personajes$/);
+  // Al quedarse, sigue en la misma novela, en la sección de personajes de la visión general.
+  await expect(page).toHaveURL(/\/proyectos\/\d+#personajes$/);
 
   // Aceptar desde la lista: sí se sale a la otra novela.
   page.once("dialog", (dialog) => void dialog.accept());

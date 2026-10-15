@@ -56,8 +56,8 @@ test("el ranking muestra motivos, y un punto de vista de un personaje pone Siete
   await expect(modelo(page, "Pirámide de Freytag")).toContainText("Limitaciones.");
   await expect(modelo(page, "Save the Cat!")).toContainText("Está pensado para guion de cine");
   // Los datos usados se ven tal cual se guardaron.
-  await expect(page.getByText(PREMISA, { exact: true })).toBeVisible();
-  await expect(page.getByText("Un personaje", { exact: true })).toBeVisible();
+  await expect(page.getByRole("blockquote").filter({ hasText: PREMISA })).toBeVisible();
+  await expect(page.locator("dd").filter({ hasText: /^Un personaje$/ })).toBeVisible();
 });
 
 test("sin datos, los modelos empiezan por el orden de referencia y lo dice", async ({ page }) => {

@@ -51,7 +51,7 @@ export default function LibroPage() {
       {book !== null && book.length === 0 ? (
         <div className="ne-empty">
           <p>Todavía no hay actos, capítulos ni escenas.</p>
-          <Link href={`/proyectos/${projectId}/estructura`} className="ne-link">
+          <Link href={`/proyectos/${projectId}#estructura`} className="ne-link">
             Crear la estructura
           </Link>
         </div>

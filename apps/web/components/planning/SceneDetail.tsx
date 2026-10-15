@@ -129,7 +129,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
     return (
       <div className="flex flex-col gap-3">
         <p>Esta escena no existe en esta novela.</p>
-        <Link href={`/proyectos/${projectId}/estructura`} className="ne-link">
+        <Link href={`/proyectos/${projectId}#estructura`} className="ne-link">
           Volver a la estructura
         </Link>
       </div>
@@ -141,7 +141,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-3">
-        <Link href={`/proyectos/${projectId}/estructura`} className="text-sm underline">
+        <Link href={`/proyectos/${projectId}#estructura`} className="text-sm underline">
           Volver a la estructura
         </Link>
         <div className="flex flex-wrap items-center gap-3">
@@ -197,7 +197,7 @@ export function SceneDetail({ projectId, nodeId }: { projectId: number; nodeId: 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="min-w-0 break-words">
                     {route ? (
-                      <Link href={`/proyectos/${projectId}/${COLLECTION_PATH[route]}?seleccionado=${item.source_id}`} className="ne-link font-medium">
+                      <Link href={`/proyectos/${projectId}?coleccion=${COLLECTION_PATH[route]}&seleccionado=${item.source_id}#${COLLECTION_PATH[route]}`} className="ne-link font-medium">
                         {name}
                       </Link>
                     ) : (

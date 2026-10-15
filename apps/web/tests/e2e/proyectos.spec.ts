@@ -15,7 +15,7 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
 
   // Proyecto A con un manuscrito propio.
   await createProject(page, nameA);
-  await page.getByLabel("Título").fill(`Manuscrito de A ${runId}`);
+  await page.getByRole("region", { name: "Nuevo manuscrito en este proyecto" }).getByLabel("Título", { exact: true }).fill(`Manuscrito de A ${runId}`);
   await page.getByLabel("Texto de la versión 1").fill("Texto exclusivo de la novela A.");
   await page.getByRole("button", { name: "Crear manuscrito" }).click();
   // La visión general no lista los manuscritos: el último trabajo enlaza con el recién creado.
@@ -26,7 +26,7 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
   await createProject(page, nameB);
   await expect(page.getByRole("heading", { level: 1, name: nameB })).toBeVisible();
   await expect(page.getByText(`Manuscrito de A ${runId}`)).toHaveCount(0);
-  await page.getByLabel("Título").fill(`Manuscrito de B ${runId}`);
+  await page.getByRole("region", { name: "Nuevo manuscrito en este proyecto" }).getByLabel("Título", { exact: true }).fill(`Manuscrito de B ${runId}`);
   await page.getByLabel("Texto de la versión 1").fill("Texto exclusivo de la novela B.");
   await page.getByRole("button", { name: "Crear manuscrito" }).click();
   await expect(page.getByRole("link", { name: `Abrir «Manuscrito de B ${runId}» para escribir o revisar`, exact: true })).toBeVisible();
@@ -58,5 +58,5 @@ test("dos proyectos son independientes y el archivado no borra nada", async ({ p
   await page.getByRole("main").getByRole("link", { name: nameA }).click();
   await page.getByRole("button", { name: "Restaurar proyecto" }).click();
   await expect(page.getByText("Proyecto restaurado.")).toBeVisible();
-  await expect(page.getByLabel("Título")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Nuevo manuscrito en este proyecto" }).getByLabel("Título", { exact: true })).toBeVisible();
 });

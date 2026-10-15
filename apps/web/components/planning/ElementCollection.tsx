@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "@/lib/api";
-import { CollectionConfig, labelOf } from "@/lib/planning";
+import { COLLECTION_PATH, CollectionConfig, labelOf } from "@/lib/planning";
 import { CanonBadge } from "./CanonBadge";
 import { ElementEditor, type Item } from "./ElementEditor";
 import { RelatedScenes } from "./RelatedScenes";
@@ -21,11 +21,14 @@ export function ElementCollection({ projectId, config }: Props) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  // Elemento que llega desde otra sección con ?seleccionado=id. Puede estar archivado: entonces se muestra la lista con archivados.
+  // Elemento que llega desde otra sección con ?coleccion=ruta&seleccionado=id. Solo aplica a su propia colección,
+  // porque varias colecciones comparten la visión general. Puede estar archivado: entonces se muestra con archivados.
   const requestedId = useRef<number | null>(null);
 
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get("seleccionado");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("coleccion") !== COLLECTION_PATH[config.route]) return;
+    const raw = params.get("seleccionado");
     const id = raw === null ? NaN : Number(raw);
     if (Number.isInteger(id) && id > 0) {
       requestedId.current = id;

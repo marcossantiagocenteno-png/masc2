@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { section } from "./helpers/secciones";
 
 /**
  * Vista de libro (fase 3b, E1): índice derivado de la estructura, capítulos vacíos sin manuscrito, editor que solo crea
@@ -16,9 +17,9 @@ async function createProject(page: Page, name: string): Promise<number> {
 }
 
 async function addNode(page: Page, kind: "Acto" | "Capítulo" | "Escena", title: string, parentLabel?: string) {
-  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
-  if (parentLabel) await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
+  if (parentLabel) await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(title);
   await page.getByRole("button", { name: `Añadir ${kind.toLowerCase()}`, exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "añadid" })).toBeVisible();
 }
@@ -77,7 +78,7 @@ test("«Empezar a escribir» crea la escena y su manuscrito con el texto escrito
 test("el control «Manuscrito» vuelve al índice desde cualquier apartado de la novela", async ({ page }) => {
   const projectId = await createProject(page, `Control ${runId}`);
   await page.goto(`/proyectos/${projectId}/estructura`);
-  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Personajes", exact: true }).click();
+  await section(page, "Personajes");
   await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscrito", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/proyectos/${projectId}/libro$`));
   await expect(page.getByRole("heading", { level: 1, name: `Control ${runId}` })).toBeVisible();

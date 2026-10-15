@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { section } from "./helpers/secciones";
 
 /**
  * Espacio de trabajo de planificación: recorridos principales sobre la API real.
@@ -14,10 +15,6 @@ async function createProject(page: Page, name: string) {
   await page.getByRole("button", { name: "Crear proyecto" }).click();
   await expect(page).toHaveURL(/\/proyectos\/\d+$/);
   return page.url();
-}
-
-async function section(page: Page, name: string) {
-  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name, exact: true }).click();
 }
 
 function status(page: Page, text: string): Locator {
@@ -39,9 +36,9 @@ async function createPlace(page: Page, name: string) {
 }
 
 async function addNode(page: Page, kind: "Acto" | "Capítulo" | "Escena", title: string, parentLabel?: string) {
-  await page.getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
-  if (parentLabel) await page.getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(title);
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Tipo", { exact: true }).selectOption({ label: kind });
+  if (parentLabel) await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true }).selectOption({ label: parentLabel });
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(title);
   await page.getByRole("button", { name: `Añadir ${kind.toLowerCase()}`, exact: true }).click();
   await expect(status(page, "añadid")).toBeVisible();
 }
@@ -63,7 +60,7 @@ async function failCharacterWrites(page: Page, detail: string) {
 test("abrir una novela, ver su espacio de trabajo y editar su visión general", async ({ page }) => {
   await createProject(page, `Visión ${runId}`);
   await expect(page.getByText("Espacio de trabajo de la novela")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Trama y misterios" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Secciones de la visión general" }).getByRole("link", { name: "Trama", exact: true })).toBeVisible();
 
   // Advertencia honesta: estos campos no tienen protección de canon.
   await expect(page.getByText(/Todavía no tienen las protecciones de canon/)).toBeVisible();
@@ -102,7 +99,7 @@ test("crear con solo un nombre, editar y archivar un personaje", async ({ page }
   await expect(status(page, "archivado")).toBeVisible();
   await expect(page.getByRole("button", { name: new RegExp(name) })).toHaveCount(0);
 
-  await page.getByLabel("Mostrar archivados").check();
+  await page.getByRole("region", { name: "Personajes" }).getByLabel("Mostrar archivados").check();
   await expect(page.getByRole("button", { name: new RegExp(name) })).toBeVisible();
   await expect(page.getByText("Archivado", { exact: true }).first()).toBeVisible();
 });
@@ -230,20 +227,25 @@ test("los datos de una novela no aparecen en otra", async ({ page }) => {
   await expect(page.getByRole("button", { name: new RegExp(`Solo de A ${runId}`) })).toBeVisible();
 });
 
-test("cambiar de elemento o de sección no descarta cambios sin preguntar", async ({ page }) => {
+test("cambiar de sección dentro de la visión general no descarta cambios; salir de la novela pide confirmación", async ({ page }) => {
   await createProject(page, `Aviso ${runId}`);
   await createCharacter(page, `Pendiente ${runId}`);
   await page.getByLabel("Objetivos").fill("Cambio sin guardar");
 
-  // Cambiar de sección: el aviso permite quedarse.
-  page.once("dialog", (dialog) => void dialog.dismiss());
+  // Las secciones de la visión general están en la misma página: saltar a otra no abandona el formulario.
   await section(page, "Lugares");
   await expect(page.getByLabel("Objetivos")).toHaveValue("Cambio sin guardar");
 
+  // Salir a «Manuscrito» sí es una ruta distinta: el aviso permite quedarse.
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscrito", exact: true }).click();
+  await expect(page.getByLabel("Objetivos")).toHaveValue("Cambio sin guardar");
+  await expect(page).not.toHaveURL(/\/libro$/);
+
   // Aceptar el aviso: sí se sale.
   page.once("dialog", (dialog) => void dialog.accept());
-  await section(page, "Lugares");
-  await expect(page).toHaveURL(/\/lugares$/);
+  await page.getByRole("navigation", { name: "Secciones de la novela" }).getByRole("link", { name: "Manuscrito", exact: true }).click();
+  await expect(page).toHaveURL(/\/libro$/);
 });
 
 /** Fila (li) de un nodo del árbol, identificada por su botón «Subir» (nombre exacto y único en cada prueba). */
@@ -385,9 +387,9 @@ test("contraer y expandir ramas, y añadir el siguiente elemento desde su fila",
 
   // Añadir una escena desde la fila del capítulo: el padre queda elegido y el título enfocado.
   await page.getByRole("button", { name: `Añadir escena dentro de Capítulo: Cap RR ${runId}`, exact: true }).click();
-  await expect(page.getByLabel("Dentro de", { exact: true })).toHaveValue(/\d+/);
-  await expect(page.getByLabel("Título (opcional)", { exact: true })).toBeFocused();
-  await page.getByLabel("Título (opcional)", { exact: true }).fill(`Escena rápida ${runId}`);
+  await expect(page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Dentro de", { exact: true })).toHaveValue(/\d+/);
+  await expect(page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true })).toBeFocused();
+  await page.getByRole("form", { name: "Añadir a la estructura" }).getByLabel("Título (opcional)", { exact: true }).fill(`Escena rápida ${runId}`);
   await page.getByRole("button", { name: "Añadir escena", exact: true }).click();
   await expect(status(page, "Escena añadida")).toBeVisible();
   await expect(page.getByRole("link", { name: `Abrir Escena: Escena rápida ${runId}` })).toBeVisible();
@@ -402,8 +404,8 @@ test("desde una escena se abre su personaje y desde el personaje se llega a la e
   await linkCharacterToScene(page, character, `Llegada N ${runId}`);
 
   await page.getByRole("link", { name: character, exact: true }).click();
-  await expect(page).toHaveURL(/\/personajes\?seleccionado=\d+$/);
-  await expect(page.getByLabel("Nombre", { exact: true })).toHaveValue(character);
+  await expect(page).toHaveURL(/\/proyectos\/\d+\?coleccion=personajes&seleccionado=\d+#personajes$/);
+  await expect(page.getByRole("region", { name: "Personajes" }).getByLabel("Nombre", { exact: true })).toHaveValue(character);
   await expect(page.getByRole("heading", { name: "Escenas relacionadas" })).toBeVisible();
   await page.getByRole("link", { name: `Llegada N ${runId}`, exact: true }).click();
   await expect(page.getByRole("heading", { name: `Planificación de «Llegada N ${runId}»` })).toBeVisible();

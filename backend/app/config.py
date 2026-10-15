@@ -40,6 +40,8 @@ DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_DATABASE_PATH.as_posix()}"
 DEFAULT_MAX_VERSION_CHARS = 500_000
 DEFAULT_CORS_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 DEFAULT_ANALYSIS_PROVIDER = "simulado"
+DEFAULT_ASSISTANT_PROVIDER = "simulado"
+DEFAULT_ASSISTANT_MAX_CONTEXT_CHARS = 15_000
 DEFAULT_MAX_ANALYSIS_CHARS = 8_000
 DEFAULT_ANTHROPIC_TIMEOUT_SECONDS = 60.0
 DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 2_000
@@ -60,6 +62,9 @@ class Settings:
     max_version_chars: int = DEFAULT_MAX_VERSION_CHARS
     cors_origins: tuple[str, ...] = DEFAULT_CORS_ORIGINS
     analysis_provider: str = DEFAULT_ANALYSIS_PROVIDER
+    # Asistente conversacional: "simulado" (reglas locales, sin llamadas externas) o "anthropic".
+    assistant_provider: str = DEFAULT_ASSISTANT_PROVIDER
+    assistant_max_context_chars: int = DEFAULT_ASSISTANT_MAX_CONTEXT_CHARS
     max_analysis_chars: int = DEFAULT_MAX_ANALYSIS_CHARS
     # ``repr=False``: la clave no debe aparecer al imprimir o registrar la configuración.
     anthropic_api_key: str | None = field(default=None, repr=False)
@@ -158,6 +163,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         max_version_chars=max_chars,
         cors_origins=origins,
         analysis_provider=provider,
+        assistant_provider=source.get("NOVEL_ENGINE_ASSISTANT_PROVIDER", "").strip() or DEFAULT_ASSISTANT_PROVIDER,
+        assistant_max_context_chars=_int_or_default(
+            source, "NOVEL_ENGINE_ASSISTANT_MAX_CONTEXT_CHARS", DEFAULT_ASSISTANT_MAX_CONTEXT_CHARS
+        ),
         max_analysis_chars=analysis_limit,
         anthropic_api_key=api_key,
         anthropic_model=model,

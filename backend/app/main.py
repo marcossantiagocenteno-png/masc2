@@ -33,6 +33,7 @@ from app.drafts.errors import DraftConflict
 from app.drafts.routes import router as drafts_router
 from app.analysis.routes import router as analysis_router
 from app.planning.routes import router as planning_router
+from app.assistant.routes import router as assistant_router
 from app.projects.routes import router as projects_router
 from app.projects.scoped_routes import router as scoped_manuscripts_router
 from app.texts.errors import TextError
@@ -127,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(scoped_manuscripts_router)
     application.include_router(drafts_router)
     application.include_router(planning_router)
+    application.include_router(assistant_router)
     return application
 
 

@@ -64,7 +64,7 @@ Debe terminar sin errores y mostrar los pasos `0010` y `0011`.
 ### 6. Verificar
 
 Repite el recuento del paso 4. **Debe ser idéntico.** Después arranca el backend y abre `http://localhost:8000/health`:
-`"al_dia": true` y `"revision_actual": "0011_recomendaciones_estructura"`.
+`"al_dia": true` y `"revision_actual": "0012_asistente"`.
 
 ### 7. Si algo falla
 

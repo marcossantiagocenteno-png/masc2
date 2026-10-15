@@ -32,7 +32,7 @@ def _base_en_revision(tmp_path: Path, revision: str) -> str:
 
 
 def test_la_revision_esperada_es_la_ultima_migracion() -> None:
-    assert revision_esperada() == "0011_recomendaciones_estructura"
+    assert revision_esperada() == "0012_asistente"
 
 
 def test_health_informa_de_una_base_al_dia(client: TestClient) -> None:

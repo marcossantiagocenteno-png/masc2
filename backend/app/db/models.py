@@ -547,3 +547,105 @@ class StructureProposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AssistantConversation(Base):
+    """Conversación del asistente de un proyecto. Cada conversación pertenece a una sola novela."""
+
+    __tablename__ = "assistant_conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class AssistantMessage(Base):
+    """Mensaje del historial. ``project_id`` se repite para que cada consulta de aislamiento sea directa.
+
+    ``client_id`` lo genera el navegador: reenviar el mismo mensaje no crea un duplicado.
+    """
+
+    __tablename__ = "assistant_messages"
+    __table_args__ = (
+        CheckConstraint("role IN ('usuario', 'asistente', 'sistema')", name="ck_assistant_messages_role"),
+        UniqueConstraint("conversation_id", "client_id", name="uq_assistant_messages_client"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("assistant_conversations.id"), nullable=False, index=True)
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    role: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    proveedor: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    simulado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class AssistantProposal(Base):
+    """Propuesta de cambio del asistente. No modifica nada hasta que el autor la aprueba.
+
+    Es independiente de las recomendaciones de estructura (F2): tiene su propio contrato y estados.
+    ``base_snapshot`` es el resumen del elemento en el momento de proponer; si cambia antes de aprobar, la
+    propuesta pasa a ``desactualizada``.
+    """
+
+    __tablename__ = "assistant_proposals"
+    __table_args__ = (
+        CheckConstraint("operacion IN ('crear', 'actualizar')", name="ck_assistant_proposals_operacion"),
+        CheckConstraint(
+            "entidad IN ('personaje', 'lugar', 'elemento_trama', 'acontecimiento', 'premisa')",
+            name="ck_assistant_proposals_entidad",
+        ),
+        CheckConstraint(
+            "estado IN ('pendiente', 'aplicada', 'rechazada', 'fallida', 'desactualizada')",
+            name="ck_assistant_proposals_estado",
+        ),
+        Index("ix_assistant_proposals_project_estado", "project_id", "estado"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    conversation_id: Mapped[int | None] = mapped_column(ForeignKey("assistant_conversations.id"), nullable=True)
+    message_id: Mapped[int | None] = mapped_column(ForeignKey("assistant_messages.id"), nullable=True)
+    operacion: Mapped[str] = mapped_column(String(12), nullable=False)
+    entidad: Mapped[str] = mapped_column(String(20), nullable=False)
+    target_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    datos: Mapped[str] = mapped_column(Text, nullable=False)
+    base_snapshot: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    dependencias: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="pendiente", server_default="pendiente")
+    resultado: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resultado_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AssistantMemoryItem(Base):
+    """Memoria narrativa: qué se propuso, se confirmó, se rechazó o sigue pendiente.
+
+    No copia el contenido de los elementos: guarda una frase de estado y la propuesta de origen. El contenido
+    confirmado vive en sus tablas de dominio.
+    """
+
+    __tablename__ = "assistant_memory_items"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('confirmado', 'propuesta', 'idea', 'pendiente', 'contradiccion', 'rechazada')",
+            name="ck_assistant_memory_kind",
+        ),
+        Index("ix_assistant_memory_project_kind", "project_id", "kind"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    texto: Mapped[str] = mapped_column(Text, nullable=False)
+    proposal_id: Mapped[int | None] = mapped_column(ForeignKey("assistant_proposals.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)

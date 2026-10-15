@@ -91,7 +91,7 @@ class PlanningService:
         return self._project(project_id)
 
     @_atomic
-    def update_narrative(self, project_id: int, changes: dict[str, Any]) -> Project:
+    def update_narrative(self, project_id: int, changes: dict[str, Any], commit: bool = True) -> Project:
         project = self._active_project(project_id)
         unknown = set(changes) - set(K.NARRATIVE_FIELDS)
         if unknown:
@@ -104,7 +104,8 @@ class PlanningService:
         for field, value in changes.items():
             setattr(project, field, value)
         project.updated_at = self._clock()
-        self._session.commit()
+        if commit:
+            self._session.commit()
         return project
 
     # ------------------------------------------------------------------
@@ -112,7 +113,9 @@ class PlanningService:
     # ------------------------------------------------------------------
 
     @_atomic
-    def create(self, kind: str, project_id: int, data: dict[str, Any], propuesta: bool = False) -> Any:
+    def create(
+        self, kind: str, project_id: int, data: dict[str, Any], propuesta: bool = False, commit: bool = True
+    ) -> Any:
         """Crea un elemento. Con ``propuesta=True`` queda como propuesta de IA, nunca como canon."""
         self._require_creatable(kind)
         self._active_project(project_id)
@@ -129,7 +132,8 @@ class PlanningService:
             **data,
         )
         self._session.add(row)
-        self._session.commit()
+        if commit:
+            self._session.commit()
         return row
 
     def get(self, kind: str, project_id: int, element_id: int) -> Any:
@@ -164,6 +168,7 @@ class PlanningService:
         changes: dict[str, Any],
         confirmar_cambio_canon: bool = False,
         actor: str = AUTOR,
+        commit: bool = True,
     ) -> Any:
         """Edita un elemento. Si era canónico, exige confirmación y lo devuelve a provisional con una decisión.
 
@@ -207,7 +212,8 @@ class PlanningService:
                 kind, row, "modificar_canon", K.CANONICO, K.PROVISIONAL, snapshot, None, now, actor,
                 resultado=self._snapshot(row),
             )
-        self._session.commit()
+        if commit:
+            self._session.commit()
         return row
 
     @_atomic

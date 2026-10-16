@@ -291,6 +291,19 @@ export type AsistenteVistaPrevia = {
   simulado: boolean;
 };
 
+export type AsistenteEntidad = "personaje" | "lugar" | "elemento_trama" | "acontecimiento" | "premisa";
+
+export type AsistenteCompletarCuerpo = {
+  entidad: AsistenteEntidad;
+  campo: string;
+  entidad_id: number | null;
+  actual: string;
+  instruccion: string | null;
+  autorizacion_hash?: string;
+};
+
+export type AsistenteSugerencia = { texto: string; proveedor: string; simulado: boolean };
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -353,6 +366,18 @@ export const api = {
     request<AsistentePropuesta>(`/projects/${projectId}/asistente/propuestas/${proposalId}/rechazar`, { method: "POST" }),
 
   asistenteMemoria: (projectId: number) => request<AsistenteMemoria[]>(`/projects/${projectId}/asistente/memoria`),
+
+  asistenteCompletarVistaPrevia: (projectId: number, cuerpo: AsistenteCompletarCuerpo) =>
+    request<AsistenteVistaPrevia>(`/projects/${projectId}/asistente/autocompletar/vista-previa`, {
+      method: "POST",
+      body: JSON.stringify(cuerpo),
+    }),
+
+  asistenteCompletar: (projectId: number, cuerpo: AsistenteCompletarCuerpo) =>
+    request<AsistenteSugerencia>(`/projects/${projectId}/asistente/autocompletar`, {
+      method: "POST",
+      body: JSON.stringify(cuerpo),
+    }),
 
   listManuscripts: () => request<ManuscriptSummary[]>("/manuscripts"),
 

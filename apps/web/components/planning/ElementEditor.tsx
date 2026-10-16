@@ -4,10 +4,25 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, formatDate, type CanonFields, type NarrativeDecision } from "@/lib/api";
 import { CANON_HELP, CANON_LABELS, type FieldDef } from "@/lib/planning";
 import { CanonBadge } from "./CanonBadge";
+import { SugerenciaCampo } from "@/components/asistente/SugerenciaCampo";
 import { ConfirmPanel } from "./ConfirmPanel";
 import { useDirty } from "./UnsavedChanges";
 
 export type Item = CanonFields & Record<string, unknown>;
+
+/** Entidades del asistente por ruta de colección. Los campos sugeribles son los mismos que admite el backend. */
+const ENTIDAD_POR_RUTA: Record<string, "personaje" | "lugar" | "elemento_trama" | "acontecimiento"> = {
+  personajes: "personaje",
+  lugares: "lugar",
+  "elementos-trama": "elemento_trama",
+  acontecimientos: "acontecimiento",
+};
+const SUGERIBLES: Record<string, string[]> = {
+  personaje: ["description", "goals", "motivations", "conflicts", "evolution", "notes"],
+  lugar: ["description", "features", "notes"],
+  elemento_trama: ["description", "notes"],
+  acontecimiento: ["description", "notes"],
+};
 
 type Props = {
   projectId: number;
@@ -204,6 +219,18 @@ export function ElementEditor({ projectId, route, item, fields, itemLabel, onCha
                 <input {...common} type={field.type === "number" ? "number" : "text"} min={field.type === "number" ? 0 : undefined} />
               )}
               {field.hint ? <span className="ne-hint">{field.hint}</span> : null}
+              {!archived && ENTIDAD_POR_RUTA[route] && SUGERIBLES[ENTIDAD_POR_RUTA[route]]?.includes(field.name) ? (
+                <SugerenciaCampo
+                  projectId={projectId}
+                  entidad={ENTIDAD_POR_RUTA[route]}
+                  campo={field.name}
+                  entidadId={item.id}
+                  valorActual={values[field.name]}
+                  etiqueta={field.label}
+                  disabled={busy}
+                  onAceptar={(texto) => setValues((current) => ({ ...current, [field.name]: texto }))}
+                />
+              ) : null}
             </div>
           );
         })}

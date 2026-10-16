@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, DEVELOPMENT_STATUS_LABELS, type DevelopmentStatus, type NarrativeData } from "@/lib/api";
 import { toNullable } from "@/lib/planning";
 import { useDirty } from "./UnsavedChanges";
+import { SugerenciaCampo } from "@/components/asistente/SugerenciaCampo";
 
 type Values = {
   premise: string;
@@ -133,6 +134,16 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
         <span className="ne-hint">
           Punto de partida de la novela: la idea central en pocas frases. Todo lo demás se construye a partir de ella.
         </span>
+        <SugerenciaCampo
+          projectId={projectId}
+          entidad="premisa"
+          campo="premise"
+          entidadId={null}
+          valorActual={values.premise}
+          etiqueta="Premisa"
+          disabled={busy}
+          onAceptar={(texto) => setValues((actual) => (actual ? { ...actual, premise: texto } : actual))}
+        />
       </div>
 
       <fieldset className="flex flex-col gap-2" disabled={busy}>
@@ -198,6 +209,16 @@ export function NarrativeForm({ projectId }: { projectId: number }) {
           value={values.theme}
           disabled={busy}
           onChange={(event) => setValues({ ...values, theme: event.target.value })}
+        />
+        <SugerenciaCampo
+          projectId={projectId}
+          entidad="premisa"
+          campo="theme"
+          entidadId={null}
+          valorActual={values.theme}
+          etiqueta="Tema"
+          disabled={busy}
+          onAceptar={(texto) => setValues((actual) => (actual ? { ...actual, theme: texto } : actual))}
         />
       </div>
 

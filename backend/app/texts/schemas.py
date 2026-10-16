@@ -30,7 +30,7 @@ class VersionCreate(_Strict):
 
     content: str
     note: Note | None = None
-    based_on_version_id: int | None = Field(default=None, ge=1)
+    based_on_version_id: int | None = Field(default=None, ge=1, le=2**63 - 1)
 
 
 class ReviewItemIn(_Strict):

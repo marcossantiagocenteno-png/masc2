@@ -275,3 +275,14 @@ def test_respuesta_externa_mal_formada_no_crea_propuestas_y_conserva_el_mensaje(
     assert respuesta.json()["propuestas"] == []
     assert respuesta.json()["error"] is not None
     assert [m["role"] for m in historial] == ["usuario", "sistema"]
+
+
+def test_proveedor_externo_sin_clave_responde_503_y_no_envia_nada(settings: Settings) -> None:
+    sin_clave = Settings(database_url=settings.database_url, assistant_provider="anthropic", anthropic_model=MODEL)
+    fake = FakeClaude(response=tool_response([]))
+    with TestClient(create_app(sin_clave)) as cliente:
+        proyecto = _proyecto(cliente, "Sin clave")
+        respuesta = _chat(cliente, proyecto, "resumen", client_id="cliente-sin-clave-1")
+    assert respuesta.status_code == 503
+    assert "ANTHROPIC_API_KEY" in respuesta.json()["detail"]
+    assert fake.calls == []

@@ -85,6 +85,10 @@ def _normalizar(texto: str) -> str:
     return "".join(c for c in descompuesto if unicodedata.category(c) != "Mn")
 
 
+_PATRON_ACTUALIZAR = re.compile(
+    r"\b(actualiza|cambia|modifica)\b.*?\bdescripcion\b.*?\bpersonaje\s+(.+?)\s+a\s*:?\s*(.+)$",
+    re.IGNORECASE,
+)
 _NOMBRE_ORIGINAL = re.compile(r"\b(?:llamad[oa]|de nombre|nombre)\s+([^\W\d_]+)", re.IGNORECASE)
 _PATRON_CREAR = re.compile(
     r"\b(crea|crear|anade|nuevo|nueva|agrega|agregar)\b.*?\b(personaje|lugar)\b.*?\b(llamad[oa]|de nombre|nombre)\s+([a-zñáéíóú]+)",
@@ -112,6 +116,22 @@ class SimulatedAssistant:
                 f"nodos de estructura: {resumen.get('nodos_estructura', 0)}."
             )
             return RespuestaAsistente(texto=texto)
+        actualizar = _PATRON_ACTUALIZAR.search(normal)
+        if actualizar:
+            # La normalización solo quita tildes: los índices sirven para recuperar el texto original.
+            nombre = mensaje[actualizar.start(2) : actualizar.end(2)].strip()
+            nuevo = mensaje[actualizar.start(3) : actualizar.end(3)].strip()
+            ids = {_normalizar(n): i for n, i in resumen.get("personajes_ids", {}).items()}
+            destino = ids.get(_normalizar(nombre))
+            if destino is None or not nuevo:
+                return RespuestaAsistente(texto=f"No encuentro un personaje llamado «{nombre}» en esta novela.")
+            propuesta = PropuestaBorrador(
+                "actualizar", "personaje", destino, {"description": nuevo}, f"Pedido en el chat: cambiar la descripción de «{nombre}»."
+            )
+            return RespuestaAsistente(
+                texto=f"He preparado un cambio en la descripción de «{nombre}». Nada se guarda hasta que lo apruebes.",
+                propuestas=[propuesta],
+            )
         coincidencia = _PATRON_CREAR.search(normal)
         if coincidencia:
             entidad = coincidencia.group(2).lower()

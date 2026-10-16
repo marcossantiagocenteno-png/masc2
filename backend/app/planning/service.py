@@ -469,11 +469,14 @@ class PlanningService:
 
     def _structure_version(self, project_id: int) -> int:
         """Revisión de la estructura en el momento de la lectura. Lee siempre de la base, no de la caché de sesión."""
-        return self._session.execute(
+        revision = self._session.execute(
             select(Project.structure_version)
             .where(Project.id == project_id)
             .execution_options(populate_existing=True)
-        ).scalar_one()
+        ).scalar_one_or_none()
+        if revision is None:
+            raise NotFoundError(f"no existe el proyecto {project_id}")
+        return revision
 
     def _advance_structure(self, project_id: int, expected: int) -> None:
         """Marca una nueva revisión solo si nadie ha cambiado la estructura desde ``expected``.

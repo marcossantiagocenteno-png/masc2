@@ -181,6 +181,8 @@ def construir_contexto(session: Session, project_id: int, limite_chars: int) -> 
 
     resumen = {
         "personajes": [p.name for p in personajes[:MAX_ITEMS_PER_SECTION] if p.name],
+        # Identificadores por nombre: el proveedor simulado los usa para dirigir una actualización a su elemento.
+        "personajes_ids": {p.name: p.id for p in personajes if p.name},
         "lugares": [lugar.name for lugar in lugares[:MAX_ITEMS_PER_SECTION] if lugar.name],
         "tramas": len(tramas),
         "eventos": len(eventos),

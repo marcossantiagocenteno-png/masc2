@@ -102,6 +102,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             content.update(error.payload)
         return JSONResponse(status_code=error.status_code, content=content)
 
+    @application.exception_handler(OverflowError)
+    def _handle_id_fuera_de_rango(_request: Request, _error: OverflowError) -> JSONResponse:
+        # SQLite no admite enteros fuera de 64 bits: un id así no puede existir, así que es «no encontrado».
+        return JSONResponse(status_code=404, content={"detail": "no existe el recurso solicitado"})
+
     @application.exception_handler(Exception)
     def _handle_unexpected(request: Request, error: Exception) -> JSONResponse:
         # Sin cabeceras CORS, el navegador mostraría este error como fallo de conexión. Aquí se devuelve el detalle.

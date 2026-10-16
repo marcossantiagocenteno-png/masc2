@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   api,
   ApiError,
@@ -14,8 +14,9 @@ import {
  * guardar, y la persona autora la guarda con el botón del propio formulario. Usa la misma autorización que el chat.
  */
 
-/** Límite del backend para el texto actual enviado al proveedor. */
+/** Límites del backend: texto actual enviado al proveedor e instrucción libre del autor. */
 const MAX_ACTUAL = 4000;
+const MAX_INSTRUCCION = 500;
 
 type Fase = "cerrado" | "autorizando" | "revisando";
 
@@ -38,13 +39,16 @@ export function SugerenciaCampo({ projectId, entidad, campo, entidadId, valorAct
   const [simulado, setSimulado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [instruccion, setInstruccion] = useState("");
+  const idInstruccion = useId();
 
+  // Una instrucción vacía o de solo espacios no se envía: equivale a no dar ninguna.
   const cuerpo: AsistenteCompletarCuerpo = {
     entidad,
     campo,
     entidad_id: entidadId,
     actual: valorActual.slice(0, MAX_ACTUAL),
-    instruccion: null,
+    instruccion: instruccion.trim() === "" ? null : instruccion.trim(),
   };
 
   function cerrar() {
@@ -98,7 +102,18 @@ export function SugerenciaCampo({ projectId, entidad, campo, entidadId, valorAct
 
   if (fase === "cerrado") {
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
+        <label htmlFor={idInstruccion} className="flex flex-col gap-1">
+          <span className="ne-hint">Instrucción para la sugerencia (opcional): qué quieres que escriba, amplíe o revise.</span>
+          <input
+            id={idInstruccion}
+            type="text"
+            maxLength={MAX_INSTRUCCION}
+            value={instruccion}
+            disabled={disabled || ocupado}
+            onChange={(event) => setInstruccion(event.target.value)}
+          />
+        </label>
         <div>
           <button
             type="button"

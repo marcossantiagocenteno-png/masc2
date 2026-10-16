@@ -175,3 +175,92 @@ test("el asistente no toca manuscritos ni sus versiones", async ({ page, request
 
   expect(await (await request.get(`${API}/projects/${projectId}/manuscripts`)).json()).toEqual(antes);
 });
+
+const CAMPO_INSTRUCCION = /Instrucción para la sugerencia/;
+
+test("instrucción vacía no se envía; instrucción válida llega al endpoint, se revisa y solo se guarda al guardar el formulario", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Instruccion ${runId}`);
+  await page.goto(`/proyectos/${projectId}`);
+
+  const enviados: Array<Record<string, unknown>> = [];
+  page.on("request", (peticion) => {
+    if (peticion.url().endsWith("/asistente/autocompletar")) enviados.push(peticion.postDataJSON());
+  });
+
+  // Sin instrucción (o solo espacios): el cuerpo lleva instruccion null.
+  await page.getByRole("textbox", { name: CAMPO_INSTRUCCION }).first().fill("   ");
+  await page.getByRole("button", { name: "Sugerir para Premisa" }).click();
+  await expect(page.getByRole("region", { name: "Sugerencia para Premisa" })).toBeVisible();
+  expect(enviados.at(-1)?.instruccion).toBeNull();
+  await page.getByRole("button", { name: "Descartar" }).click();
+
+  // Instrucción válida: viaja tal cual y el proveedor simulado la refleja en el borrador.
+  await page.getByRole("textbox", { name: CAMPO_INSTRUCCION }).first().fill("Hazla más breve");
+  await page.getByRole("button", { name: "Sugerir para Premisa" }).click();
+  const region = page.getByRole("region", { name: "Sugerencia para Premisa" });
+  await expect(region.getByRole("textbox")).toHaveValue(/Instrucción recibida: Hazla más breve/);
+  expect(enviados.at(-1)?.instruccion).toBe("Hazla más breve");
+
+  await region.getByRole("textbox").fill("Premisa breve, escrita por el autor.");
+  await region.getByRole("button", { name: "Aceptar en el campo" }).click();
+  await expect(page.getByRole("textbox", { name: "Premisa", exact: true })).toHaveValue("Premisa breve, escrita por el autor.");
+  expect((await (await request.get(`${API}/projects/${projectId}/planificacion/narrativa`)).json()).premise).toBeFalsy();
+
+  await page.getByRole("button", { name: "Guardar visión general" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Visión general guardada." })).toBeVisible();
+  expect((await (await request.get(`${API}/projects/${projectId}/planificacion/narrativa`)).json()).premise).toBe(
+    "Premisa breve, escrita por el autor.",
+  );
+});
+
+test("un error del servidor al sugerir muestra el aviso y no cambia el campo", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Error sugerencia ${runId}`);
+  await page.goto(`/proyectos/${projectId}`);
+  await page.getByRole("textbox", { name: "Premisa", exact: true }).fill("Premisa del autor");
+
+  await page.route("**/asistente/autocompletar", (ruta) =>
+    ruta.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ detail: "No se pudo generar la sugerencia (simulado). Nada se ha cambiado." }) }),
+  );
+  await page.getByRole("button", { name: "Sugerir para Premisa" }).click();
+
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo generar la sugerencia" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Premisa", exact: true })).toHaveValue("Premisa del autor");
+  // El texto escrito no se guardó: el servidor no tiene premisa.
+  expect((await (await request.get(`${API}/projects/${projectId}/planificacion/narrativa`)).json()).premise).toBeFalsy();
+});
+
+test("con proveedor externo no se genera nada hasta autorizar el contenido exacto, y la huella viaja con la petición", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const projectId = await createProject(page, `Externo sugerencia ${runId}`);
+  await page.goto(`/proyectos/${projectId}`);
+
+  const generados: Array<Record<string, unknown>> = [];
+  await page.route("**/asistente/autocompletar/vista-previa", (ruta) =>
+    ruta.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ contenido: "CONTENIDO EXACTO REVISADO", huella: "huella-revisada", proveedor: "anthropic", externo: true, simulado: false }),
+    }),
+  );
+  await page.route("**/asistente/autocompletar", (ruta) => {
+    generados.push(ruta.request().postDataJSON());
+    return ruta.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ texto: "Texto generado tras autorizar", proveedor: "anthropic", simulado: false }),
+    });
+  });
+
+  await page.getByRole("button", { name: "Sugerir para Premisa" }).click();
+  const autorizacion = page.getByRole("region", { name: "Autorización para sugerir Premisa" });
+  await expect(autorizacion).toContainText("Se enviará este contenido a anthropic");
+  await expect(autorizacion.getByText("CONTENIDO EXACTO REVISADO")).toBeAttached();
+  expect(generados).toHaveLength(0);
+
+  await autorizacion.getByRole("button", { name: "Autorizar y generar" }).click();
+  await expect(page.getByRole("region", { name: "Sugerencia para Premisa" }).getByRole("textbox")).toHaveValue("Texto generado tras autorizar");
+  expect(generados).toHaveLength(1);
+  expect(generados[0].autorizacion_hash).toBe("huella-revisada");
+});

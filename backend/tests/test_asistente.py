@@ -5,12 +5,13 @@ Ninguna prueba llama a un servicio real: el proveedor externo es un cliente fals
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.assistant.contexto import huella
 from app.assistant.providers import PropuestaBorrador
@@ -286,3 +287,138 @@ def test_proveedor_externo_sin_clave_responde_503_y_no_envia_nada(settings: Sett
     assert respuesta.status_code == 503
     assert "ANTHROPIC_API_KEY" in respuesta.json()["detail"]
     assert fake.calls == []
+
+
+def test_dos_envios_simultaneos_con_el_mismo_client_id_no_fallan_ni_duplican(
+    session_factory: sessionmaker[Session], settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reproduce la carrera: las dos peticiones comprueban que el client_id no existe antes de que ninguna inserte."""
+    with TestClient(create_app(settings)) as cliente:
+        proyecto = _proyecto(cliente, "Carrera client_id")
+    with session_factory() as preparacion:
+        AssistantService(preparacion, settings).conversacion(proyecto)
+
+    barrera = threading.Barrier(2, timeout=10)
+    original = AssistantService._mensaje_existente
+
+    def esperar_antes_de_insertar(self: AssistantService, conversacion_id: int, client_id: str) -> AssistantMessage | None:
+        resultado = original(self, conversacion_id, client_id)
+        if resultado is None:
+            barrera.wait()
+        return resultado
+
+    monkeypatch.setattr(AssistantService, "_mensaje_existente", esperar_antes_de_insertar)
+    resultados: list[dict] = []
+    errores: list[BaseException] = []
+
+    def enviar() -> None:
+        try:
+            with session_factory() as sesion:
+                resultados.append(AssistantService(sesion, settings).enviar(proyecto, "cliente-carrera-01", "resumen"))
+        except BaseException as error:  # noqa: BLE001 — la prueba debe ver cualquier fallo de hilo
+            errores.append(error)
+
+    hilos = [threading.Thread(target=enviar) for _ in range(2)]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join(timeout=30)
+
+    assert errores == []
+    assert len(resultados) == 2
+    assert [m.id for m in resultados[0]["mensajes"]] == [m.id for m in resultados[1]["mensajes"]]
+    with session_factory() as verificacion:
+        usuarios = verificacion.scalars(
+            select(AssistantMessage).where(
+                AssistantMessage.project_id == proyecto, AssistantMessage.client_id == "cliente-carrera-01"
+            )
+        ).all()
+    assert len(usuarios) == 1
+
+
+def test_si_la_colision_llega_y_el_ganador_ya_existe_se_devuelve_sin_500(
+    session_factory: sessionmaker[Session], settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with TestClient(create_app(settings)) as cliente:
+        proyecto = _proyecto(cliente, "Colision determinista")
+        primero = _chat(cliente, proyecto, "resumen", client_id="cliente-colision-1")
+    assert primero.status_code == 200
+    original = AssistantService._mensaje_existente
+    llamadas = {"n": 0}
+
+    def primera_vez_no_ve_nada(self: AssistantService, conversacion_id: int, client_id: str) -> AssistantMessage | None:
+        llamadas["n"] += 1
+        return None if llamadas["n"] == 1 else original(self, conversacion_id, client_id)
+
+    monkeypatch.setattr(AssistantService, "_mensaje_existente", primera_vez_no_ve_nada)
+    with TestClient(create_app(settings)) as cliente:
+        segundo = _chat(cliente, proyecto, "resumen", client_id="cliente-colision-1")
+    assert segundo.status_code == 200
+    assert [m["id"] for m in segundo.json()["mensajes"]] == [m["id"] for m in primero.json()["mensajes"]]
+
+
+def _completar(cliente: TestClient, proyecto: int, instruccion, autorizacion: str | None = None):
+    cuerpo = {"entidad": "premisa", "campo": "premise", "actual": "", "instruccion": instruccion}
+    if autorizacion is not None:
+        cuerpo["autorizacion_hash"] = autorizacion
+    return cliente.post(f"/projects/{proyecto}/asistente/autocompletar", json=cuerpo)
+
+
+@pytest.mark.parametrize("vacia", [None, "", "   \n  "])
+def test_instruccion_vacia_equivale_a_no_dar_ninguna(api: TestClient, vacia) -> None:
+    proyecto = _proyecto(api, "Instruccion vacia")
+    sin = _completar(api, proyecto, None).json()
+    con = _completar(api, proyecto, vacia).json()
+    assert con["texto"] == sin["texto"]
+    assert "Instrucción recibida" not in con["texto"]
+    previa_sin = api.post(f"/projects/{proyecto}/asistente/autocompletar/vista-previa", json={"entidad": "premisa", "campo": "premise", "actual": ""}).json()
+    previa_con = api.post(f"/projects/{proyecto}/asistente/autocompletar/vista-previa", json={"entidad": "premisa", "campo": "premise", "actual": "", "instruccion": vacia}).json()
+    assert previa_con["huella"] == previa_sin["huella"]
+
+
+def test_instruccion_valida_llega_al_proveedor_y_cambia_la_vista_previa(api: TestClient) -> None:
+    proyecto = _proyecto(api, "Instruccion valida")
+    respuesta = _completar(api, proyecto, "Hazla más breve y misteriosa")
+    assert respuesta.status_code == 200
+    assert "Instrucción recibida: Hazla más breve y misteriosa" in respuesta.json()["texto"]
+    previa = api.post(f"/projects/{proyecto}/asistente/autocompletar/vista-previa", json={"entidad": "premisa", "campo": "premise", "actual": "", "instruccion": "Hazla más breve y misteriosa"}).json()
+    assert "Hazla más breve y misteriosa" in previa["contenido"]
+
+
+def test_instruccion_demasiado_larga_responde_422(api: TestClient) -> None:
+    proyecto = _proyecto(api, "Instruccion larga")
+    assert _completar(api, proyecto, "x" * 501).status_code == 422
+
+
+def test_error_del_proveedor_en_autocompletado_no_cambia_nada(api: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.assistant.providers import SimulatedAssistant
+
+    def fallar(self, *args, **kwargs):
+        raise RuntimeError("fallo interno del proveedor")
+
+    monkeypatch.setattr(SimulatedAssistant, "completar", fallar)
+    proyecto = _proyecto(api, "Error proveedor")
+    respuesta = _completar(api, proyecto, "Amplía")
+    assert respuesta.status_code == 502
+    assert "fallo interno" not in respuesta.text
+    assert api.get(f"/projects/{proyecto}/asistente/propuestas").json() == []
+
+
+def test_autorizacion_de_una_instruccion_no_sirve_para_otra(settings: Settings) -> None:
+    texto_fake = FakeMessage(content=[FakeBlock(type="text", name=None, input=None)])
+    texto_fake.content[0].text = "Sugerencia de prueba"  # type: ignore[attr-defined]
+    fake = FakeClaude(response=texto_fake)
+    with TestClient(_app_externa(settings, fake)) as cliente:
+        proyecto = _proyecto(cliente, "Externo instruccion")
+        previa = cliente.post(
+            f"/projects/{proyecto}/asistente/autocompletar/vista-previa",
+            json={"entidad": "premisa", "campo": "premise", "actual": "", "instruccion": "Versión A"},
+        ).json()
+        assert previa["externo"] is True
+        cambiada = _completar(cliente, proyecto, "Versión B", autorizacion=previa["huella"])
+        sin_autorizar = _completar(cliente, proyecto, "Versión A")
+        autorizada = _completar(cliente, proyecto, "Versión A", autorizacion=previa["huella"])
+    assert cambiada.status_code == 409
+    assert sin_autorizar.status_code == 403
+    assert autorizada.status_code == 200
+    assert len(fake.calls) == 1

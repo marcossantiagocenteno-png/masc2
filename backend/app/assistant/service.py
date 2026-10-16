@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.assistant.contexto import (
@@ -34,6 +35,7 @@ from app.texts.errors import ConflictError, NotFoundError, TextError, Validation
 HISTORIAL_MENSAJES = 10
 MAX_TEXTO_MENSAJE = 4000
 MAX_CAMPO_PROPUESTA = 4000
+MAX_INSTRUCCION = 500
 MAX_MOTIVO = 500
 ESTADOS_PROPUESTA = ("pendiente", "aplicada", "rechazada", "fallida", "desactualizada")
 ESTADOS_DECIDIBLES = ("pendiente", "desactualizada")
@@ -181,11 +183,7 @@ class AssistantService:
         """Envía un mensaje. Reenviar el mismo ``client_id`` devuelve lo ya guardado, sin llamar al proveedor."""
         conversacion = self.conversacion(project_id)
         texto = _validar_texto(texto)
-        existente = self._session.scalar(
-            select(AssistantMessage).where(
-                AssistantMessage.conversation_id == conversacion.id, AssistantMessage.client_id == client_id
-            )
-        )
+        existente = self._mensaje_existente(conversacion.id, client_id)
         if existente is not None:
             return self._respuesta_desde(conversacion, existente)
 
@@ -204,7 +202,16 @@ class AssistantService:
             created_at=self._clock(),
         )
         self._session.add(usuario)
-        self._session.flush()
+        try:
+            self._session.flush()
+        except IntegrityError:
+            # Otra petición con el mismo client_id ha insertado antes el mensaje (restricción única). Se deshace
+            # esta inserción y se devuelve lo ya guardado: sin segundo mensaje y sin llamar al proveedor.
+            self._session.rollback()
+            ganador = self._mensaje_existente(conversacion.id, client_id)
+            if ganador is None:
+                raise ConflictError("el mensaje se está registrando; reintenta el envío") from None
+            return self._respuesta_desde(conversacion, ganador)
 
         try:
             respuesta = proveedor.responder(contexto, historial, texto)
@@ -249,6 +256,13 @@ class AssistantService:
             )
         self._session.commit()
         return self._respuesta_desde(conversacion, usuario)
+
+    def _mensaje_existente(self, conversacion_id: int, client_id: str) -> AssistantMessage | None:
+        return self._session.scalar(
+            select(AssistantMessage).where(
+                AssistantMessage.conversation_id == conversacion_id, AssistantMessage.client_id == client_id
+            )
+        )
 
     def _mensaje_sistema(self, project_id: int, conversacion_id: int, texto: str) -> None:
         self._session.add(
@@ -567,6 +581,7 @@ class AssistantService:
     def vista_previa_completado(
         self, project_id: int, entidad: str, campo: str, entidad_id: int | None, actual: str, instruccion: str | None
     ) -> dict[str, Any]:
+        instruccion = _instruccion(instruccion)
         contenido = self._contenido_completado(project_id, entidad, campo, entidad_id, actual, instruccion)
         proveedor = self.proveedor()
         return {
@@ -588,6 +603,7 @@ class AssistantService:
         autorizacion_hash: str | None = None,
     ) -> dict[str, Any]:
         """Sugerencia para un único campo. No guarda nada: el autor la acepta, edita o descarta en la interfaz."""
+        instruccion = _instruccion(instruccion)
         contenido = self._contenido_completado(project_id, entidad, campo, entidad_id, actual, instruccion)
         proveedor = self.proveedor()
         self._autorizar(proveedor, contenido, autorizacion_hash)
@@ -616,6 +632,14 @@ class AssistantService:
             )
         except LookupError as error:
             raise NotFoundError(str(error)) from None
+
+
+def _instruccion(instruccion: str | None) -> str | None:
+    """Instrucción libre del autor. Vacía o solo espacios equivale a no dar ninguna."""
+    limpia = (instruccion or "").strip()
+    if len(limpia) > MAX_INSTRUCCION:
+        raise ValidationFailed(f"la instrucción supera {MAX_INSTRUCCION} caracteres")
+    return limpia or None
 
 
 def _validar_texto(texto: str) -> str:

@@ -156,7 +156,8 @@ class SimulatedAssistant:
         )
 
     def completar(self, contexto: ContextoAsistente, entidad: str, campo: str, actual: str, instruccion: str | None) -> str:
-        return f"[Simulado, sin IA] Borrador de prueba para {campo} de {entidad}. Revísalo antes de guardar."
+        indicacion = f" Instrucción recibida: {instruccion}." if instruccion else ""
+        return f"[Simulado, sin IA] Borrador de prueba para {campo} de {entidad}.{indicacion} Revísalo antes de guardar."
 
 
 # --- Adaptador de Anthropic ----------------------------------------------------------------------

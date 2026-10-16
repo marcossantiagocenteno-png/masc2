@@ -86,13 +86,42 @@ Los tipos `idea` y `contradiccion` están previstos en el modelo, pero **nada lo
 ## Autocompletado
 
 Endpoints `POST /asistente/autocompletar` y `POST /asistente/autocompletar/vista-previa`, con la misma autorización que el chat.
-Solo sugieren texto para campos de la lista permitida (`CAMPOS_TEXTO`); no guardan nada. Ver «Limitaciones».
+Solo sugieren texto para campos de la lista permitida (`CAMPOS_TEXTO`).
+
+En la interfaz aparece «Sugerir para …» junto a la premisa, el tema y los campos de texto de personajes, lugares,
+trama y cronología. El flujo es: pedir sugerencia → (con proveedor externo) revisar y autorizar el contenido exacto →
+editar el texto sugerido → **aceptar en el campo** o **descartar**. Aceptar solo rellena el campo del formulario: no
+se guarda hasta que la persona autora pulsa el botón de guardar del propio formulario.
 
 ## Limitaciones conocidas
 
 - **No se ha probado con la API real de Anthropic.** Las pruebas usan un cliente falso. Falta comprobar la clave, el modelo y la latencia en un entorno con acceso.
-- **El autocompletado todavía no está en los formularios de la interfaz.** Existe el endpoint, pero el campo de premisa y las fichas no ofrecen aún la sugerencia con aceptar, editar o descartar.
+- **Autocompletado sin instrucción libre**: la interfaz no envía una instrucción del autor; el endpoint la admite.
+- **Proveedor real no verificado**: ver el apartado siguiente.
 - **Las dependencias entre propuestas** se guardan como lista vacía; aún no se validan ni se ordenan.
 - **Una sola conversación por novela.** El historial completo se devuelve sin paginar.
 - **Sin detección automática de contradicciones.**
 - La migración `0012` no tiene `downgrade`: para deshacerla hay que restaurar una copia de seguridad verificada (`RESPALDO_Y_RESTAURACION.md`).
+
+## Estado de verificación del proveedor Anthropic
+
+- **Verificado con pruebas simuladas (cliente falso)**: sin clave responde 503 y no llama a nada; con clave, la vista
+  previa y la autorización por huella funcionan de extremo a extremo; una respuesta mal formada no crea propuestas y
+  conserva el mensaje del autor.
+- **No verificado con la API real**: en el entorno de desarrollo no hay `ANTHROPIC_API_KEY`. Una prueba real requiere
+  una clave autorizada y un modelo configurado, y consume tokens de pago. Hasta entonces, el comportamiento real del
+  proveedor (latencia, formato de la herramienta, límites de tokens) sigue sin comprobarse.
+
+## Estados de propuesta: qué significa cada uno
+
+| Estado | Causa | Qué puede hacer la persona autora |
+|---|---|---|
+| `pendiente` | Propuesta nueva. | Aprobar o rechazar. |
+| `desactualizada` | El elemento cambió después de proponerlo. La aprobación lo detecta y no toca nada. | Rechazarla, o pedir una propuesta nueva con el estado actual. |
+| `fallida` por canon | El elemento es canónico: un cambio exige confirmación en su ficha. | Modificar el elemento desde su ficha con confirmación, o rechazar la propuesta. |
+| `fallida` por archivado | El elemento está archivado. | Restaurarlo o rechazar la propuesta. |
+| `fallida` por error interno | Fallo inesperado al aplicar. Todo se deshace. | Pedir de nuevo la propuesta; no hay reintento automático. |
+| `rechazada` / `aplicada` | Decisión tomada. | Nada: son estados finales. |
+
+Las propuestas `fallida` no se pueden volver a aprobar: cada una explica su motivo en el historial de decisiones.
+No hay ningún permiso ampliado para que una propuesta pase: las reglas de canon y archivado se aplican igual.

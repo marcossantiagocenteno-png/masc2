@@ -55,3 +55,17 @@ Y la base migrada según `docs\MIGRACION_LOCAL.md`. El lanzador no crea ni migra
 
 Usa `Detener Novel Engine.bat`. Envía una petición de cierre a las ventanas; no fuerza el cierre de los procesos.
 Si alguna ventana sigue abierta, ciérrala a mano.
+
+## Procedimiento de prueba reproducible en Windows
+
+Pendiente de ejecutar por una persona con un equipo Windows. Pasos, en una copia de trabajo (no en tu carpeta con datos):
+
+1. Clona el repositorio en una carpeta nueva y cambia a la rama de trabajo.
+2. Crea un entorno de prueba: `backend\.venv` y `apps\web\node_modules` según la sección de requisitos.
+3. Migra una base **de prueba** en la ruta que comprueba el lanzador: `backend\.venv\Scripts\python -m alembic upgrade head` con `DATABASE_URL` sin definir (así usa `data\novel_engine.sqlite` dentro de la copia). Nunca copies ni apuntes a tu base real.
+4. Doble clic en `Iniciar Novel Engine.bat`. Comprueba: mensaje de rama, avisos de cambios locales si los hay, ventanas de backend y frontend, navegador abierto solo al final.
+5. Repite el arranque con el puerto 8000 ocupado (`python -m http.server 8000`): debe rechazar con el mensaje de instancia abierta.
+6. Ejecuta `Detener Novel Engine.bat` y comprueba que las dos ventanas se cierran.
+7. Anota en el informe cada paso: pasó, falló o no se pudo verificar.
+
+Limitación conocida: el lanzador exige que exista `data\novel_engine.sqlite` aunque definas `DATABASE_URL`, porque comprueba ese archivo antes de leer la base configurada.

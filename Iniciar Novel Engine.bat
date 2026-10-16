@@ -49,16 +49,16 @@ if not defined SIN_RED (
   ) else if not "!DELANTE!"=="0" (
     echo [AVISO] La rama local y origin/!RAMA! han divergido. No se actualiza; resuélvelo a mano.
   ) else if defined SUCIO (
-    echo [AVISO] Hay !DETRAS! cambio(s) nuevos en origin, pero tienes cambios locales sin confirmar. No se actualiza.
+    echo [AVISO] Hay !DETRAS! cambio^(s^) nuevo^(s^) en origin, pero tienes cambios locales sin confirmar. No se actualiza.
   ) else (
-    echo Actualizando !DETRAS! cambio(s) de origin/!RAMA! ^(solo avance rápido^)...
+    echo Actualizando !DETRAS! cambio^(s^) de origin/!RAMA! ^(solo avance rápido^)...
     git merge --ff-only "origin/!RAMA!" >nul 2>nul || echo [AVISO] La actualización no era de avance rápido. No se ha cambiado nada.
   )
 )
 if defined SUCIO echo [AVISO] Hay cambios locales sin confirmar. Se arranca con el código actual, tal como está.
 
 rem ---- 4. Dependencias y compilación ------------------------------------------
-if not exist "%PY%" call :fallo "Falta el entorno de Python del backend. Crea el entorno: cd backend, luego python -m venv .venv y .venv\Scripts\pip install -e \".[dev]\""
+if not exist "%PY%" call :fallo "Falta el entorno de Python del backend. Crea el entorno: cd backend, luego python -m venv .venv y .venv\Scripts\pip install -e .[dev]"
 if not exist "%WEB%\node_modules" call :fallo "Faltan dependencias del frontend. Ejecuta: cd apps\web && npm ci"
 if not exist "%WEB%\.next\BUILD_ID" call :fallo "Falta la compilación del frontend. Ejecuta: cd apps\web && npm run build"
 

@@ -32,3 +32,18 @@ Si la pestaña dice «simulado, sin IA», las respuestas son de prueba y no cons
 
 - No sugiere texto mientras escribes en los formularios (existe en el servidor, pendiente en la interfaz).
 - No detecta contradicciones por sí solo.
+
+## Sugerencias en los formularios
+
+Junto a la premisa, el tema y los campos de texto de personajes, lugares, trama y cronología aparece **Sugerir para …**.
+La sugerencia aparece en un cuadro que puedes editar. Puedes:
+
+- **Aceptar en el campo**: el texto entra en el formulario, pero **no se guarda** hasta que pulses guardar.
+- **Descartar**: el campo queda como estaba.
+
+Si el asistente usa un servicio externo, verás el texto exacto que se enviará y tendrás que autorizarlo antes.
+
+## Propuestas que no se aplican
+
+- **Desactualizada**: el elemento cambió después de la propuesta. Por seguridad no se aplica; pide una propuesta nueva.
+- **Fallida**: el motivo aparece en el historial. Si el elemento es canónico, cámbialo desde su ficha con confirmación.

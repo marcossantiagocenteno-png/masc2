@@ -59,6 +59,10 @@ La vista previa y el envío usan la misma función (`componer_envio`), así la h
 ## Mensajes
 
 - `client_id` lo genera el navegador. Reenviar el mismo `client_id` devuelve lo ya guardado y **no** vuelve a llamar al proveedor.
+- **Dos envíos simultáneos con el mismo `client_id`**: la base solo acepta un mensaje con ese id (restricción única por
+  conversación). El perdedor de la carrera deshace su inserción y devuelve el mensaje ganador, con 200, sin segundo
+  mensaje y sin llamar al proveedor. Está probado con dos hilos reales contra SQLite (`test_asistente.py`).
+  La autorización del contenido se comprueba antes de insertar, así que un envío no autorizado nunca gana la carrera.
 - Si el proveedor falla o devuelve algo mal formado, el mensaje del usuario se conserva, se añade un mensaje de sistema
   con el aviso, y no se crea ninguna propuesta.
 - Las propuestas que no cumplen las reglas se descartan y se anota cuántas.
@@ -83,6 +87,13 @@ Tabla separada del historial. Cada propuesta tiene una entrada con su tipo:
 `propuesta` (pendiente), `confirmado` (aplicada), `rechazada`, `pendiente` (desactualizada o fallida).
 Los tipos `idea` y `contradiccion` están previstos en el modelo, pero **nada los genera todavía**.
 
+## Instrucción libre en el autocompletado
+
+El campo «Instrucción para la sugerencia (opcional)» se envía como `instruccion` (máximo 500 caracteres).
+Vacía o solo espacios equivale a no dar ninguna: no cambia el contenido ni la huella de autorización. Una instrucción
+válida forma parte del contenido exacto de la vista previa, así que una autorización para una instrucción no sirve
+para otra (409). Con el proveedor simulado, el borrador refleja la instrucción, lo que permite comprobar que llegó.
+
 ## Autocompletado
 
 Endpoints `POST /asistente/autocompletar` y `POST /asistente/autocompletar/vista-previa`, con la misma autorización que el chat.
@@ -96,7 +107,8 @@ se guarda hasta que la persona autora pulsa el botón de guardar del propio form
 ## Limitaciones conocidas
 
 - **No se ha probado con la API real de Anthropic.** Las pruebas usan un cliente falso. Falta comprobar la clave, el modelo y la latencia en un entorno con acceso.
-- **Autocompletado sin instrucción libre**: la interfaz no envía una instrucción del autor; el endpoint la admite.
+- **Una conversación por novela**: si dos peticiones crean a la vez la primera conversación de una novela, pueden quedar
+  dos; la lectura usa siempre la más antigua. No se pierde ningún mensaje.
 - **Proveedor real no verificado**: ver el apartado siguiente.
 - **Las dependencias entre propuestas** se guardan como lista vacía; aún no se validan ni se ordenan.
 - **Una sola conversación por novela.** El historial completo se devuelve sin paginar.

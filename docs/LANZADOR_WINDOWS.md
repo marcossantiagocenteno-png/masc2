@@ -56,6 +56,17 @@ Y la base migrada según `docs\MIGRACION_LOCAL.md`. El lanzador no crea ni migra
 Usa `Detener Novel Engine.bat`. Envía una petición de cierre a las ventanas; no fuerza el cierre de los procesos.
 Si alguna ventana sigue abierta, ciérrala a mano.
 
+## Comprobaciones estáticas (cualquier sistema)
+
+```
+python scripts/verificar_lanzador.py
+```
+
+Comprueba finales de línea CRLF, UTF-8, ausencia de órdenes destructivas o de migración, que el único comando de Git
+que modifica el repositorio sea `git merge --ff-only`, que se cambie al directorio del archivo, y que los paréntesis de
+los bloques de cmd estén equilibrados. Las mismas comprobaciones corren en la suite del backend
+(`tests/test_lanzador_estatico.py`). **Esto no es una ejecución en Windows.**
+
 ## Procedimiento de prueba reproducible en Windows
 
 Pendiente de ejecutar por una persona con un equipo Windows. Pasos, en una copia de trabajo (no en tu carpeta con datos):

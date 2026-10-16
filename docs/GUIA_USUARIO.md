@@ -36,7 +36,8 @@ Si la pestaña dice «simulado, sin IA», las respuestas son de prueba y no cons
 ## Sugerencias en los formularios
 
 Junto a la premisa, el tema y los campos de texto de personajes, lugares, trama y cronología aparece **Sugerir para …**.
-La sugerencia aparece en un cuadro que puedes editar. Puedes:
+Antes de pulsar, puedes escribir una **instrucción** opcional (por ejemplo, «amplía la descripción con un detalle sensorial»
+o «hazla más breve»). Si la dejas vacía, la sugerencia se genera sin instrucción. La sugerencia aparece en un cuadro que puedes editar. Puedes:
 
 - **Aceptar en el campo**: el texto entra en el formulario, pero **no se guarda** hasta que pulses guardar.
 - **Descartar**: el campo queda como estaba.
